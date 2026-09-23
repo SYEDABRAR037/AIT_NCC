@@ -1,0 +1,195 @@
+/* ==========================================================================
+   CINEMATIC HOMEPAGE ENTRANCE & THEATRE CURTAIN REVEAL
+   DEEP NAVY FABRIC WITH NATURAL FOLDS AND 3D HARDWARE-ACCELERATED SHADOWS
+   ========================================================================== */
+
+.cinematic-container {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  overflow: hidden;
+  pointer-events: all;
+  background-color: #030B17;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.8s ease, visibility 0.8s ease;
+}
+
+.cinematic-container.completed {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Intro Stage (Logo + Progress) */
+.intro-stage {
+  position: absolute;
+  z-index: 100001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  transition: opacity 0.6s ease;
+  max-width: 600px;
+  width: 90%;
+}
+
+.intro-stage.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-logos-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.intro-logo-item {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.intro-title-group h1 {
+  font-family: var(--font-display);
+  color: #FFFFFF;
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.intro-title-group h2 {
+  font-size: 0.95rem;
+  color: #94A3B8;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+}
+
+/* Progress Counter */
+.intro-progress-container {
+  width: 100%;
+  max-width: 320px;
+  margin-top: 1rem;
+}
+
+.progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #FFFFFF;
+  transition: width 0.15s linear;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.progress-indicator {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #CBD5E1;
+}
+
+.progress-percentage {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+/* Theatre Curtains */
+.curtains-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  pointer-events: none;
+}
+
+.curtain-panel {
+  width: 50%;
+  height: 100%;
+  background-color: #061325;
+  /* Natural woven cloth texture using repetitive CSS gradient folds */
+  background-image: repeating-linear-gradient(
+    90deg,
+    #040D1A 0px,
+    #061325 30px,
+    #0B2545 60px,
+    #061325 90px,
+    #020812 120px
+  );
+  position: relative;
+  will-change: transform;
+  transition: transform 1.8s cubic-bezier(0.77, 0, 0.175, 1);
+}
+
+/* Left Curtain */
+.curtain-left {
+  left: 0;
+  transform: translateX(0);
+  box-shadow: inset -15px 0 25px rgba(0, 0, 0, 0.8), 10px 0 30px rgba(0, 0, 0, 0.6);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Right Curtain */
+.curtain-right {
+  right: 0;
+  transform: translateX(0);
+  box-shadow: inset 15px 0 25px rgba(0, 0, 0, 0.8), -10px 0 30px rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Reveal State: curtains sweep apart to the left and right */
+.curtains-open .curtain-left {
+  transform: translateX(-102%);
+}
+
+.curtains-open .curtain-right {
+  transform: translateX(102%);
+}
+
+/* Curtain Golden / Silver Institutional Trim at bottom */
+.curtain-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12px;
+  background: linear-gradient(90deg, #1B3B66, #2A5A9E, #1B3B66);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Reduced Motion Mode Override */
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-container {
+    transition: opacity 0.3s ease;
+  }
+  .curtain-panel {
+    transition: none !important;
+  }
+  .intro-stage {
+    transition: opacity 0.2s ease;
+  }
+}

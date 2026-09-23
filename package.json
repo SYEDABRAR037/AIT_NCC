@@ -1,0 +1,15 @@
+{
+  "name": "ncc-digital-command-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NCC Digital Command & Cadet Management System - Army Institute of Technology, Pune",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

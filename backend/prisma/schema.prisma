@@ -1,0 +1,513 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN_ANO
+  DRILL_INSTRUCTOR
+  PLATOON_SENIOR
+  SENIOR
+  CADET
+}
+
+enum AccountStatus {
+  UNDER_REVIEW
+  APPROVED
+  ACTIVE
+  HOLD
+  REJECTED
+  INACTIVE
+  PASSED_OUT
+}
+
+model User {
+  id                 String        @id @default(uuid())
+  fullName           String
+  regimentalNumber   String        @unique
+  collegeRollNumber  String        @unique
+  email              String        @unique
+  phone              String?
+  year               String
+  branch             String
+  platoonName        String        @default("Alpha")
+  battalion          String        @default("2 Maharashtra Battalion NCC, Pune")
+  company            String        @default("Bravo Company")
+  group              String        @default("Pune Group HQ")
+  team               String?
+  enrollmentDetails  String?
+  dateOfJoining      DateTime      @default(now())
+  profilePhotoUrl    String?
+  passwordHash       String
+  role               Role          @default(CADET)
+  status             AccountStatus @default(UNDER_REVIEW)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  // Assignment relations
+  cadetsMentored     SeniorAssignment[] @relation("SeniorMentor")
+  mentorAssignment   SeniorAssignment?  @relation("AssignedCadet")
+  platoonAssignments PlatoonSeniorAssignment[]
+  reviewsConducted   ReviewRecord[]     @relation("Reviewer")
+  applicationReviews ReviewRecord[]     @relation("CadetReviews")
+  leaves             Leave[]
+  leaveReviews       LeaveReviewRecord[]  @relation("LeaveReviewer")
+  cadetRequests      Request[]            @relation("CadetRequests")
+  officerRequestActions RequestHistoryRecord[] @relation("OfficerRequestActions")
+  timelineEvents     TimelineEvent[]      @relation("CadetTimeline")
+  assignedDuties     Duty[]               @relation("AssignedDuties")
+  officerAssignedDuties Duty[]            @relation("OfficerAssignedDuties")
+  campParticipations CampParticipant[]
+  eventParticipations EventParticipant[]
+  trainingAttendances TrainingAttendance[]
+  cadetInspections    TurnoutInspection[]  @relation("CadetInspections")
+  conductedInspections TurnoutInspection[] @relation("InspectorRecords")
+  certificates        Certificate[]        @relation("CadetCertificates")
+  biometricTemplate   BiometricTemplate?
+  attendanceNotifications AttendanceNotification[]
+  inquiryReplies      InquiryReply[]       @relation("UserInquiryReplies")
+
+  @@index([role])
+  @@index([status])
+}
+
+
+model ReviewRecord {
+  id         String   @id @default(uuid())
+  cadetId    String
+  reviewerId String
+  stage      String   // SENIOR_REVIEW | PLATOON_SENIOR_REVIEW | ANO_FINAL_APPROVAL
+  action     String   // FORWARD | APPROVE | REJECT | HOLD | CORRECTION_REQUESTED
+  remarks    String?
+  createdAt  DateTime @default(now())
+
+  cadet    User @relation("CadetReviews", fields: [cadetId], references: [id], onDelete: Cascade)
+  reviewer User @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@index([cadetId])
+  @@index([reviewerId])
+}
+
+model SeniorAssignment {
+  id         String   @id @default(uuid())
+  seniorId   String
+  cadetId    String   @unique
+  assignedAt DateTime @default(now())
+
+  senior     User     @relation("SeniorMentor", fields: [seniorId], references: [id], onDelete: Cascade)
+  cadet      User     @relation("AssignedCadet", fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@index([seniorId])
+}
+
+model PlatoonSeniorAssignment {
+  id              String   @id @default(uuid())
+  platoonSeniorId String
+  platoonId       String
+  assignedAt      DateTime @default(now())
+
+  platoonSenior   User     @relation(fields: [platoonSeniorId], references: [id], onDelete: Cascade)
+  platoon         Platoon  @relation(fields: [platoonId], references: [id], onDelete: Cascade)
+
+  @@unique([platoonSeniorId, platoonId])
+}
+
+model Platoon {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  platoonSeniors PlatoonSeniorAssignment[]
+}
+
+model Notice {
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  category    String   @default("General")
+  isPublic    Boolean  @default(true)
+  isUrgent    Boolean  @default(false)
+  targetRole  Role?
+  targetPlatoon String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  eventType     String   @default("OTHER") // PARADE | TRAINING | CAMP | ACTIVITY | COMPETITION | MEETING | DUTY | IMPORTANT_DATE | OTHER
+  eventDate     DateTime
+  startTime     String?
+  endTime       String?
+  location      String
+  isPublic      Boolean  @default(true)
+  status        String   @default("PUBLISHED") // PUBLISHED | CANCELLED
+  referenceType String?  // CAMP | TRAINING_SESSION | DUTY
+  referenceId   String?  // ID of linked Camp, Session, or Duty
+  organizer     String?  @default("AIT NCC Command")
+  createdAt     DateTime @default(now())
+
+  participants EventParticipant[]
+}
+
+model EventParticipant {
+  id        String   @id @default(uuid())
+  eventId   String
+  cadetId   String
+  status    String   @default("REGISTERED")
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  cadet User  @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, cadetId])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  title       String
+  category    String
+  description String
+  dateAwarded DateTime
+  cadetName   String?
+  isPublic    Boolean  @default(true)
+  isVerified  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Camp {
+  id                String   @id @default(uuid())
+  name              String
+  campType          String
+  location          String
+  startDate         DateTime
+  endDate           DateTime
+  description       String?
+  capacity          Int      @default(50)
+  reportingTime     String?  @default("06:00 hrs")
+  eligibility       String?  @default("Open to all active cadets with >= 75% attendance")
+  instructions      String?
+  requiredDocuments String?  @default("Medical Certificate, Indemnity Bond, College ID")
+  assignedOfficers  String?
+  createdAt         DateTime @default(now())
+
+  participants CampParticipant[]
+}
+
+model CampParticipant {
+  id        String   @id @default(uuid())
+  campId    String
+  cadetId   String
+  status    String   @default("APPLIED") // APPLIED | RECOMMENDED | SELECTED | CONFIRMED | PARTICIPATED | COMPLETED | REJECTED
+  remarks   String?
+  createdAt DateTime @default(now())
+
+  camp  Camp @relation(fields: [campId], references: [id], onDelete: Cascade)
+  cadet User @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@unique([campId, cadetId])
+}
+
+model Leave {
+  id              String   @id @default(uuid())
+  cadetId         String
+  leaveType       String   // Medical | Academic | Personal | Emergency
+  startDate       DateTime
+  endDate         DateTime
+  reason          String
+  remarks         String?
+  documentUrl     String?
+  status          String   @default("SUBMITTED") // SUBMITTED | SENIOR_REVIEW | PLATOON_SENIOR_REVIEW | ANO_REVIEW | APPROVED | REJECTED | RETURNED | CANCELLED
+  finalDecisionBy String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  cadet        User                @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+  leaveReviews LeaveReviewRecord[]
+
+  @@index([cadetId])
+  @@index([status])
+}
+
+model LeaveReviewRecord {
+  id           String   @id @default(uuid())
+  leaveId      String
+  reviewerId   String
+  reviewerRole Role
+  stage        String   // SENIOR_REVIEW | PLATOON_SENIOR_REVIEW | ANO_FINAL_REVIEW
+  action       String   // FORWARD | APPROVE | REJECT | RETURN | CANCEL
+  remarks      String?
+  createdAt    DateTime @default(now())
+
+  leave    Leave @relation(fields: [leaveId], references: [id], onDelete: Cascade)
+  reviewer User  @relation("LeaveReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@index([leaveId])
+  @@index([reviewerId])
+}
+
+model Request {
+  id                  String   @id @default(uuid())
+  requestNumber       String   @unique
+  requestType         String   // LEAVE | PROFILE_CORRECTION | CERTIFICATE_VERIFICATION | CAMP_PARTICIPATION | DUTY_RELATED | DOCUMENT_REQUEST | OTHER
+  cadetId             String
+  title               String
+  description         String
+  priority            String   @default("NORMAL") // NORMAL | HIGH | URGENT
+  status              String   @default("SUBMITTED") // SUBMITTED | UNDER_REVIEW | FORWARDED | APPROVED | REJECTED | RETURNED | CANCELLED
+  currentReviewerRole Role?
+  currentReviewerId   String?
+  supportingDocUrl    String?
+  metadata            String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  cadet   User                   @relation("CadetRequests", fields: [cadetId], references: [id], onDelete: Cascade)
+  history RequestHistoryRecord[]
+  replies InquiryReply[]
+
+  @@index([cadetId])
+  @@index([status])
+  @@index([requestType])
+}
+
+model RequestHistoryRecord {
+  id             String   @id @default(uuid())
+  requestId      String
+  officerId      String
+  officerRole    Role
+  action         String   // SUBMIT | FORWARD | APPROVE | REJECT | RETURN | CANCEL
+  remarks        String?
+  previousStatus String
+  newStatus      String
+  createdAt      DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  officer User    @relation("OfficerRequestActions", fields: [officerId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([officerId])
+}
+
+model InquiryReply {
+  id         String   @id @default(uuid())
+  requestId  String
+  senderId   String
+  senderName String
+  senderRole Role
+  message    String
+  createdAt  DateTime @default(now())
+
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sender  User    @relation("UserInquiryReplies", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  cadetId     String
+  category    String   // REGISTRATION | APPROVAL | ATTENDANCE | LEAVE | CAMP | ACTIVITY | DUTY | CERTIFICATE | ACHIEVEMENT | REQUEST | PROFILE_UPDATE
+  title       String
+  description String
+  actorId     String?
+  actorRole   Role?
+  metadata    String?
+  eventDate   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  cadet User @relation("CadetTimeline", fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@index([cadetId])
+  @@index([category])
+  @@index([eventDate])
+}
+
+model Duty {
+  id              String   @id @default(uuid())
+  title           String
+  dutyType        String   // Guard of Honour | Quarter Guard | Pilot Escort | Parade Commander | Flag Officer | Armoury Duty | Administrative
+  location        String
+  dutyDate        DateTime
+  reportingTime   String   @default("06:00 hrs")
+  instructions    String?
+  assignedCadetId String
+  assignedById    String
+  status          String   @default("ASSIGNED") // ASSIGNED | COMPLETED | EXCUSED
+  createdAt       DateTime @default(now())
+
+  cadet      User @relation("AssignedDuties", fields: [assignedCadetId], references: [id], onDelete: Cascade)
+  assignedBy User @relation("OfficerAssignedDuties", fields: [assignedById], references: [id], onDelete: Cascade)
+
+  @@index([assignedCadetId])
+  @@index([dutyDate])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  actorName  String
+  action     String
+  targetType String
+  targetId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  userId     String?
+  targetRole Role?
+  title      String
+  message    String
+  isRead     Boolean  @default(false)
+  isUrgent   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model TrainingSession {
+  id            String   @id @default(uuid())
+  title         String
+  activity      String
+  timing        String
+  startTime     String   @default("06:00")
+  endTime       String?
+  location      String
+  focus         String
+  conductedBy   String
+  creatorRole   String   @default("PLATOON_SENIOR")
+  targetPlatoon String?
+  status        String   @default("ACTIVE") // ACTIVE | CLOSED
+  expectedCount Int      @default(0)
+  presentCount  Int      @default(0)
+  absentCount   Int      @default(0)
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  attendance  TrainingAttendance[]
+  inspections TurnoutInspection[]
+  attendanceNotifications AttendanceNotification[]
+}
+
+model TrainingAttendance {
+  id                 String   @id @default(uuid())
+  sessionId          String
+  cadetId            String
+  status             String   @default("PRESENT") // PRESENT | ABSENT | EXCUSED
+  verificationMethod String   @default("LIVE_FACE_VERIFIED") // LIVE_FACE_VERIFIED | MANUAL_OVERRIDE | APPROVED_LEAVE
+  verificationStatus String   @default("VERIFIED") // VERIFIED | FAILED
+  confidenceScore    Float?
+  verifiedBy         String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @default(now()) @updatedAt
+
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cadet   User            @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, cadetId])
+}
+
+model BiometricTemplate {
+  id            String   @id @default(uuid())
+  cadetId       String   @unique
+  descriptor    String   // JSON serialized array of 128 float values
+  photoSnapshot String?  // Optional base64 or URL thumbnail
+  qualityScore  Float    @default(0.95)
+  registeredBy  String   @default("SYSTEM")
+  registeredAt  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  cadet User @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@index([cadetId])
+}
+
+model TurnoutInspection {
+  id                    String   @id @default(uuid())
+  sessionId             String?
+  cadetId               String
+  inspectorId           String
+  drillGrade            String   @default("A") // A | B | C | D (Needs Improvement)
+  uniformScore          Int      @default(9)  // 1 to 10
+  shaveBeretHackleScore Int      @default(9)  // 1 to 10
+  bootsPolishScore      Int      @default(9)  // 1 to 10
+  remarks               String?
+  createdAt             DateTime @default(now())
+
+  session   TrainingSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  cadet     User             @relation("CadetInspections", fields: [cadetId], references: [id], onDelete: Cascade)
+  inspector User             @relation("InspectorRecords", fields: [inspectorId], references: [id], onDelete: Cascade)
+
+  @@index([cadetId])
+  @@index([inspectorId])
+}
+
+model Certificate {
+  id               String   @id @default(uuid())
+  certificateNo    String   @unique
+  verificationHash String   @unique
+  cadetId          String
+  certificateType  String   // 'A' Certificate | 'B' Certificate | 'C' Certificate | 'ATC Camp Certificate' | 'Special Commendation'
+  title            String
+  grade            String   @default("A") // A | B | C
+  issuingUnit      String   @default("2 Maharashtra Battalion NCC, Pune")
+  institution      String   @default("Army Institute of Technology, Pune")
+  issuedBy         String   @default("Lt. Col. R.K. Sharma, ANO")
+  issueDate        DateTime @default(now())
+  status           String   @default("VALID") // VALID | REVOKED | SUSPENDED
+  campName         String?
+  remarks          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  cadet            User     @relation("CadetCertificates", fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@index([cadetId])
+  @@index([certificateNo])
+  @@index([certificateType])
+}
+
+model AttendanceNotification {
+  id                 String    @id @default(uuid())
+  attendanceId       String?
+  sessionId          String
+  cadetId            String
+  eventType          String    // 'ATTENDANCE_MARKED_PRESENT' | 'ATTENDANCE_MARKED_ABSENT'
+  channel            String    // 'SMS' | 'WHATSAPP'
+  recipientPhone     String
+  messageContent     String
+  templateId         String?
+  status             String    @default("QUEUED") // 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED'
+  providerMessageId  String?
+  failureReason      String?
+  retryCount         Int       @default(0)
+  idempotencyKey     String    @unique
+  queuedAt           DateTime  @default(now())
+  sentAt             DateTime?
+  deliveredAt        DateTime?
+  failedAt           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  session TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cadet   User            @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([cadetId])
+  @@index([status])
+  @@index([eventType])
+}
+
+
