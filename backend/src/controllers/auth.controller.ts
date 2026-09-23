@@ -29,11 +29,22 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 2. Mandatory Biometric Validation (Phase 13)
+    const { faceDescriptor, photoSnapshot, qualityScore } = req.body;
+    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length < 128) {
+      res.status(400).json({
+        success: false,
+        field: 'faceDescriptor',
+        message: 'Please complete biometric face registration before submitting your application.',
+      });
+      return;
+    }
+
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedRegimental = regimentalNumber.trim().toUpperCase();
     const trimmedRoll = collegeRollNumber.trim().toUpperCase();
 
-    // 2. Strict Duplicate Detection (Email, Regimental Number, College Roll Number)
+    // 3. Strict Duplicate Detection (Phase 11 & 14)
     const existingEmail = await prisma.user.findUnique({
       where: { email: trimmedEmail },
     });
@@ -41,7 +52,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       res.status(409).json({
         success: false,
         field: 'email',
-        message: 'Email address is already registered in the unit system.',
+        message: 'This email is already registered.',
       });
       return;
     }
@@ -53,7 +64,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       res.status(409).json({
         success: false,
         field: 'regimentalNumber',
-        message: 'Regimental number is already registered in the unit system.',
+        message: 'This regimental number is already registered.',
       });
       return;
     }
@@ -65,64 +76,80 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       res.status(409).json({
         success: false,
         field: 'collegeRollNumber',
-        message: 'College roll number is already registered in the unit system.',
+        message: 'This college roll number is already registered.',
       });
       return;
     }
 
-    // 3. Password Hashing
+    // 4. Password Hashing
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 4. Role Assignment: Public users cannot self-select privileged roles
-    const newUser = await prisma.user.create({
-      data: {
-        fullName: fullName.trim(),
-        regimentalNumber: trimmedRegimental,
-        collegeRollNumber: trimmedRoll,
-        email: trimmedEmail,
-        phone: phone ? phone.trim() : null,
-        year: year || 'FE (1st Year)',
-        branch: branch || 'Computer Engineering',
-        platoonName: platoon || 'Senior Division',
-        enrollmentDetails: enrollmentDetails ? enrollmentDetails.trim() : null,
-        dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : new Date(),
-        passwordHash,
-        role: 'CADET', // Strictly CADET for public enrollment
-        status: 'UNDER_REVIEW', // Account enters multi-tier review queue
-      },
-    });
+    // 5. Atomic Registration Transaction (Phase 12)
+    const [newUser] = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          fullName: fullName.trim(),
+          regimentalNumber: trimmedRegimental,
+          collegeRollNumber: trimmedRoll,
+          email: trimmedEmail,
+          phone: phone ? phone.trim() : null,
+          year: year || 'FE (1st Year)',
+          branch: branch || 'Computer Engineering',
+          platoonName: platoon || 'Senior Division',
+          enrollmentDetails: enrollmentDetails ? enrollmentDetails.trim() : null,
+          dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : new Date(),
+          passwordHash,
+          role: 'CADET', // Strictly CADET for public enrollment
+          status: 'UNDER_REVIEW', // Account enters multi-tier review queue
+        },
+      });
 
-    // 5. Store Biometric Face Template if captured during registration
-    const { faceDescriptor, photoSnapshot, qualityScore } = req.body;
-    if (Array.isArray(faceDescriptor) && faceDescriptor.length >= 128) {
-      try {
-        await prisma.biometricTemplate.create({
-          data: {
-            cadetId: newUser.id,
-            descriptor: JSON.stringify(faceDescriptor),
-            photoSnapshot: photoSnapshot || null,
-            qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.95,
-            registeredBy: 'SELF_ENROLLMENT (Cadet Registration)',
-          },
-        });
-      } catch (biometricErr) {
-        console.warn('Biometric template creation warning during registration:', biometricErr);
-      }
-    }
+      await tx.biometricTemplate.create({
+        data: {
+          cadetId: user.id,
+          descriptor: JSON.stringify(faceDescriptor),
+          photoSnapshot: photoSnapshot || null,
+          qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.98,
+          registeredBy: 'SELF_ENROLLMENT (Cadet Registration)',
+        },
+      });
+
+      return [user];
+    });
 
     res.status(201).json({
       success: true,
       message: 'Registration submitted successfully. Your application is under institutional review.',
       userId: newUser.id,
       status: newUser.status,
-      biometricEnrolled: Array.isArray(faceDescriptor) && faceDescriptor.length >= 128,
+      biometricEnrolled: true,
     });
   } catch (error: any) {
     console.error('Registration error:', error);
+
+    // Specific Prisma Unique Constraint Error mapping
+    if (error?.code === 'P2002') {
+      const target = error.meta?.target;
+      if (Array.isArray(target)) {
+        if (target.includes('email')) {
+          res.status(409).json({ success: false, field: 'email', message: 'This email is already registered.' });
+          return;
+        }
+        if (target.includes('regimentalNumber')) {
+          res.status(409).json({ success: false, field: 'regimentalNumber', message: 'This regimental number is already registered.' });
+          return;
+        }
+        if (target.includes('collegeRollNumber')) {
+          res.status(409).json({ success: false, field: 'collegeRollNumber', message: 'This college roll number is already registered.' });
+          return;
+        }
+      }
+    }
+
     res.status(500).json({
       success: false,
-      message: 'Institutional registration error. Please contact the Command Desk.',
+      message: 'Registration could not be completed due to a server error. Please try again later.',
     });
   }
 };

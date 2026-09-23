@@ -247,13 +247,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const cleanRoll = formData.collegeRollNumber?.trim().toUpperCase();
 
         if (offlineCadets.some((c: any) => c.email?.toLowerCase() === cleanEmail)) {
-          return { success: false, field: 'email', message: 'Email address is already registered in the unit system.' };
+          return { success: false, field: 'email', message: 'This email is already registered.' };
         }
         if (offlineCadets.some((c: any) => c.regimentalNumber?.toUpperCase() === cleanReg)) {
-          return { success: false, field: 'regimentalNumber', message: 'Regimental number is already registered in the unit system.' };
+          return { success: false, field: 'regimentalNumber', message: 'This regimental number is already registered.' };
         }
         if (offlineCadets.some((c: any) => c.collegeRollNumber?.toUpperCase() === cleanRoll)) {
-          return { success: false, field: 'collegeRollNumber', message: 'College roll number is already registered in the unit system.' };
+          return { success: false, field: 'collegeRollNumber', message: 'This college roll number is already registered.' };
         }
 
         const newCadet = {

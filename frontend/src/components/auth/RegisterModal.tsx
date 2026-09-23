@@ -26,7 +26,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
-  const [faceSource, setFaceSource] = useState<'NONE' | 'UPLOADED_PHOTO' | 'LIVE_CAMERA'>('NONE');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [biometricStatus, setBiometricStatus] = useState<string>('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
@@ -58,7 +57,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     });
     setPhotoPreview(null);
     setFaceDescriptor(null);
-    setFaceSource('NONE');
     setBiometricStatus('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -220,7 +218,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
                     const descriptor = Array.from(single.descriptor);
                     setFaceDescriptor(descriptor);
-                    setFaceSource('LIVE_CAMERA');
                     setBiometricStatus('✓ Live Camera Biometric Template Captured (128-d Vector Ready)');
                     stopCamera();
                     return;
@@ -253,51 +250,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleClearFace = () => {
-    setFaceDescriptor(null);
-    setFaceSource('NONE');
-    setBiometricStatus('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = async () => {
-        const result = reader.result as string;
-        setPhotoPreview(result);
-        // Process face from image
-        try {
-          const img = new Image();
-          img.src = result;
-          img.onload = async () => {
-            try {
-              setBiometricStatus('Analyzing face features in uploaded photo...');
-              await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-                faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
-                faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
-              ]);
-              const detection = await faceapi
-                .detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 }))
-                .withFaceLandmarks(true)
-                .withFaceDescriptor();
-              if (detection) {
-                setFaceDescriptor(Array.from(detection.descriptor));
-                setFaceSource('UPLOADED_PHOTO');
-                setBiometricStatus('✓ Face recognized in uploaded photo (128-d Vector Template Ready)');
-              } else {
-                if (faceSource !== 'LIVE_CAMERA') {
-                  setFaceDescriptor(null);
-                  setFaceSource('NONE');
-                  setBiometricStatus('Photo uploaded, but no face was clearly detected. Please use the camera below to capture your face.');
-                }
-              }
-            } catch (e) {
-              setBiometricStatus('Photo uploaded. Please use the camera below to enroll face biometrics.');
-            }
-          };
-        } catch (err) {}
+      reader.onload = () => {
+        setPhotoPreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -686,30 +644,26 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             {/* Biometric Section */}
             <div
               style={{
-                backgroundColor: faceSource !== 'NONE' ? 'rgba(16, 185, 129, 0.08)' : 'var(--white-surface)',
-                border: `1px solid ${faceSource !== 'NONE' ? '#10B981' : 'var(--white-border)'}`,
+                backgroundColor: faceDescriptor ? 'rgba(16, 185, 129, 0.08)' : 'var(--white-surface)',
+                border: `1px solid ${faceDescriptor ? '#10B981' : 'var(--white-border)'}`,
                 borderRadius: '6px',
                 padding: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Camera size={18} style={{ color: faceSource !== 'NONE' ? '#10B981' : 'var(--navy-primary)' }} />
+                  <Camera size={18} style={{ color: faceDescriptor ? '#10B981' : 'var(--navy-primary)' }} />
                   <strong style={{ fontSize: '0.9rem', color: 'var(--navy-primary)' }}>
                     Biometric Face Registration (FaceNet 128-d)
                   </strong>
                 </div>
-                {faceSource === 'LIVE_CAMERA' ? (
+                {faceDescriptor ? (
                   <span style={{ backgroundColor: '#ECFDF5', color: '#065F46', border: '1px solid #10B981', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    ✓ LIVE CAMERA TEMPLATE READY
-                  </span>
-                ) : faceSource === 'UPLOADED_PHOTO' ? (
-                  <span style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    ✓ EXTRACTED FROM UPLOADED PHOTO
+                    BIOMETRIC TEMPLATE READY
                   </span>
                 ) : (
-                  <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                    FACE CAPTURE REQUIRED
+                  <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                    FACE NOT REGISTERED
                   </span>
                 )}
               </div>
@@ -797,52 +751,43 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               ) : (
                 <div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.5', margin: '0 0 0.75rem' }}>
-                    {faceSource === 'LIVE_CAMERA'
-                      ? '✓ Your face was captured live via webcam. This 128-d vector template will be linked to your cadet profile for automatic parade muster.'
-                      : faceSource === 'UPLOADED_PHOTO'
-                      ? '✓ A biometric face template was extracted from your uploaded uniform photo. You can submit with this, OR click below to capture a fresh live webcam photo.'
-                      : 'Position your face in front of your camera to auto-capture your attendance face template, or upload a clear portrait photo above.'}
+                    {faceDescriptor
+                      ? '✓ Your face biometric template is securely registered and will be linked to your cadet profile upon approval for automatic live attendance.'
+                      : 'Position your face in front of the camera. The system will automatically detect and capture your face without pressing any extra buttons.'}
                   </p>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       disabled={cameraLoading}
-                      onClick={startFaceCamera}
+                      onClick={() => {
+                        if (faceDescriptor) {
+                          setFaceDescriptor(null);
+                        }
+                        startFaceCamera();
+                      }}
                       className="btn-primary btn-sm"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.4rem',
-                        backgroundColor: faceSource !== 'NONE' ? '#059669' : 'var(--navy-primary)',
-                        borderColor: faceSource !== 'NONE' ? '#059669' : 'var(--navy-primary)',
+                        backgroundColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
+                        borderColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
                       }}
                     >
                       <Camera size={14} />
                       <span>
                         {cameraLoading
                           ? 'Starting Camera...'
-                          : faceSource === 'LIVE_CAMERA'
-                          ? 'RE-TAKE LIVE CAMERA PHOTO'
-                          : faceSource === 'UPLOADED_PHOTO'
-                          ? 'CAPTURE LIVE VIA WEBCAM INSTEAD'
-                          : 'CAPTURE FACE VIA CAMERA'}
+                          : faceDescriptor
+                          ? 'RE-CAPTURE FACE'
+                          : 'CAPTURE & REGISTER FACE'}
                       </span>
                     </button>
-                    {faceSource !== 'NONE' && (
-                      <button
-                        type="button"
-                        onClick={handleClearFace}
-                        className="btn-secondary btn-sm"
-                        style={{ fontSize: '0.78rem', color: '#DC2626', borderColor: '#FCA5A5' }}
-                      >
-                        Clear Face
-                      </button>
-                    )}
-                    {faceDescriptor ? (
-                      <span style={{ fontSize: '0.78rem', color: faceSource === 'LIVE_CAMERA' ? '#10B981' : '#2563EB', fontWeight: 600 }}>
+                    {faceDescriptor && (
+                      <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
                         {biometricStatus}
                       </span>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               )}
