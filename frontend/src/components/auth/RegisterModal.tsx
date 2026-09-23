@@ -26,6 +26,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
+  const [faceSource, setFaceSource] = useState<'NONE' | 'UPLOADED_PHOTO' | 'LIVE_CAMERA'>('NONE');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [biometricStatus, setBiometricStatus] = useState<string>('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
@@ -41,11 +42,39 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const resetFormState = () => {
+    setFormData({
+      fullName: '',
+      regimentalNumber: '',
+      collegeRollNumber: '',
+      email: '',
+      phone: '',
+      year: 'FE (1st Year)',
+      branch: 'Computer Engineering',
+      enrollmentDetails: '',
+      dateOfJoining: new Date().toISOString().split('T')[0],
+      password: '',
+      confirmPassword: '',
+    });
+    setPhotoPreview(null);
+    setFaceDescriptor(null);
+    setFaceSource('NONE');
+    setBiometricStatus('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setCountdown(null);
+  };
+
+  const handleCloseModal = () => {
+    stopCamera();
+    resetFormState();
+    onClose();
+  };
+
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        stopCamera();
-        onClose();
+        handleCloseModal();
       }
     };
     if (isOpen) {
@@ -191,7 +220,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
                     const descriptor = Array.from(single.descriptor);
                     setFaceDescriptor(descriptor);
-                    setBiometricStatus('✓ BIOMETRIC TEMPLATE READY');
+                    setFaceSource('LIVE_CAMERA');
+                    setBiometricStatus('✓ Live Camera Biometric Template Captured (128-d Vector Ready)');
                     stopCamera();
                     return;
                   }
@@ -223,6 +253,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleClearFace = () => {
+    setFaceDescriptor(null);
+    setFaceSource('NONE');
+    setBiometricStatus('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -236,6 +272,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           img.src = result;
           img.onload = async () => {
             try {
+              setBiometricStatus('Analyzing face features in uploaded photo...');
               await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                 faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
@@ -247,12 +284,17 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 .withFaceDescriptor();
               if (detection) {
                 setFaceDescriptor(Array.from(detection.descriptor));
-                setBiometricStatus('✓ Biometric face template extracted from photo (128-d Vector Ready)');
+                setFaceSource('UPLOADED_PHOTO');
+                setBiometricStatus('✓ Face recognized in uploaded photo (128-d Vector Template Ready)');
               } else {
-                setBiometricStatus('Photo uploaded. Biometrics can be enrolled on parade.');
+                if (faceSource !== 'LIVE_CAMERA') {
+                  setFaceDescriptor(null);
+                  setFaceSource('NONE');
+                  setBiometricStatus('Photo uploaded, but no face was clearly detected. Please use the camera below to capture your face.');
+                }
               }
             } catch (e) {
-              setBiometricStatus('Photo uploaded. Biometrics can be enrolled on parade.');
+              setBiometricStatus('Photo uploaded. Please use the camera below to enroll face biometrics.');
             }
           };
         } catch (err) {}
@@ -277,7 +319,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     }
 
     if (!faceDescriptor) {
-      setErrorMsg('Biometric face registration is required. Please click "CAPTURE & REGISTER FACE" to complete face enrollment.');
+      setErrorMsg('Biometric face registration is required. Please capture your face using the camera below or upload a portrait photo.');
       return;
     }
 
@@ -347,7 +389,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             <h3 style={{ color: 'var(--white-pure)', fontSize: '1.15rem' }}>CADET ENROLLMENT REGISTRATION</h3>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleCloseModal}
             style={{ background: 'none', border: 'none', color: 'var(--white-pure)', cursor: 'pointer' }}
             aria-label="Close Registration"
           >
@@ -644,26 +686,30 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             {/* Biometric Section */}
             <div
               style={{
-                backgroundColor: faceDescriptor ? 'rgba(16, 185, 129, 0.08)' : 'var(--white-surface)',
-                border: `1px solid ${faceDescriptor ? '#10B981' : 'var(--white-border)'}`,
+                backgroundColor: faceSource !== 'NONE' ? 'rgba(16, 185, 129, 0.08)' : 'var(--white-surface)',
+                border: `1px solid ${faceSource !== 'NONE' ? '#10B981' : 'var(--white-border)'}`,
                 borderRadius: '6px',
                 padding: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Camera size={18} style={{ color: faceDescriptor ? '#10B981' : 'var(--navy-primary)' }} />
+                  <Camera size={18} style={{ color: faceSource !== 'NONE' ? '#10B981' : 'var(--navy-primary)' }} />
                   <strong style={{ fontSize: '0.9rem', color: 'var(--navy-primary)' }}>
                     Biometric Face Registration (FaceNet 128-d)
                   </strong>
                 </div>
-                {faceDescriptor ? (
+                {faceSource === 'LIVE_CAMERA' ? (
                   <span style={{ backgroundColor: '#ECFDF5', color: '#065F46', border: '1px solid #10B981', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    ✓ BIOMETRIC TEMPLATE READY
+                    ✓ LIVE CAMERA TEMPLATE READY
+                  </span>
+                ) : faceSource === 'UPLOADED_PHOTO' ? (
+                  <span style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                    ✓ EXTRACTED FROM UPLOADED PHOTO
                   </span>
                 ) : (
-                  <span style={{ backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #93C5FD', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                    AUTOMATIC LIVE ATTENDANCE READY
+                  <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                    FACE CAPTURE REQUIRED
                   </span>
                 )}
               </div>
@@ -751,11 +797,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               ) : (
                 <div>
                   <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.5', margin: '0 0 0.75rem' }}>
-                    {faceDescriptor
-                      ? '✓ Your face biometric template is securely registered and will be linked to your cadet profile upon approval for automatic live attendance.'
-                      : 'Position your face in front of the camera. The system will automatically detect and capture your face without pressing any extra buttons.'}
+                    {faceSource === 'LIVE_CAMERA'
+                      ? '✓ Your face was captured live via webcam. This 128-d vector template will be linked to your cadet profile for automatic parade muster.'
+                      : faceSource === 'UPLOADED_PHOTO'
+                      ? '✓ A biometric face template was extracted from your uploaded uniform photo. You can submit with this, OR click below to capture a fresh live webcam photo.'
+                      : 'Position your face in front of your camera to auto-capture your attendance face template, or upload a clear portrait photo above.'}
                   </p>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       disabled={cameraLoading}
@@ -765,15 +813,33 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.4rem',
-                        backgroundColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
-                        borderColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
+                        backgroundColor: faceSource !== 'NONE' ? '#059669' : 'var(--navy-primary)',
+                        borderColor: faceSource !== 'NONE' ? '#059669' : 'var(--navy-primary)',
                       }}
                     >
                       <Camera size={14} />
-                      <span>{cameraLoading ? 'Starting Camera...' : faceDescriptor ? 'RE-CAPTURE FACE' : 'CAPTURE & REGISTER FACE'}</span>
+                      <span>
+                        {cameraLoading
+                          ? 'Starting Camera...'
+                          : faceSource === 'LIVE_CAMERA'
+                          ? 'RE-TAKE LIVE CAMERA PHOTO'
+                          : faceSource === 'UPLOADED_PHOTO'
+                          ? 'CAPTURE LIVE VIA WEBCAM INSTEAD'
+                          : 'CAPTURE FACE VIA CAMERA'}
+                      </span>
                     </button>
+                    {faceSource !== 'NONE' && (
+                      <button
+                        type="button"
+                        onClick={handleClearFace}
+                        className="btn-secondary btn-sm"
+                        style={{ fontSize: '0.78rem', color: '#DC2626', borderColor: '#FCA5A5' }}
+                      >
+                        Clear Face
+                      </button>
+                    )}
                     {faceDescriptor ? (
-                      <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.78rem', color: faceSource === 'LIVE_CAMERA' ? '#10B981' : '#2563EB', fontWeight: 600 }}>
                         {biometricStatus}
                       </span>
                     ) : null}
@@ -783,7 +849,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-              <button type="button" className="btn-secondary" onClick={onClose}>
+              <button type="button" className="btn-secondary" onClick={handleCloseModal}>
                 Cancel
               </button>
               <button

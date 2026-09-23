@@ -338,12 +338,21 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       const res = await fetch('/api/reviews/pending', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setPendingReviews(data.applications);
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.applications)) {
+          setPendingReviews(data.applications);
+          return;
+        }
       }
+      throw new Error('Non-JSON response');
     } catch (err) {
-      console.error('Fetch pending reviews error:', err);
+      console.warn('Fetch pending reviews fallback:', err);
+      try {
+        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
+        setPendingReviews(offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD'));
+      } catch {}
     }
   };
 

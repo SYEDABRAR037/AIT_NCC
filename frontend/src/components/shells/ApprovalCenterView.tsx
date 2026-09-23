@@ -67,11 +67,23 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
           .catch(() => ({ requests: [] })),
       ]);
 
-      setRegistrations(regRes.applications || regRes.users || []);
+      let pendingRegs = regRes.applications || regRes.users || [];
+      if (pendingRegs.length === 0) {
+        try {
+          const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
+          pendingRegs = offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD');
+        } catch {}
+      }
+
+      setRegistrations(pendingRegs);
       setLeaves(leaveRes.leaves || []);
       setRequests(reqRes.requests || []);
     } catch (err) {
       console.error('Error fetching approval desk data:', err);
+      try {
+        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
+        setRegistrations(offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD'));
+      } catch {}
     } finally {
       setLoading(false);
     }
@@ -92,14 +104,30 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
     try {
       if (actionModal.type === 'registration') {
-        await fetch(`/api/reviews/${actionModal.item.id}/action`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            action: actionModal.action,
-            remarks,
-          }),
-        });
+        try {
+          await fetch(`/api/reviews/${actionModal.item.id}/action`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: actionModal.action,
+              remarks,
+            }),
+          });
+        } catch (netErr) {
+          console.warn('Network action fallback for registration review:', netErr);
+        }
+
+        // Update local offline registry as well
+        try {
+          const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
+          const idx = offlineCadets.findIndex((c: any) => c.id === actionModal.item.id);
+          if (idx !== -1) {
+            offlineCadets[idx].status = actionModal.action === 'APPROVE' ? 'APPROVED' : actionModal.action === 'REJECT' ? 'REJECTED' : 'HOLD';
+            localStorage.setItem('ncc_offline_cadets', JSON.stringify(offlineCadets));
+          }
+        } catch (storageErr) {
+          console.warn('Storage update warning:', storageErr);
+        }
       } else if (actionModal.type === 'leave') {
         await fetch(`/api/leave/${actionModal.item.id}/review`, {
           method: 'POST',
