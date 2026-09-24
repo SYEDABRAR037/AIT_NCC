@@ -94,13 +94,26 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       },
     });
 
-    // Send official OTP email (Phase 11, 12, 13)
-    await sendOtpEmail({
+    // Send official OTP email (Phase 3, 7, 8, 9, 11, 12, 13)
+    const emailResult = await sendOtpEmail({
       recipientEmail: user.email,
       cadetName: user.fullName,
       otp: otpNumber,
       expiresInMinutes: 5,
     });
+
+    if (!emailResult.success) {
+      // Phase 9: DO NOT SHOW FALSE SUCCESS. If provider fails, delete OTP record and return error
+      await prisma.passwordReset.delete({
+        where: { id: resetRecord.id },
+      }).catch(() => {});
+
+      res.status(503).json({
+        success: false,
+        message: 'Unable to send the verification email right now. Please try again.',
+      });
+      return;
+    }
 
     // Audit Log (Phase 27)
     await prisma.auditLog.create({
@@ -187,12 +200,25 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
     });
 
     // Send new OTP email
-    await sendOtpEmail({
+    const emailResult = await sendOtpEmail({
       recipientEmail: previousReset.user.email,
       cadetName: previousReset.user.fullName,
       otp: otpNumber,
       expiresInMinutes: 5,
     });
+
+    if (!emailResult.success) {
+      console.warn('[RECOVERY] Resend OTP email delivery failed. Aborting recovery update.');
+      await prisma.passwordReset.delete({
+        where: { id: newResetRecord.id },
+      }).catch(() => {});
+
+      res.status(503).json({
+        success: false,
+        message: 'Unable to send the verification email right now. Please try again.',
+      });
+      return;
+    }
 
     // Audit Log
     await prisma.auditLog.create({

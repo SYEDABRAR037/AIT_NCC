@@ -9,29 +9,31 @@ interface SendOtpEmailParams {
 
 let transporter: Transporter | null = null;
 
-const getTransporter = () => {
+export const getTransporter = (): Transporter => {
   if (transporter) return transporter;
 
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASSWORD;
+  const port = parseInt(process.env.SMTP_PORT || '465', 10);
+  const user = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'kashmirgaming033@gmail.com';
+  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
 
-  if (user && pass) {
+  // If using Gmail, 'service: gmail' ensures optimal TLS and pool settings
+  if (host.includes('gmail.com') || user.endsWith('@gmail.com')) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user,
+        pass,
+      },
+    });
+  } else {
     transporter = nodemailer.createTransport({
       host,
       port,
-      secure: port === 465,
-      auth: { user, pass },
-    });
-  } else {
-    // Development / fallback transporter
-    transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
+      secure: port === 465 || process.env.SMTP_SECURE === 'true',
       auth: {
-        user: 'ethereal.user@ethereal.email',
-        pass: 'ethereal.pass',
+        user,
+        pass,
       },
     });
   }
@@ -39,32 +41,55 @@ const getTransporter = () => {
   return transporter;
 };
 
+export const verifyEmailService = async (): Promise<{ connected: boolean; message: string }> => {
+  try {
+    const client = getTransporter();
+    await client.verify();
+    console.log('[MAIL SERVICE] EMAIL_PROVIDER_AUTHENTICATED: Connected to mail provider successfully.');
+    return { connected: true, message: 'Mail provider authenticated.' };
+  } catch (err: any) {
+    console.error('[MAIL SERVICE] EMAIL_PROVIDER_AUTH_ERROR:', err?.message || err);
+    return { connected: false, message: err?.message || 'Authentication failed' };
+  }
+};
+
 export const sendOtpEmail = async ({
   recipientEmail,
   cadetName,
   otp,
   expiresInMinutes = 5,
-}: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; simulated?: boolean }> => {
-  const mailFrom = process.env.MAIL_FROM || process.env.SMTP_USER || 'no-reply@ncc.aitpune.edu.in';
-  const mailFromName = process.env.MAIL_FROM_NAME || 'NCC AIT Pune Command';
+}: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+  const mailFrom = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'kashmirgaming033@gmail.com';
+  const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
+  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
 
+  if (!pass) {
+    const errorMsg = 'SMTP_PASSWORD secret is not configured on the command server.';
+    console.error(`[MAIL SERVICE] FAILED: ${errorMsg}`);
+    return {
+      success: false,
+      error: errorMsg,
+    };
+  }
+
+  // Exact Subject required by Phase 8
+  const subject = 'NCC Account Recovery — OTP Verification';
+
+  // Exact Body required by Phase 8
   const textContent = `Dear Cadet,
 
-A password reset request was initiated for your NCC AIT Pune account.
-
-Your One-Time Password (OTP) is:
+Your One-Time Password (OTP) for NCC account recovery is:
 
 ${otp}
 
 This OTP is valid for ${expiresInMinutes} minutes.
 
-Do not share this OTP with anyone.
-
-If you did not request a password reset, you can safely ignore this email.
+If you did not request an account recovery, please ignore this email.
 
 Regards,
-NCC AIT Pune
-NCC Digital Command & Cadet Management System`;
+NCC
+Army Institute of Technology, Pune
+Official Account Recovery System`;
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -75,7 +100,7 @@ NCC Digital Command & Cadet Management System`;
     body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 20px; color: #0F172A; }
     .card { max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 8px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .header { background: #031B4E; color: #FFFFFF; padding: 24px; text-align: center; border-bottom: 3px solid #C59A27; }
-    .header h2 { margin: 0; font-size: 20px; letter-spacing: 0.05em; font-weight: 700; }
+    .header h2 { margin: 0; font-size: 20px; letter-spacing: 0.05em; font-weight: 700; color: #FFFFFF; }
     .header p { margin: 4px 0 0 0; font-size: 13px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; }
     .body { padding: 30px 24px; }
     .salutation { font-size: 15px; font-weight: 600; color: #1E293B; margin-bottom: 12px; }
@@ -92,20 +117,20 @@ NCC Digital Command & Cadet Management System`;
   <div class="card">
     <div class="header">
       <h2>NCC AIT PUNE</h2>
-      <p>Digital Command & Cadet Management System</p>
+      <p>Official Account Recovery System</p>
     </div>
     <div class="body">
-      <div class="salutation">Dear ${cadetName || 'Cadet'},</div>
+      <div class="salutation">Dear Cadet,</div>
       <div class="intro">
-        A password reset request was initiated for your NCC AIT Pune institutional account.
+        Your One-Time Password (OTP) for NCC account recovery is:
       </div>
       <div class="otp-box">
-        <div class="otp-label">Your One-Time Password (OTP)</div>
+        <div class="otp-label">One-Time Password</div>
         <div class="otp-code">${otp}</div>
         <div class="validity">Valid for ${expiresInMinutes} minutes only</div>
       </div>
       <div class="notice">
-        <strong>Security Notice:</strong> Do not share this OTP with anyone. Institutional officers will never ask for your verification code. If you did not initiate this request, you can safely ignore this email.
+        If you did not request an account recovery, please ignore this email. Do not share this OTP with anyone.
       </div>
     </div>
     <div class="footer">
@@ -118,29 +143,21 @@ NCC Digital Command & Cadet Management System`;
 `;
 
   try {
-    const hasSmtpConfigured = Boolean(process.env.SMTP_USER && process.env.SMTP_PASSWORD);
-
-    if (!hasSmtpConfigured) {
-      console.warn(`[MAIL SERVICE] SMTP credentials not set. OTP email generation simulated for ${recipientEmail}.`);
-      return { success: true, simulated: true };
-    }
-
     const client = getTransporter();
+    console.log(`[MAIL SERVICE] OTP_EMAIL_REQUESTED: Dispatching from ${mailFrom} to ${recipientEmail}`);
+
     const info = await client.sendMail({
       from: `"${mailFromName}" <${mailFrom}>`,
       to: recipientEmail,
-      subject: 'NCC AIT Pune — Password Reset OTP',
+      subject,
       text: textContent,
       html: htmlContent,
     });
 
-    return { success: true, messageId: info.messageId, simulated: false };
+    console.log(`[MAIL SERVICE] OTP_EMAIL_ACCEPTED: Message accepted by mail provider (ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
   } catch (error: any) {
-    console.error('[MAIL SERVICE] Failed to dispatch OTP email:', error?.message || error);
-    // Return simulated success in case of network/SMTP restriction during non-production runs
-    if (process.env.NODE_ENV !== 'production') {
-      return { success: true, simulated: true };
-    }
-    throw error;
+    console.error('[MAIL SERVICE] Failed to dispatch OTP email via provider:', error?.message || error);
+    return { success: false, error: error?.message || 'Email delivery failed' };
   }
 };
