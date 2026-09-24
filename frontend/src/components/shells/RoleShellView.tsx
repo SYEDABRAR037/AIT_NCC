@@ -685,16 +685,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     }
     setImportingAttendance(true);
     try {
-      const res = await fetch('/api/attendance/bulk-import', {
+      const { ok, data } = await safeApiFetch('/api/attendance/bulk-import', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           sessionId: attendanceImportSessionId,
           records: attendanceImportPreview,
         }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         alert(data.message);
         setAttendanceImportModal(false);
         setAttendanceImportText('');
@@ -702,11 +700,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         fetchAttendanceSessions();
         fetchAttendanceSummary();
       } else {
-        alert(data.message || 'Import failed.');
+        alert(data?.message || 'Import failed.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Import error:', err);
-      alert('Error during attendance import');
+      alert(err.message || 'Error during attendance import');
     } finally {
       setImportingAttendance(false);
     }

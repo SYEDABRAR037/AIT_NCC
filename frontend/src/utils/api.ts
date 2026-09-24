@@ -5,10 +5,25 @@
  */
 
 export const getApiBaseUrl = (): string => {
+  // 1. Runtime override (e.g. set in console or settings: localStorage.setItem('ncc_api_base_url', 'https://...'))
+  try {
+    const savedBase = localStorage.getItem('ncc_api_base_url');
+    if (savedBase && typeof savedBase === 'string' && savedBase.trim().length > 0) {
+      return savedBase.trim().replace(/\/$/, '');
+    }
+  } catch {}
+
+  // 2. Build-time environment variable injected by Vite / Netlify
   const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
     return envUrl.trim().replace(/\/$/, '');
   }
+
+  // 3. Global window variable if injected by host HTML
+  if (typeof window !== 'undefined' && (window as any).__NCC_API_BASE_URL__) {
+    return String((window as any).__NCC_API_BASE_URL__).trim().replace(/\/$/, '');
+  }
+
   return '';
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as faceapi from '@vladmandic/face-api';
 import { Camera, X } from 'lucide-react';
+import { safeApiFetch } from '../../utils/api';
 
 interface FaceEnrollmentModalProps {
   cadet: {
@@ -117,12 +118,9 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
       }
 
       // Send to backend
-      const res = await fetch('/api/attendance/biometrics/enroll', {
+      const { ok, data } = await safeApiFetch('/api/attendance/biometrics/enroll', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify({
           cadetId: cadet.id,
           descriptor,
@@ -131,8 +129,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         }),
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         setSuccess(true);
         setStatusMessage(`✓ Biometric template enrolled for ${cadet.fullName}`);
         setTimeout(() => {
@@ -140,7 +137,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           onClose();
         }, 1200);
       } else {
-        setError(data.message || 'Enrollment failed');
+        setError(data?.message || 'Enrollment failed');
       }
     } catch (err) {
       console.error('Enrollment error:', err);
