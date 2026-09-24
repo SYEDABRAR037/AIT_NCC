@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const targetUrl = process.env.VITE_API_BASE_URL || process.env.BACKEND_URL || '';
+const targetUrl = process.env.VITE_API_BASE_URL || process.env.BACKEND_URL || 'https://ait-ncc.onrender.com';
 const redirectsFile = path.resolve(__dirname, '../public/_redirects');
 
 let content = '';

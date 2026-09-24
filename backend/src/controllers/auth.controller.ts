@@ -169,13 +169,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const cleanIdentifier = identifier.trim();
 
-    // Query user by email, regimental number, or roll number
+    // Query user by email, regimental number, or roll number with case-insensitivity (Phase 7)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: cleanIdentifier.toLowerCase() },
-          { regimentalNumber: cleanIdentifier.toUpperCase() },
-          { collegeRollNumber: cleanIdentifier.toUpperCase() },
+          { email: { equals: cleanIdentifier, mode: 'insensitive' } },
+          { regimentalNumber: { equals: cleanIdentifier, mode: 'insensitive' } },
+          { collegeRollNumber: { equals: cleanIdentifier, mode: 'insensitive' } },
         ],
       },
     });

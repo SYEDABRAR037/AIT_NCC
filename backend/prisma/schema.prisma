@@ -71,6 +71,7 @@ model User {
   biometricTemplate   BiometricTemplate?
   attendanceNotifications AttendanceNotification[]
   inquiryReplies      InquiryReply[]       @relation("UserInquiryReplies")
+  passwordResets      PasswordReset[]
 
   @@index([role])
   @@index([status])
@@ -509,6 +510,24 @@ model AttendanceNotification {
   @@index([cadetId])
   @@index([status])
   @@index([eventType])
+}
+
+model PasswordReset {
+  id           String    @id @default(uuid())
+  userId       String
+  otpHash      String
+  expiresAt    DateTime
+  attemptCount Int       @default(0)
+  lastResendAt DateTime  @default(now())
+  verifiedAt   DateTime?
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 

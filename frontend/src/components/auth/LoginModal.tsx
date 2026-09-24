@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, LogIn, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { ForgotPasswordModal } from './ForgotPasswordModal';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -187,6 +189,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               />
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.35rem' }}>
+              <button
+                type="button"
+                onClick={() => setIsForgotPasswordOpen(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--navy-hover)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: '0.2rem 0',
+                }}
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             <button type="submit" disabled={submitting} className="btn-primary" style={{ width: '100%', marginTop: '0.25rem' }}>
               <LogIn size={16} />
               <span>{submitting ? 'AUTHENTICATING...' : 'AUTHENTICATE & ENTER'}</span>
@@ -214,6 +235,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           </div>
         </div>
       </div>
+
+      {/* Forgot Password OTP Recovery Modal (Phases 8-19) */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        onBackToLogin={() => setIsForgotPasswordOpen(false)}
+      />
     </div>
   );
 };
