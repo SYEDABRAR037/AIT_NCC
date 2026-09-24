@@ -591,8 +591,8 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       }
     }
 
-    // Strictest institutional threshold for 128-d FaceNet embeddings: 0.52
-    const MATCH_THRESHOLD = 0.52;
+    // Optimal threshold for 128-d MobileNet FaceNet embeddings: 0.58
+    const MATCH_THRESHOLD = 0.58;
 
     if (!bestMatchTemplate || minDistance > MATCH_THRESHOLD) {
       res.status(422).json({
@@ -1242,6 +1242,14 @@ export const getEligibleBiometrics = async (req: AuthRequest, res: Response): Pr
       };
     });
 
+    // If session expectedCount was 0 when created, sync it to current active eligible count
+    if (session.expectedCount === 0 && eligibleCadets.length > 0) {
+      prisma.trainingSession.update({
+        where: { id: session.id },
+        data: { expectedCount: eligibleCadets.length },
+      }).catch(() => {});
+    }
+
     res.json({
       success: true,
       sessionId: session.id,
@@ -1301,7 +1309,19 @@ export const getSessionLiveStats = async (req: AuthRequest, res: Response): Prom
       where: { sessionId: session.id, status: 'PRESENT' },
     });
 
-    const liveExpected = session.expectedCount;
+    let liveExpected = session.expectedCount;
+    if (liveExpected === 0) {
+      const activeCadetCount = await prisma.user.count({
+        where: { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } },
+      });
+      if (activeCadetCount > 0) {
+        liveExpected = activeCadetCount;
+        prisma.trainingSession.update({
+          where: { id: session.id },
+          data: { expectedCount: liveExpected },
+        }).catch(() => {});
+      }
+    }
     const liveRemaining = Math.max(0, liveExpected - livePresent);
 
     // Non-blocking drift correction: sync presentCount in session row if stale

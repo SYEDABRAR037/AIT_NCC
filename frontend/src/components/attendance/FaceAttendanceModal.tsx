@@ -716,19 +716,31 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
           </div>
         </div>
 
-        {/* TOP STATS STRIP: EXPECTED / PRESENT / REMAINING — Real-time, DB-authoritative */}
+        {/* SCROLLABLE MODAL BODY (Phase 11 & Phase 12 fixed-header architecture) */}
         <div
           style={{
-            backgroundColor: '#030B17',
-            padding: '0.6rem 1.25rem',
-            borderBottom: '1px solid var(--navy-border)',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            textAlign: 'center',
-            gap: '0.5rem',
-            position: 'relative',
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
+          {/* TOP STATS STRIP: EXPECTED / PRESENT / REMAINING — Real-time, DB-authoritative */}
+          <div
+            style={{
+              backgroundColor: '#030B17',
+              padding: '0.6rem 1.25rem',
+              borderBottom: '1px solid var(--navy-border)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              textAlign: 'center',
+              gap: '0.5rem',
+              position: 'relative',
+              flexShrink: 0,
+            }}
+          >
           {/* LIVE pulse dot — only during active session */}
           {!sessionClosed && (
             <div style={{
@@ -1039,8 +1051,10 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 <div style={{ position: 'relative', margin: '0.5rem 0 1.25rem' }}>
               <div
                 style={{
-                  width: '280px',
-                  height: '280px',
+                  width: 'min(270px, 72vw)',
+                  height: 'min(270px, 72vw)',
+                  maxWidth: '270px',
+                  maxHeight: '270px',
                   borderRadius: '50%',
                   overflow: 'hidden',
                   aspectRatio: '1 / 1',
@@ -1653,6 +1667,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* END ATTENDANCE CONFIRMATION MODAL */}
