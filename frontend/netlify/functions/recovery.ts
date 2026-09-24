@@ -455,14 +455,29 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       }
 
       const passwordHash = await bcrypt.hash(newPassword, 10);
-      await pgClient.query('UPDATE "User" SET password = $1, "updatedAt" = NOW() WHERE id = $2', [
-        passwordHash,
-        decoded.userId,
-      ]);
 
-      await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW(), "updatedAt" = NOW() WHERE id = $1', [
-        decoded.recoveryId,
-      ]);
+      // Atomic Transaction: update passwordHash and invalidate recovery records
+      await pgClient.query('BEGIN');
+      try {
+        await pgClient.query('UPDATE "User" SET "passwordHash" = $1, "updatedAt" = NOW() WHERE id = $2', [
+          passwordHash,
+          decoded.userId,
+        ]);
+
+        await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW(), "updatedAt" = NOW() WHERE id = $1', [
+          decoded.recoveryId,
+        ]);
+
+        await pgClient.query(
+          'UPDATE "PasswordReset" SET "usedAt" = NOW(), "updatedAt" = NOW() WHERE "userId" = $1 AND "usedAt" IS NULL',
+          [decoded.userId]
+        );
+
+        await pgClient.query('COMMIT');
+      } catch (txErr) {
+        await pgClient.query('ROLLBACK');
+        throw txErr;
+      }
 
       return {
         statusCode: 200,
@@ -487,7 +502,10 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, message: error?.message || 'Server error during recovery.' }),
+      body: JSON.stringify({
+        success: false,
+        message: 'Unable to complete password reset right now. Please try again.',
+      }),
     };
   } finally {
     await pgClient.end().catch(() => { });

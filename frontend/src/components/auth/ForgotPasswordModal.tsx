@@ -275,14 +275,19 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setLoading(false);
         setStep('SUCCESS');
       } else {
-        setErrorMsg(data?.message || 'Password reset failed. Please try again.');
+        const rawMsg = data?.message || '';
+        if (rawMsg.includes('column') || rawMsg.includes('relation') || rawMsg.includes('database') || rawMsg.includes('SQL')) {
+          setErrorMsg('Unable to reset your password right now. Please try again.');
+        } else {
+          setErrorMsg(rawMsg || 'Unable to reset your password right now. Please try again.');
+        }
       }
     } catch (err: any) {
       const msg = err?.message || '';
       if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
         setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
       } else {
-        setErrorMsg(msg || 'Password reset failed.');
+        setErrorMsg('Unable to reset your password right now. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -629,7 +634,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 className="btn-primary"
                 style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem', fontWeight: 700 }}
               >
-                {loading ? 'UPDATING CREDENTIALS...' : 'RESET PASSWORD'}
+                {loading ? 'RESETTING PASSWORD...' : 'RESET PASSWORD'}
               </button>
             </form>
           )}
@@ -664,7 +669,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 className="btn-primary"
                 style={{ width: '100%', padding: '0.75rem', fontWeight: 700 }}
               >
-                GO TO LOGIN
+                CONTINUE TO LOGIN
               </button>
             </div>
           )}
