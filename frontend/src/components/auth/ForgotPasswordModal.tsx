@@ -99,11 +99,24 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         }),
       });
 
-      if (ok && data?.success) {
-        setRecoveryId(data.recoveryId);
-        setMaskedEmail(data.maskedEmail || email.trim());
-        setTimerSeconds(data.expiresInSeconds || 300);
+      const isSuccessful =
+        ok &&
+        (data?.success === true ||
+          data?.otpSent === true ||
+          data?.nextStep === 'VERIFY_OTP' ||
+          data?.status === 'OTP_SENT' ||
+          Boolean(data?.recoveryId) ||
+          Boolean(data?.verificationId));
+
+      if (isSuccessful) {
+        const id = data?.recoveryId || data?.verificationId || '';
+        const masked = data?.maskedEmail || email.trim();
+        const seconds = Number(data?.expiresInSeconds) || 300;
+        setRecoveryId(id);
+        setMaskedEmail(masked);
+        setTimerSeconds(seconds);
         setResendCooldown(45);
+        setLoading(false);
         setStep('OTP');
       } else {
         setErrorMsg(data?.message || 'Unable to verify the provided account details.');
@@ -135,10 +148,22 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         body: JSON.stringify({ recoveryId }),
       });
 
-      if (ok && data?.success) {
-        setRecoveryId(data.recoveryId);
-        setMaskedEmail(data.maskedEmail || maskedEmail);
-        setTimerSeconds(data.expiresInSeconds || 300);
+      const isSuccessful =
+        ok &&
+        (data?.success === true ||
+          data?.otpSent === true ||
+          data?.nextStep === 'VERIFY_OTP' ||
+          data?.status === 'OTP_SENT' ||
+          Boolean(data?.recoveryId) ||
+          Boolean(data?.verificationId));
+
+      if (isSuccessful) {
+        const id = data?.recoveryId || data?.verificationId || recoveryId;
+        const masked = data?.maskedEmail || maskedEmail;
+        const seconds = Number(data?.expiresInSeconds) || 300;
+        setRecoveryId(id);
+        setMaskedEmail(masked);
+        setTimerSeconds(seconds);
         setResendCooldown(45);
         setOtp('');
         setSuccessNotice('A fresh verification code has been dispatched.');
@@ -184,8 +209,17 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         }),
       });
 
-      if (ok && data?.success) {
-        setResetToken(data.resetToken);
+      const isSuccessful =
+        ok &&
+        (data?.success === true ||
+          data?.verified === true ||
+          data?.nextStep === 'RESET_PASSWORD' ||
+          data?.status === 'OTP_VERIFIED' ||
+          Boolean(data?.resetToken));
+
+      if (isSuccessful) {
+        setResetToken(data?.resetToken || '');
+        setLoading(false);
         setStep('NEW_PASSWORD');
       } else {
         setErrorMsg(data?.message || 'Invalid OTP. Please check the code and try again.');
@@ -230,7 +264,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         }),
       });
 
-      if (ok && data?.success) {
+      const isSuccessful =
+        ok &&
+        (data?.success === true ||
+          data?.passwordReset === true ||
+          data?.nextStep === 'LOGIN' ||
+          data?.status === 'PASSWORD_RESET_SUCCESS');
+
+      if (isSuccessful) {
+        setLoading(false);
         setStep('SUCCESS');
       } else {
         setErrorMsg(data?.message || 'Password reset failed. Please try again.');

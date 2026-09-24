@@ -147,8 +147,12 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     console.log('[RECOVERY] RECOVERY_RESPONSE_SENT:', { recoveryId: resetRecord.id });
     res.json({
       success: true,
+      otpSent: true,
+      nextStep: 'VERIFY_OTP',
+      status: 'OTP_SENT',
       message: 'A verification code has been dispatched to your official registered email address.',
       recoveryId: resetRecord.id,
+      verificationId: resetRecord.id,
       maskedEmail: maskEmail(user.email),
       expiresInSeconds: 300,
     });
@@ -252,8 +256,12 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
 
     res.json({
       success: true,
+      otpSent: true,
+      nextStep: 'VERIFY_OTP',
+      status: 'OTP_SENT',
       message: 'A fresh verification OTP has been dispatched to your registered email address.',
       recoveryId: newResetRecord.id,
+      verificationId: newResetRecord.id,
       maskedEmail: maskEmail(previousReset.user.email),
       expiresInSeconds: 300,
     });
@@ -385,6 +393,9 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
 
     res.json({
       success: true,
+      verified: true,
+      nextStep: 'RESET_PASSWORD',
+      status: 'OTP_VERIFIED',
       message: 'OTP verified successfully. You may now create your new password.',
       resetToken,
     });
@@ -500,6 +511,9 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
     res.json({
       success: true,
+      passwordReset: true,
+      nextStep: 'LOGIN',
+      status: 'PASSWORD_RESET_SUCCESS',
       message: 'Password reset successfully. You can now login with your new credentials.',
     });
   } catch (error) {
