@@ -147,12 +147,10 @@ NCC Digital Command & Cadet Management System`;
 </html>
 `;
 
-  // Strategy 1: If on Render (where free tier blocks outbound SMTP ports 25, 465, 587)
-  // or if EMAIL_RELAY_URL is available, dispatch via HTTPS over port 443 to the Netlify Relay
-  const isRender = process.env.RENDER === 'true';
+  // Strategy 1: Dispatch via HTTPS over port 443 to the Netlify Relay
+  // This bypasses cloud hosting provider SMTP port blocks (e.g. Render free tier blocks ports 25, 465, 587)
   const relayUrl =
-    process.env.EMAIL_RELAY_URL ||
-    (isRender ? 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay' : null);
+    process.env.EMAIL_RELAY_URL || 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay';
 
   if (relayUrl) {
     try {
