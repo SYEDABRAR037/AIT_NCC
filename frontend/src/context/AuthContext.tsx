@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getApiBaseUrl } from '../utils/api';
 
 export interface UserProfile {
   id: string;
@@ -27,8 +28,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ? (import.meta.env.VITE_API_BASE_URL as string).replace(/\/$/, '') : '';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(() => {
     try {
@@ -44,24 +43,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Restore authenticated session on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('ncc_auth_token');
+      const storedToken = localStorage.getItem('ncc_auth_token') || localStorage.getItem('token');
       if (storedToken) {
         if (storedToken.startsWith('mock_jwt_')) {
-          // Cloud preview mock session: verify stored user
-          try {
-            const savedUser = localStorage.getItem('ncc_current_user');
-            if (savedUser) {
-              setUser(JSON.parse(savedUser));
-            }
-          } catch (e) {
-            console.warn('Mock session restore error:', e);
-          }
+          console.warn('Wiping stale preview mock token. Real institutional authentication required.');
+          localStorage.removeItem('ncc_auth_token');
+          localStorage.removeItem('token');
+          localStorage.removeItem('ncc_current_user');
+          setToken(null);
+          setUser(null);
           setIsLoading(false);
           return;
         }
 
+        const apiBase = getApiBaseUrl();
         try {
-          const res = await fetch(`${API_BASE}/api/auth/me`, {
+          const res = await fetch(`${apiBase}/api/auth/me`, {
             headers: {
               Authorization: `Bearer ${storedToken}`,
             },
@@ -74,6 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
               setIsLoading(false);
               return;
+            } else if (res.status === 401) {
+              // Token expired or invalid on backend
+              localStorage.removeItem('ncc_auth_token');
+              localStorage.removeItem('token');
+              localStorage.removeItem('ncc_current_user');
+              setToken(null);
+              setUser(null);
             }
           }
         } catch (err) {
@@ -87,8 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (identifier: string, password: string) => {
+    const apiBase = getApiBaseUrl();
     try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
+      const res = await fetch(`${apiBase}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier, password }),
@@ -115,6 +120,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If server returned HTML (static host preview like Netlify before backend is configured)
       throw new Error('Non-JSON response from server');
     } catch (err: any) {
+      if (apiBase) {
+        return { success: false, message: err.message || 'Authentication server communication failed.' };
+      }
       console.warn('Backend server offline or unreachable. Engaging cloud preview authentication:', err);
 
       const cleanId = identifier.trim().toLowerCase();
@@ -215,8 +223,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const registerCadet = async (formData: any) => {
+    const apiBase = getApiBaseUrl();
     try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
+      const res = await fetch(`${apiBase}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -238,6 +247,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If server returned HTML (Netlify static SPA fallback)
       throw new Error('Non-JSON response from server');
     } catch (err: any) {
+      if (apiBase) {
+        return { success: false, message: err.message || 'Institutional registration service unavailable.' };
+      }
       console.warn('Backend server offline or unreachable. Registering in cloud preview queue:', err);
 
       try {
@@ -290,8 +302,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    const apiBase = getApiBaseUrl();
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, { method: 'POST' });
+      await fetch(`${apiBase}/api/auth/logout`, { method: 'POST' });
     } catch (err) {
       console.warn('Logout fallback:', err);
     } finally {

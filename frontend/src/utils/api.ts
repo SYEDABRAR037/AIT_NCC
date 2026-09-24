@@ -37,7 +37,17 @@ export const resolveApiUrl = (endpoint: string): string => {
 };
 
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('token') || localStorage.getItem('ncc_auth_token');
+  const token = localStorage.getItem('token') || localStorage.getItem('ncc_auth_token');
+  if (token && token.startsWith('mock_jwt_')) {
+    // Wipe stale mock token so real institutional JWT is required
+    try {
+      localStorage.removeItem('token');
+      localStorage.removeItem('ncc_auth_token');
+      localStorage.removeItem('ncc_current_user');
+    } catch {}
+    return null;
+  }
+  return token;
 };
 
 export interface ApiResponse<T = any> {
@@ -88,6 +98,14 @@ export const safeApiFetch = async <T = any>(
 
   try {
     const data = await res.json();
+    if (res.status === 401) {
+      // Server rejected token as invalid or expired; clear stale credentials
+      try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('ncc_auth_token');
+        localStorage.removeItem('ncc_current_user');
+      } catch {}
+    }
     return { ok: res.ok, status: res.status, data };
   } catch (err: any) {
     throw new Error(`Failed to parse response from ${endpoint}: ${err.message}`);
