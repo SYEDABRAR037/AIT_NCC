@@ -15,16 +15,24 @@ export const getTransporter = (): Transporter => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
   const user = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'kashmirgaming033@gmail.com';
-  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
+  const rawPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
+  const pass = rawPass.replace(/\s+/g, ''); // Strip any accidental spaces from 16-char Google App Password
 
-  // If using Gmail, 'service: gmail' ensures optimal TLS and pool settings
-  if (host.includes('gmail.com') || user.endsWith('@gmail.com')) {
+  const isGmail = host.includes('gmail.com') || user.endsWith('@gmail.com');
+
+  if (isGmail) {
+    // Explicit port 465 direct SSL with strict timeouts to prevent hanging in cloud/Render containers
     transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
       auth: {
         user,
         pass,
       },
+      connectionTimeout: 8000, // 8 seconds connection limit
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
   } else {
     transporter = nodemailer.createTransport({
@@ -35,6 +43,9 @@ export const getTransporter = (): Transporter => {
         user,
         pass,
       },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
     });
   }
 
@@ -144,9 +155,9 @@ Official Account Recovery System`;
 
   try {
     const client = getTransporter();
-    console.log(`[MAIL SERVICE] OTP_EMAIL_REQUESTED: Dispatching from ${mailFrom} to ${recipientEmail}`);
+    console.log(`[MAIL SERVICE] EMAIL_SEND_STARTED: Dispatching from ${mailFrom} to ${recipientEmail}`);
 
-    const info = await client.sendMail({
+    const sendPromise = client.sendMail({
       from: `"${mailFromName}" <${mailFrom}>`,
       to: recipientEmail,
       subject,
@@ -154,10 +165,16 @@ Official Account Recovery System`;
       html: htmlContent,
     });
 
-    console.log(`[MAIL SERVICE] OTP_EMAIL_ACCEPTED: Message accepted by mail provider (ID: ${info.messageId})`);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Email dispatch timed out after 10 seconds.')), 10000);
+    });
+
+    const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
+
+    console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Message accepted by mail provider (ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (error: any) {
-    console.error('[MAIL SERVICE] Failed to dispatch OTP email via provider:', error?.message || error);
+    console.error('[MAIL SERVICE] EMAIL_SEND_FAILED:', error?.message || error);
     return { success: false, error: error?.message || 'Email delivery failed' };
   }
 };

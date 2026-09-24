@@ -110,10 +110,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       }
     } catch (err: any) {
       const msg = err?.message || '';
-      if (msg.includes('returned HTML') || msg.includes('Failed to parse') || msg.includes('failed to fetch')) {
-        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
+      if (msg.includes('too long') || msg.includes('timed out') || msg.includes('AbortError')) {
+        setErrorMsg('Account recovery service is taking too long to respond. Please try again.');
+      } else if (msg.includes('returned HTML') || msg.includes('Failed to parse') || msg.includes('failed to fetch') || msg.includes('504')) {
+        setErrorMsg('Unable to contact the account recovery service. Please try again.');
       } else {
-        setErrorMsg(msg || 'Account recovery service is temporarily unavailable. Please try again.');
+        setErrorMsg(msg || 'Unable to contact the account recovery service. Please try again.');
       }
     } finally {
       setLoading(false);

@@ -57,9 +57,13 @@ export interface ApiResponse<T = any> {
   [key: string]: any;
 }
 
+export interface SafeFetchOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
 export const safeApiFetch = async <T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: SafeFetchOptions = {}
 ): Promise<{ ok: boolean; status: number; data: T }> => {
   const url = resolveApiUrl(endpoint);
   const token = getAuthToken();
@@ -73,10 +77,25 @@ export const safeApiFetch = async <T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const timeoutMs = options.timeoutMs || 15000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    });
+  } catch (fetchErr: any) {
+    if (fetchErr.name === 'AbortError' || controller.signal.aborted) {
+      throw new Error('Account recovery service is taking too long to respond. Please try again.');
+    }
+    throw fetchErr;
+  } finally {
+    clearTimeout(timer);
+  }
 
   const contentType = res.headers.get('content-type') || '';
 

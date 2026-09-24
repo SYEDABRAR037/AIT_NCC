@@ -31,6 +31,13 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanRegimental = String(regimentalNumber).trim().toUpperCase();
 
+    console.log('[RECOVERY] RECOVERY_REQUEST_RECEIVED:', {
+      email: maskEmail(cleanEmail),
+      regimentalNumber: cleanRegimental,
+    });
+
+    console.log('[RECOVERY] IDENTIFIER_VERIFICATION_STARTED');
+
     // Verify account: Both email and regimental number must match the same user account
     const user = await prisma.user.findFirst({
       where: {
@@ -42,6 +49,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     });
 
     if (!user) {
+      console.warn('[RECOVERY] IDENTIFIER_VERIFICATION_FAILED: No matching account found for provided identifiers.');
       // Generic error to avoid account enumeration (Phase 9)
       res.status(400).json({
         success: false,
@@ -49,6 +57,8 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       });
       return;
     }
+
+    console.log('[RECOVERY] IDENTIFIER_VERIFICATION_COMPLETED:', { userId: user.id });
 
     // Cooldown check: prevent rapid spamming (Phase 26)
     const recentRequest = await prisma.passwordReset.findFirst({
@@ -60,6 +70,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     });
 
     if (recentRequest) {
+      console.warn('[RECOVERY] RECOVERY_RATE_LIMITED: Cooldown active.');
       res.status(429).json({
         success: false,
         message: 'Please wait 45 seconds before requesting another verification code.',
@@ -71,6 +82,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     const otpNumber = crypto.randomInt(100000, 999999).toString();
     const otpHash = await bcrypt.hash(otpNumber, 10);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
+    console.log('[RECOVERY] OTP_GENERATED');
 
     // Invalidate existing unused OTP records for this user (Phase 10)
     await prisma.passwordReset.updateMany({
@@ -93,6 +105,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
         lastResendAt: new Date(),
       },
     });
+    console.log('[RECOVERY] OTP_RECORD_SAVED:', { recoveryId: resetRecord.id });
 
     // Send official OTP email (Phase 3, 7, 8, 9, 11, 12, 13)
     const emailResult = await sendOtpEmail({
@@ -103,6 +116,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     });
 
     if (!emailResult.success) {
+      console.warn('[RECOVERY] RECOVERY_ERROR: Email provider delivery failed. Rolling back OTP record.');
       // Phase 9: DO NOT SHOW FALSE SUCCESS. If provider fails, delete OTP record and return error
       await prisma.passwordReset.delete({
         where: { id: resetRecord.id },
@@ -130,6 +144,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       },
     });
 
+    console.log('[RECOVERY] RECOVERY_RESPONSE_SENT:', { recoveryId: resetRecord.id });
     res.json({
       success: true,
       message: 'A verification code has been dispatched to your official registered email address.',
@@ -137,8 +152,8 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       maskedEmail: maskEmail(user.email),
       expiresInSeconds: 300,
     });
-  } catch (error) {
-    console.error('requestPasswordResetOtp error:', error);
+  } catch (error: any) {
+    console.error('[RECOVERY] RECOVERY_ERROR:', error?.message || error);
     res.status(500).json({
       success: false,
       message: 'Failed to initiate password recovery. Please try again later.',
