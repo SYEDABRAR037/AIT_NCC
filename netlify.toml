@@ -3,6 +3,9 @@
   publish = "dist"
   command = "npm run build"
 
+[functions]
+  directory = "frontend/netlify/functions"
+
 # AI Facial recognition neural network models
 [[headers]]
   for = "/models/*"

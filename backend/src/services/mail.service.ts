@@ -15,13 +15,13 @@ export const getTransporter = (): Transporter => {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
   const user = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'kashmirgaming033@gmail.com';
-  const rawPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
+  const rawPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || 'gjemdiespkujqayq';
   const pass = rawPass.replace(/\s+/g, ''); // Strip any accidental spaces from 16-char Google App Password
 
   const isGmail = host.includes('gmail.com') || user.endsWith('@gmail.com');
 
   if (isGmail) {
-    // Explicit port 465 direct SSL with strict timeouts to prevent hanging in cloud/Render containers
+    // Port 465 direct SSL with timeouts to prevent socket hangs
     transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
@@ -30,7 +30,7 @@ export const getTransporter = (): Transporter => {
         user,
         pass,
       },
-      connectionTimeout: 8000, // 8 seconds connection limit
+      connectionTimeout: 8000,
       greetingTimeout: 8000,
       socketTimeout: 10000,
     });
@@ -72,35 +72,27 @@ export const sendOtpEmail = async ({
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   const mailFrom = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'kashmirgaming033@gmail.com';
   const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
-  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '';
+  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || 'gjemdiespkujqayq';
 
-  if (!pass) {
-    const errorMsg = 'SMTP_PASSWORD secret is not configured on the command server.';
-    console.error(`[MAIL SERVICE] FAILED: ${errorMsg}`);
-    return {
-      success: false,
-      error: errorMsg,
-    };
-  }
+  // Exact Subject required by Phase 12
+  const subject = 'NCC Account Recovery — One-Time Password (OTP)';
 
-  // Exact Subject required by Phase 8
-  const subject = 'NCC Account Recovery — OTP Verification';
+  // Exact Body required by Phase 12
+  const textContent = `Dear ${cadetName || 'Cadet'},
 
-  // Exact Body required by Phase 8
-  const textContent = `Dear Cadet,
-
-Your One-Time Password (OTP) for NCC account recovery is:
+Your NCC account recovery OTP is:
 
 ${otp}
 
 This OTP is valid for ${expiresInMinutes} minutes.
 
+Please do not share this OTP with anyone.
+
 If you did not request an account recovery, please ignore this email.
 
 Regards,
-NCC
-Army Institute of Technology, Pune
-Official Account Recovery System`;
+NCC AIT Pune
+NCC Digital Command & Cadet Management System`;
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -131,9 +123,9 @@ Official Account Recovery System`;
       <p>Official Account Recovery System</p>
     </div>
     <div class="body">
-      <div class="salutation">Dear Cadet,</div>
+      <div class="salutation">Dear ${cadetName || 'Cadet'},</div>
       <div class="intro">
-        Your One-Time Password (OTP) for NCC account recovery is:
+        Your NCC account recovery OTP is:
       </div>
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
@@ -141,11 +133,13 @@ Official Account Recovery System`;
         <div class="validity">Valid for ${expiresInMinutes} minutes only</div>
       </div>
       <div class="notice">
-        If you did not request an account recovery, please ignore this email. Do not share this OTP with anyone.
+        Please do not share this OTP with anyone.<br><br>
+        If you did not request an account recovery, please ignore this email.
       </div>
     </div>
     <div class="footer">
-      <strong>NCC Unit — 2 Maharashtra Battalion NCC</strong><br>
+      <strong>NCC AIT Pune</strong><br>
+      NCC Digital Command & Cadet Management System<br>
       Army Institute of Technology (AIT), Dighi Hills, Pune 411015
     </div>
   </div>
@@ -153,9 +147,62 @@ Official Account Recovery System`;
 </html>
 `;
 
+  // Strategy 1: If on Render (where free tier blocks outbound SMTP ports 25, 465, 587)
+  // or if EMAIL_RELAY_URL is available, dispatch via HTTPS over port 443 to the Netlify Relay
+  const isRender = process.env.RENDER === 'true';
+  const relayUrl =
+    process.env.EMAIL_RELAY_URL ||
+    (isRender ? 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay' : null);
+
+  if (relayUrl) {
+    try {
+      console.log(`[MAIL SERVICE] Dispatching OTP via HTTPS Relay (${relayUrl}) to ${recipientEmail}...`);
+      const relaySecret =
+        process.env.RECOVERY_RELAY_SECRET ||
+        process.env.JWT_SECRET ||
+        'ncc_command_jwt_super_secure_key_2026_ait_pune';
+
+      const controller = new AbortController();
+      const relayTimeout = setTimeout(() => controller.abort(), 9000);
+
+      const resp = await fetch(relayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-relay-secret': relaySecret,
+        },
+        body: JSON.stringify({
+          recipientEmail,
+          cadetName,
+          otp,
+          expiresInMinutes,
+          subject,
+          textContent,
+          htmlContent,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(relayTimeout);
+
+      if (resp.ok) {
+        const data = (await resp.json()) as any;
+        if (data.success) {
+          console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Accepted via HTTPS Relay (ID: ${data.messageId})`);
+          return { success: true, messageId: data.messageId };
+        }
+      } else {
+        console.warn(`[MAIL SERVICE] Relay returned status ${resp.status}. Falling back to direct SMTP...`);
+      }
+    } catch (relayErr: any) {
+      console.warn('[MAIL SERVICE] HTTPS Relay failed or timed out:', relayErr?.message || relayErr);
+    }
+  }
+
+  // Strategy 2: Direct Nodemailer SMTP (works on local machine, non-restricted VPS, or paid tiers)
   try {
     const client = getTransporter();
-    console.log(`[MAIL SERVICE] EMAIL_SEND_STARTED: Dispatching from ${mailFrom} to ${recipientEmail}`);
+    console.log(`[MAIL SERVICE] EMAIL_SEND_STARTED: Direct SMTP from ${mailFrom} to ${recipientEmail}`);
 
     const sendPromise = client.sendMail({
       from: `"${mailFromName}" <${mailFrom}>`,
@@ -166,15 +213,61 @@ Official Account Recovery System`;
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Email dispatch timed out after 10 seconds.')), 10000);
+      setTimeout(() => reject(new Error('Direct SMTP dispatch timed out after 8 seconds.')), 8000);
     });
 
     const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
 
     console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Message accepted by mail provider (ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
-  } catch (error: any) {
-    console.error('[MAIL SERVICE] EMAIL_SEND_FAILED:', error?.message || error);
-    return { success: false, error: error?.message || 'Email delivery failed' };
+  } catch (smtpErr: any) {
+    console.error('[MAIL SERVICE] DIRECT_SMTP_FAILED:', smtpErr?.message || smtpErr);
+
+    // If direct SMTP failed and we haven't tried the Netlify relay yet, try it now!
+    if (!relayUrl) {
+      try {
+        console.log(`[MAIL SERVICE] Retrying dispatch via Netlify HTTPS Relay to ${recipientEmail}...`);
+        const fallbackRelayUrl = 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay';
+        const relaySecret =
+          process.env.RECOVERY_RELAY_SECRET ||
+          process.env.JWT_SECRET ||
+          'ncc_command_jwt_super_secure_key_2026_ait_pune';
+
+        const controller = new AbortController();
+        const relayTimeout = setTimeout(() => controller.abort(), 9000);
+
+        const resp = await fetch(fallbackRelayUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-relay-secret': relaySecret,
+          },
+          body: JSON.stringify({
+            recipientEmail,
+            cadetName,
+            otp,
+            expiresInMinutes,
+            subject,
+            textContent,
+            htmlContent,
+          }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(relayTimeout);
+
+        if (resp.ok) {
+          const data = (await resp.json()) as any;
+          if (data.success) {
+            console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Accepted via HTTPS Relay (ID: ${data.messageId})`);
+            return { success: true, messageId: data.messageId };
+          }
+        }
+      } catch (fallbackErr: any) {
+        console.error('[MAIL SERVICE] Fallback relay also failed:', fallbackErr?.message || fallbackErr);
+      }
+    }
+
+    return { success: false, error: smtpErr?.message || 'Email delivery failed' };
   }
 };
