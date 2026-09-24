@@ -217,11 +217,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    if (user.status === 'HOLD') {
+    if (user.status === 'HOLD' || user.status === 'RETURNED') {
       res.status(403).json({
         success: false,
-        status: 'HOLD',
-        message: 'Your registration is on hold pending institutional review.',
+        status: user.status,
+        message: 'Your registration has been returned or placed on hold pending institutional review.',
       });
       return;
     }

@@ -12,6 +12,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { safeApiFetch } from '../../utils/api';
 
 interface DutyItem {
   id: string;
@@ -80,29 +81,18 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
 
   const isOfficer = ['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO'].includes(effectiveRole);
 
-  const getAuthToken = () => {
-    return localStorage.getItem('ncc_auth_token') || localStorage.getItem('token');
-  };
-
   const fetchDuties = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
       const url = isOfficer ? '/api/duties/unit' : '/api/duties/my';
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { ok, data } = await safeApiFetch(url);
 
-      if (!res.ok) {
-        throw new Error('Failed to retrieve duty assignments from defense server');
+      if (!ok) {
+        throw new Error(data?.message || 'Failed to retrieve duty assignments from defense server');
       }
 
-      const data = await res.json();
-      setDuties(data.duties || []);
+      setDuties(data?.duties || []);
     } catch (err: any) {
       setError(err.message || 'Error loading duties');
     } finally {
@@ -112,15 +102,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
 
   const fetchCadetsForAssignment = async () => {
     try {
-      const token = getAuthToken();
-      const res = await fetch('/api/duties/cadets', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await safeApiFetch('/api/duties/cadets');
+      if (ok && data?.cadets) {
         const rawUsers = data.cadets || [];
         setCadetOptions(
           rawUsers.map((u: any) => ({
@@ -148,7 +131,6 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
     e.preventDefault();
     setSubmittingDuty(true);
     try {
-      const token = getAuthToken();
       const payload = {
         title: assignForm.title.trim() || `${getDutyTypeLabel(assignForm.dutyType)} Detail`,
         dutyType: assignForm.dutyType,
@@ -161,18 +143,13 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         cadetId: assignForm.cadetId,
       };
 
-      const res = await fetch('/api/duties/assign', {
+      const { ok, data } = await safeApiFetch('/api/duties/assign', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to assign duty');
+      if (!ok) {
+        throw new Error(data?.message || data?.error || 'Failed to assign duty');
       }
 
       setIsAssignModalOpen(false);
@@ -196,19 +173,13 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
   const handleUpdateStatus = async (dutyId: string, newStatus: string) => {
     setStatusUpdating(dutyId);
     try {
-      const token = getAuthToken();
-      const res = await fetch(`/api/duties/${dutyId}/status`, {
+      const { ok, data } = await safeApiFetch(`/api/duties/${dutyId}/status`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to update duty status');
+      if (!ok) {
+        throw new Error(data?.message || data?.error || 'Failed to update duty status');
       }
 
       fetchDuties();

@@ -9,6 +9,7 @@ import {
   X,
   ShieldCheck,
 } from 'lucide-react';
+import { safeApiFetch } from '../../utils/api';
 
 interface FaceAttendanceModalProps {
   session: {
@@ -105,12 +106,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
   // -----------------------------------------------------------------------
   const fetchLiveStats = useCallback(async () => {
     try {
-      const res = await fetch(`/api/attendance/sessions/${session.id}/live-stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.success && data.stats) {
+      const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/live-stats`);
+      if (!ok) return;
+      if (data?.success && data?.stats) {
         const newPresent = data.stats.present;
         if (newPresent > prevPresentRef.current) {
           // Trigger green flash animation on present count increase
@@ -124,25 +122,20 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
     } catch (_) {
       // Silent — polling failures are non-critical
     }
-  }, [session.id, token]);
+  }, [session.id]);
 
   const handleManualMarkPresent = async (cadet: PreloadedCadet) => {
     try {
       setManualMarkingId(cadet.id);
       setManualSuccessMsg(null);
-      const res = await fetch(`/api/attendance/sessions/${session.id}/mark`, {
+      const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/mark`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           cadetId: cadet.id,
           status: 'PRESENT',
         }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
         setMarkedCadetIds((prev) => new Set([...prev, cadet.id]));
@@ -200,11 +193,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
 
         // Pre-load authorized eligible cadets & 128-d templates for fast matching (Section 9)
         try {
-          const res = await fetch(`/api/attendance/sessions/${session.id}/eligible-biometrics`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (data.success && isMounted) {
+          const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/eligible-biometrics`);
+          if (ok && data?.success && isMounted) {
             setPreloadedCadets(data.cadets || []);
             if (data.totalEligible > 0) {
               setExpectedCount(data.totalEligible);
@@ -217,11 +207,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
         // Fetch authoritative DB counts for accurate refresh recovery (Section 7)
         if (isMounted) {
           try {
-            const statsRes = await fetch(`/api/attendance/sessions/${session.id}/live-stats`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            const statsData = await statsRes.json();
-            if (statsData.success && statsData.stats && isMounted) {
+            const { ok: statsOk, data: statsData } = await safeApiFetch(`/api/attendance/sessions/${session.id}/live-stats`);
+            if (statsOk && statsData?.success && statsData?.stats && isMounted) {
               prevPresentRef.current = statsData.stats.present;
               setPresentCount(statsData.stats.present);
               setExpectedCount(statsData.stats.expected);
@@ -339,21 +326,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
     setStatusSubtitle('Matching live 128-d embedding with registered identity...');
 
     try {
-      const response = await fetch(`/api/attendance/sessions/${session.id}/verify-face`, {
+      const { ok, status, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/verify-face`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           descriptor,
           livenessVerified: true,
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.success) {
+      if (ok && data?.success) {
         // ✓ 1. SUCCESSFUL RECOGNITION & AUTOMATIC PRESENT RECORD
         const now = new Date();
         const timeStr = data.time || now.toLocaleTimeString('en-US', { hour12: false });
@@ -392,7 +373,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
         onSessionUpdated();
         // Automatic fast reset (~2 seconds)
         triggerAutoReset(2200);
-      } else if (response.status === 409 && data.duplicate) {
+      } else if (status === 409 && data?.duplicate) {
         // ⚠️ 2. DUPLICATE ATTEMPT
         setScannerTone('warning');
         setStatusTitle('✓ ALREADY PRESENT');
@@ -581,12 +562,10 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
   const handleConfirmEndSession = async () => {
     setEndingSession(true);
     try {
-      const res = await fetch(`/api/attendance/sessions/${session.id}/end`, {
+      const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/end`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         setSessionClosed(true);
         setClosedSummary(data);
         setEndConfirmOpen(false);

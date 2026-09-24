@@ -3,6 +3,12 @@
   publish = "dist"
   command = "npm run build"
 
+# AI Facial recognition neural network models
+[[headers]]
+  for = "/models/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

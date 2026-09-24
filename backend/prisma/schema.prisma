@@ -20,6 +20,7 @@ enum AccountStatus {
   APPROVED
   ACTIVE
   HOLD
+  RETURNED
   REJECTED
   INACTIVE
   PASSED_OUT

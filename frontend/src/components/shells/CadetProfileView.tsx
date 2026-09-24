@@ -9,6 +9,7 @@ import {
   Briefcase,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { safeApiFetch } from '../../utils/api';
 
 interface CadetProfileViewProps {
   user?: any;
@@ -36,39 +37,37 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
     if (!token) return;
 
 
-    const headers = { Authorization: `Bearer ${token}` };
-
     // Fetch personal records in parallel
     Promise.all([
       // 1. Attendance
-      fetch('/api/attendance/my', { headers })
-        .then((r) => r.json())
+      safeApiFetch('/api/attendance/my')
+        .then((r) => r.data)
         .catch(() => ({ success: false })),
       // 2. Certificates
-      fetch('/api/certificates/my', { headers })
-        .then((r) => r.json())
+      safeApiFetch('/api/certificates/my')
+        .then((r) => r.data)
         .catch(() => ({ success: false })),
       // 3. Camps
-      fetch('/api/camps', { headers })
-        .then((r) => r.json())
+      safeApiFetch('/api/camps')
+        .then((r) => r.data)
         .catch(() => ({ success: false })),
       // 4. Duties
-      fetch('/api/duties/my', { headers })
-        .then((r) => r.json())
+      safeApiFetch('/api/duties/my')
+        .then((r) => r.data)
         .catch(() => ({ success: false })),
       // 5. Leaves
-      fetch('/api/leave/my', { headers })
-        .then((r) => r.json())
+      safeApiFetch('/api/leave/my')
+        .then((r) => r.data)
         .catch(() => ({ success: false })),
     ])
       .then(([attRes, certRes, campRes, dutyRes, leaveRes]) => {
-        if (attRes.success && attRes.stats) setAttendanceStats(attRes.stats);
-        if (certRes.success && certRes.certificates) setCertificates(certRes.certificates);
-        if (dutyRes.success && dutyRes.duties) setDuties(dutyRes.duties);
-        if (leaveRes.success && leaveRes.leaves) setLeaves(leaveRes.leaves);
+        if (attRes?.success && attRes?.stats) setAttendanceStats(attRes.stats);
+        if (certRes?.success && certRes?.certificates) setCertificates(certRes.certificates);
+        if (dutyRes?.success && dutyRes?.duties) setDuties(dutyRes.duties);
+        if (leaveRes?.success && leaveRes?.leaves) setLeaves(leaveRes.leaves);
 
         // Filter camps for user participation
-        if (campRes.success && campRes.camps) {
+        if (campRes?.success && campRes?.camps) {
           const userCamps = campRes.camps.filter((c: any) =>
             c.participants?.some((p: any) => p.cadetId === user?.id)
           );

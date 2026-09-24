@@ -15,6 +15,7 @@ import {
   Shield,
   Check,
 } from 'lucide-react';
+import { safeApiFetch } from '../../utils/api';
 
 interface CampParticipant {
   id: string;
@@ -108,20 +109,13 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/camps', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { ok, data } = await safeApiFetch('/api/camps');
 
-      if (!res.ok) {
-        throw new Error('Failed to load camp operations');
+      if (!ok) {
+        throw new Error(data?.message || 'Failed to load camp operations');
       }
 
-      const data = await res.json();
-      const loadedCamps: CampItem[] = Array.isArray(data) ? data : data.camps || [];
+      const loadedCamps: CampItem[] = Array.isArray(data) ? data : data?.camps || [];
       setCamps(loadedCamps);
 
       // Refresh currently selected camp if open
@@ -145,22 +139,16 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
     if (!applyTargetCamp) return;
     setApplying(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/camps/${applyTargetCamp.id}/apply`, {
+      const { ok, data } = await safeApiFetch(`/api/camps/${applyTargetCamp.id}/apply`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({ remarks: applyRemarks }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to submit nomination');
+      if (!ok) {
+        throw new Error(data?.message || data?.error || 'Failed to submit nomination');
       }
 
-      alert(data.message || 'Nomination application submitted successfully!');
+      alert(data?.message || 'Nomination application submitted successfully!');
       setApplyModalOpen(false);
       setApplyRemarks('');
       fetchCamps();
@@ -175,22 +163,16 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
     e.preventDefault();
     setCreating(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/camps', {
+      const { ok, data } = await safeApiFetch('/api/camps', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(newCamp),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to create camp');
+      if (!ok) {
+        throw new Error(data?.message || data?.error || 'Failed to create camp');
       }
 
-      alert(data.message || 'Camp operation commissioned successfully!');
+      alert(data?.message || 'Camp operation commissioned successfully!');
       setCreateModalOpen(false);
       setNewCamp({
         name: '',
@@ -216,18 +198,12 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
 
   const handleDeleteCamp = async (campId: string, _campName?: string) => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/camps/${campId}`, {
+      const { ok, data } = await safeApiFetch(`/api/camps/${campId}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to delete camp');
+      if (!ok) {
+        throw new Error(data?.message || 'Failed to delete camp');
       }
 
       alert('Camp decommissioned successfully.');
@@ -251,22 +227,16 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
 
     setUpdatingStatus(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/camps/${selectedCamp.id}/participants/${cadetIdentifier}`, {
+      const { ok, data } = await safeApiFetch(`/api/camps/${selectedCamp.id}/participants/${cadetIdentifier}`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           status: newStatus,
           remarks: officerRemarks,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Failed to update status');
+      if (!ok) {
+        throw new Error(data?.message || data?.error || 'Failed to update status');
       }
 
       alert(`Participant status updated to ${newStatus} successfully.`);

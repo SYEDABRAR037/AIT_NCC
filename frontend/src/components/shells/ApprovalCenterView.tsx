@@ -7,7 +7,9 @@ import {
   CheckCircle2,
   X,
   Shield,
+  Eye,
 } from 'lucide-react';
+import { safeApiFetch } from '../../utils/api';
 
 interface ApprovalCenterViewProps {
   role?: string;
@@ -31,6 +33,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
   officerRequests: propRequests,
 }) => {
   const token = propToken || localStorage.getItem('token');
+  const [viewCadetDossier, setViewCadetDossier] = useState<any | null>(null);
   const [activeApprovalTab, setActiveApprovalTab] = useState<'registrations' | 'leaves' | 'requests'>('registrations');
 
   const [registrations, setRegistrations] = useState<any[]>(propRegistrations || []);
@@ -47,43 +50,20 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
   const [processing, setProcessing] = useState(false);
 
   const fetchAllData = async () => {
-    if (!token) return;
     setLoading(true);
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
-
     try {
       const [regRes, leaveRes, reqRes] = await Promise.all([
-        fetch('/api/reviews/pending', { headers })
-          .then((r) => r.json())
-          .catch(() => ({ applications: [] })),
-        fetch('/api/leave/pending', { headers })
-          .then((r) => r.json())
-          .catch(() => ({ leaves: [] })),
-        fetch('/api/requests/officer', { headers })
-          .then((r) => r.json())
-          .catch(() => ({ requests: [] })),
+        safeApiFetch('/api/reviews/pending').then((r) => r.data).catch(() => ({ applications: [] })),
+        safeApiFetch('/api/leave/pending').then((r) => r.data).catch(() => ({ leaves: [] })),
+        safeApiFetch('/api/requests/officer').then((r) => r.data).catch(() => ({ requests: [] })),
       ]);
 
-      let pendingRegs = regRes.applications || regRes.users || [];
-      if (pendingRegs.length === 0) {
-        try {
-          const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-          pendingRegs = offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD');
-        } catch {}
-      }
-
+      const pendingRegs = regRes?.applications || regRes?.users || [];
       setRegistrations(pendingRegs);
-      setLeaves(leaveRes.leaves || []);
-      setRequests(reqRes.requests || []);
+      setLeaves(leaveRes?.leaves || []);
+      setRequests(reqRes?.requests || []);
     } catch (err) {
       console.error('Error fetching approval desk data:', err);
-      try {
-        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-        setRegistrations(offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD'));
-      } catch {}
     } finally {
       setLoading(false);
     }
@@ -95,63 +75,60 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
   const handleConfirmAction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!actionModal || !token) return;
+    if (!actionModal) return;
     setProcessing(true);
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    };
 
     try {
       if (actionModal.type === 'registration') {
-        try {
-          await fetch(`/api/reviews/${actionModal.item.id}/action`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              action: actionModal.action,
-              remarks,
-            }),
-          });
-        } catch (netErr) {
-          console.warn('Network action fallback for registration review:', netErr);
+        const { ok, data } = await safeApiFetch(`/api/reviews/${actionModal.item.id}/action`, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: actionModal.action,
+            remarks,
+          }),
+        });
+
+        if (!ok) {
+          alert(data?.message || 'Failed to process registration review');
+          return;
         }
 
-        // Update local offline registry as well
-        try {
-          const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-          const idx = offlineCadets.findIndex((c: any) => c.id === actionModal.item.id);
-          if (idx !== -1) {
-            offlineCadets[idx].status = actionModal.action === 'APPROVE' ? 'APPROVED' : actionModal.action === 'REJECT' ? 'REJECTED' : 'HOLD';
-            localStorage.setItem('ncc_offline_cadets', JSON.stringify(offlineCadets));
-          }
-        } catch (storageErr) {
-          console.warn('Storage update warning:', storageErr);
-        }
+        alert(data?.message || `Registration action executed successfully.`);
       } else if (actionModal.type === 'leave') {
-        await fetch(`/api/leave/${actionModal.item.id}/review`, {
+        const { ok, data } = await safeApiFetch(`/api/leave/${actionModal.item.id}/review`, {
           method: 'POST',
-          headers,
           body: JSON.stringify({
             action: actionModal.action,
             remarks,
           }),
         });
+        if (!ok) {
+          alert(data?.message || 'Failed to process leave action');
+          return;
+        }
       } else if (actionModal.type === 'request') {
-        await fetch(`/api/requests/${actionModal.item.id}/action`, {
+        const { ok, data } = await safeApiFetch(`/api/requests/${actionModal.item.id}/action`, {
           method: 'POST',
-          headers,
           body: JSON.stringify({
             action: actionModal.action,
             remarks,
           }),
         });
+        if (!ok) {
+          alert(data?.message || 'Failed to process request action');
+          return;
+        }
       }
+
       setActionModal(null);
       setRemarks('');
+      if (viewCadetDossier && viewCadetDossier.id === actionModal.item.id) {
+        setViewCadetDossier(null);
+      }
       fetchAllData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error processing approval action:', err);
+      alert(err.message || 'Error processing action');
     } finally {
       setProcessing(false);
     }
@@ -275,84 +252,163 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
               </p>
             </div>
           ) : (
-            registrations.map((cadet) => (
-              <div key={cadet.id} className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.75rem' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <h3 style={{ fontSize: '1.15rem', color: 'var(--navy-primary)' }}>{cadet.name || cadet.fullName}</h3>
-                      <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
-                        {cadet.status}
-                      </span>
-                      <span className="badge-institutional">{cadet.platoon || cadet.platoonName || 'Platoon'}</span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
-                      Regimental No: <strong>{cadet.regimentalNumber}</strong> &bull; Roll: <strong>{cadet.collegeRollNumber}</strong> &bull; Email: <strong>{cadet.email}</strong> &bull; Branch: <strong>{cadet.branch} ({cadet.year})</strong>
-                    </div>
-                  </div>
+            registrations.map((cadet) => {
+              const priorOfficerReview = cadet.applicationReviews?.find((r: any) =>
+                ['SENIOR_FORWARDED', 'PLATOON_SENIOR_FORWARDED', 'SENIOR_REVIEW', 'PLATOON_SENIOR_REVIEW'].includes(r.stage) &&
+                ['FORWARD', 'APPROVE'].includes(r.action)
+              );
+              const isAlreadyForwarded = !!priorOfficerReview;
+              const reviewerTitle = priorOfficerReview?.reviewer?.role === 'SENIOR' ? 'Senior Cadet' : 'Platoon Senior';
+              const reviewerName = priorOfficerReview?.reviewer?.fullName || 'Authorized Officer';
 
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      onClick={() =>
-                        setActionModal({
-                          type: 'registration',
-                          item: cadet,
-                          action: role === 'ADMIN_ANO' ? 'APPROVE' : 'FORWARD',
-                        })
-                      }
-                      className="btn-primary btn-sm"
-                    >
-                      {role === 'ADMIN_ANO' ? 'Sanction & Commission' : 'Forward to Command'}
-                    </button>
-                    <button
-                      onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'HOLD' })}
-                      className="btn-secondary btn-sm"
-                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
-                    >
-                      Return
-                    </button>
-                    <button
-                      onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
-                      className="btn-secondary btn-sm"
-                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-
-                {/* 3-Stage Cadet Registration Pipeline Stepper */}
-                <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '0.65rem 0.85rem', margin: '0.65rem 0' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--navy-primary)', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
-                    CADET ONBOARDING PIPELINE:
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+              return (
+                <div key={cadet.id} className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.75rem' }}>
                     <div>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>✓ 1. Registered</div>
-                      <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Online Application</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: role === 'ADMIN_ANO' ? '#047857' : '#D97706' }}>
-                        {role === 'ADMIN_ANO' ? '✓ 2. Senior Endorsed' : '● 2. Senior Scrutiny'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <h3 style={{ fontSize: '1.15rem', color: 'var(--navy-primary)', margin: 0 }}>
+                          {cadet.name || cadet.fullName}
+                        </h3>
+                        <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                          {cadet.status}
+                        </span>
+                        <span className="badge-institutional">{cadet.platoon || cadet.platoonName || 'Platoon'}</span>
+                        {cadet.biometricTemplate ? (
+                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                            ✓ Biometrics Ready
+                          </span>
+                        ) : (
+                          <span className="badge-institutional" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                            Face Not Registered
+                          </span>
+                        )}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Platoon Senior / Senior</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: role === 'ADMIN_ANO' ? '#D97706' : '#94A3B8' }}>
-                        {role === 'ADMIN_ANO' ? '● 3. Awaiting Sanction' : '3. ANO Final Approval'}
+                      <div style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
+                        Regimental No: <strong>{cadet.regimentalNumber}</strong> &bull; Roll: <strong>{cadet.collegeRollNumber}</strong> &bull; Email: <strong>{cadet.email}</strong> &bull; Branch: <strong>{cadet.branch} ({cadet.year})</strong>
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Associate NCC Officer</div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button
+                        onClick={() => setViewCadetDossier(cadet)}
+                        className="btn-secondary btn-sm"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', borderColor: 'var(--navy-primary)', color: 'var(--navy-primary)' }}
+                      >
+                        <Eye size={14} />
+                        <span>VIEW FULL PROFILE</span>
+                      </button>
+
+                      {role === 'ADMIN_ANO' ? (
+                        <>
+                          <button
+                            onClick={() =>
+                              setActionModal({
+                                type: 'registration',
+                                item: cadet,
+                                action: 'APPROVE',
+                              })
+                            }
+                            className="btn-primary btn-sm"
+                          >
+                            Sanction &amp; Commission (ACTIVE)
+                          </button>
+                          <button
+                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
+                            className="btn-secondary btn-sm"
+                            style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                          >
+                            Return
+                          </button>
+                          <button
+                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
+                            className="btn-secondary btn-sm"
+                            style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : isAlreadyForwarded ? (
+                        <span
+                          style={{
+                            fontSize: '0.78rem',
+                            color: '#047857',
+                            fontWeight: 700,
+                            padding: '0.4rem 0.75rem',
+                            background: '#ECFDF5',
+                            borderRadius: '4px',
+                            border: '1px solid #A7F3D0',
+                          }}
+                        >
+                          ✓ Forwarded to ANO
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() =>
+                              setActionModal({
+                                type: 'registration',
+                                item: cadet,
+                                action: 'FORWARD',
+                              })
+                            }
+                            className="btn-primary btn-sm"
+                          >
+                            Forward to Command
+                          </button>
+                          <button
+                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
+                            className="btn-secondary btn-sm"
+                            style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                          >
+                            Return
+                          </button>
+                          <button
+                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
+                            className="btn-secondary btn-sm"
+                            style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
-                </div>
 
-                {cadet.enrollmentDetails && (
-                  <div style={{ fontSize: '0.82rem', background: 'var(--white-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
-                    <strong>Enrollment Bio / Prior Certifications:</strong> {cadet.enrollmentDetails}
+                  {/* 3-Stage Cadet Registration Pipeline Stepper */}
+                  <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '0.65rem 0.85rem', margin: '0.65rem 0' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--navy-primary)', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
+                      CADET ONBOARDING PIPELINE:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>✓ 1. Registered</div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Online Application</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: isAlreadyForwarded ? '#047857' : '#D97706' }}>
+                          {isAlreadyForwarded ? `✓ 2. Forwarded by ${reviewerTitle}` : '● 2. Senior / Platoon Senior Review'}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                          {isAlreadyForwarded ? reviewerName : 'Awaiting Officer Endorsement'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: isAlreadyForwarded ? (role === 'ADMIN_ANO' ? '#D97706' : '#1E3A8A') : '#94A3B8' }}>
+                          {isAlreadyForwarded ? '● 3. Awaiting ANO Sanction' : '3. ANO Final Approval'}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Associate NCC Officer</div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))
+
+                  {cadet.enrollmentDetails && (
+                    <div style={{ fontSize: '0.82rem', background: 'var(--white-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
+                      <strong>Enrollment Bio / Prior Certifications:</strong> {cadet.enrollmentDetails}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -676,6 +732,365 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Full Cadet Profile Dossier Modal (Phase 2 & Phase 3) */}
+      {viewCadetDossier && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(3, 11, 23, 0.8)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.25rem',
+            overflowY: 'auto',
+          }}
+          onClick={() => setViewCadetDossier(null)}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--white-pure)',
+              border: '2px solid var(--navy-primary)',
+              borderRadius: '8px',
+              width: '100%',
+              maxWidth: '720px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: 'var(--shadow-xl)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                backgroundColor: 'var(--navy-primary)',
+                color: 'var(--white-pure)',
+                padding: '1rem 1.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: '#93C5FD', fontWeight: 800 }}>
+                  AIT NCC ENROLLMENT DOSSIER
+                </span>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--white-pure)', margin: '0.15rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Shield size={18} />
+                  Cadet Registration Profile
+                </h3>
+              </div>
+              <button
+                onClick={() => setViewCadetDossier(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--white-pure)', cursor: 'pointer', fontSize: '1.4rem' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Cadet Banner */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1.25rem',
+                  padding: '1rem',
+                  backgroundColor: '#F8FAFC',
+                  borderRadius: '6px',
+                  border: '1px solid #E2E8F0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--navy-primary)',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.4rem',
+                    fontWeight: 800,
+                    overflow: 'hidden',
+                    flexShrink: 0,
+                  }}
+                >
+                  {viewCadetDossier.profilePhotoUrl ? (
+                    <img
+                      src={viewCadetDossier.profilePhotoUrl}
+                      alt={viewCadetDossier.fullName}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    (viewCadetDossier.fullName || 'CDT').slice(0, 2).toUpperCase()
+                  )}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <h2 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', margin: 0, fontWeight: 800 }}>
+                      {viewCadetDossier.fullName || viewCadetDossier.name}
+                    </h2>
+                    <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                      {viewCadetDossier.status}
+                    </span>
+                    <span className="badge-institutional">
+                      {viewCadetDossier.platoonName || viewCadetDossier.platoon || 'Platoon'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
+                    Regimental No: <strong>{viewCadetDossier.regimentalNumber}</strong> &bull; Roll: <strong>{viewCadetDossier.collegeRollNumber}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal & Academic Information Grid */}
+              <div>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                  CADET IDENTITY &amp; ACADEMIC RECORD
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>OFFICIAL EMAIL:</span>
+                    <strong>{viewCadetDossier.email}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>PHONE NUMBER:</span>
+                    <strong>{viewCadetDossier.phone || 'Not Provided'}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>ACADEMIC YEAR:</span>
+                    <strong>{viewCadetDossier.year}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>ENGINEERING BRANCH:</span>
+                    <strong>{viewCadetDossier.branch}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>DATE OF ENROLLMENT:</span>
+                    <strong>{new Date(viewCadetDossier.dateOfJoining || viewCadetDossier.createdAt).toLocaleDateString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>SUBMISSION DATE &amp; TIME:</span>
+                    <strong>{new Date(viewCadetDossier.createdAt).toLocaleString()}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>BATTALION &amp; COMPANY:</span>
+                    <strong>{viewCadetDossier.battalion || '2 Maharashtra Bn NCC, Pune'} ({viewCadetDossier.company || 'Bravo Company'})</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--navy-text-muted)', display: 'block', fontSize: '0.75rem' }}>GROUP HQ:</span>
+                    <strong>{viewCadetDossier.group || 'Pune Group HQ'}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Biometric Status Section (Phase 8 Validation) */}
+              <div>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                  BIOMETRIC &amp; FACIAL RECOGNITION STATUS
+                </h4>
+                {viewCadetDossier.biometricTemplate ? (
+                  <div
+                    style={{
+                      backgroundColor: '#ECFDF5',
+                      border: '1px solid #A7F3D0',
+                      borderRadius: '6px',
+                      padding: '0.85rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <CheckCircle2 size={22} style={{ color: '#047857', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065F46' }}>
+                        BIOMETRIC TEMPLATE READY
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '0.15rem' }}>
+                        128-dimensional facial embedding enrolled. Quality Score: {(viewCadetDossier.biometricTemplate.qualityScore * 100).toFixed(0)}%. Registered: {new Date(viewCadetDossier.biometricTemplate.registeredAt).toLocaleDateString()}.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      backgroundColor: '#FEF2F2',
+                      border: '1px solid #FECACA',
+                      borderRadius: '6px',
+                      padding: '0.85rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <X size={22} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#991B1B' }}>
+                        FACE NOT REGISTERED
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#B91C1C', marginTop: '0.15rem' }}>
+                        Cadet has not yet completed hardware facial scan. Must capture face before participating in live biometric parade muster.
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* NCC Enrollment Details / Prior Experience */}
+              <div>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                  PRIOR NCC EXPERIENCE &amp; CERTIFICATIONS
+                </h4>
+                <div
+                  style={{
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: '6px',
+                    padding: '0.85rem 1rem',
+                    fontSize: '0.85rem',
+                    color: 'var(--navy-primary)',
+                  }}
+                >
+                  {viewCadetDossier.enrollmentDetails || 'No prior NCC certifications or previous wing experience declared during enrollment.'}
+                </div>
+              </div>
+
+              {/* Review History / Audit Trail (Phase 5) */}
+              <div>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                  MULTI-TIER REVIEW AUDIT TRAIL
+                </h4>
+                {viewCadetDossier.applicationReviews && viewCadetDossier.applicationReviews.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {viewCadetDossier.applicationReviews.map((rev: any, idx: number) => (
+                      <div
+                        key={rev.id || idx}
+                        style={{
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '4px',
+                          padding: '0.65rem 0.85rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          fontSize: '0.82rem',
+                          flexWrap: 'wrap',
+                          gap: '0.5rem',
+                        }}
+                      >
+                        <div>
+                          <strong>{rev.action}</strong> by <strong>{rev.reviewer?.fullName || 'Officer'}</strong> ({rev.reviewer?.role || 'COMMAND'})
+                          {rev.remarks && <div style={{ color: 'var(--navy-text-muted)', fontSize: '0.78rem', marginTop: '0.2rem' }}>Remarks: "{rev.remarks}"</div>}
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                          {new Date(rev.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', fontStyle: 'italic' }}>
+                    No officer reviews recorded yet. Application is currently pending initial scrutiny.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div
+              style={{
+                backgroundColor: '#F8FAFC',
+                borderTop: '1px solid #E2E8F0',
+                padding: '1rem 1.5rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.75rem',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewCadetDossier(null)}
+                className="btn-secondary btn-sm"
+              >
+                Close Dossier
+              </button>
+
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {role === 'ADMIN_ANO' ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        setActionModal({
+                          type: 'registration',
+                          item: viewCadetDossier,
+                          action: 'APPROVE',
+                        })
+                      }
+                      className="btn-primary btn-sm"
+                    >
+                      Sanction &amp; Commission (ACTIVE)
+                    </button>
+                    <button
+                      onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'RETURN' })}
+                      className="btn-secondary btn-sm"
+                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                    >
+                      Return Dossier
+                    </button>
+                    <button
+                      onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'REJECT' })}
+                      className="btn-secondary btn-sm"
+                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                    >
+                      Reject
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() =>
+                        setActionModal({
+                          type: 'registration',
+                          item: viewCadetDossier,
+                          action: 'FORWARD',
+                        })
+                      }
+                      className="btn-primary btn-sm"
+                    >
+                      Forward to ANO
+                    </button>
+                    <button
+                      onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'RETURN' })}
+                      className="btn-secondary btn-sm"
+                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                    >
+                      Return Dossier
+                    </button>
+                    <button
+                      onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'REJECT' })}
+                      className="btn-secondary btn-sm"
+                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}

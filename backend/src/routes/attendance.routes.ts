@@ -29,10 +29,10 @@ router.post(
   bulkImportAttendance
 );
 
-// Session creation: Strictly Platoon Senior and Senior (Rule 1 & 23)
+// Session creation: Platoon Senior, Senior, and Admin/ANO (Phase 7 Parity)
 router.post(
   '/sessions',
-  requireRole(['PLATOON_SENIOR', 'SENIOR']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
   createAttendanceSession
 );
 
@@ -48,10 +48,10 @@ router.get(
   getSessionAttendance
 );
 
-// Live Face Verification (Platoon Senior & Senior only)
+// Live Face Verification (Platoon Senior, Senior, and Admin/ANO)
 router.post(
   '/sessions/:sessionId/verify-face',
-  requireRole(['PLATOON_SENIOR', 'SENIOR']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
   verifyFaceAttendance
 );
 

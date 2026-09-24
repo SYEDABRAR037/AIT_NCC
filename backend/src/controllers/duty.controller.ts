@@ -2,63 +2,6 @@ import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 
-// Helper to ensure baseline ceremonial duties exist for demonstration and audit
-const ensureBaselineDuties = async () => {
-  try {
-    const count = await prisma.duty.count();
-    if (count === 0) {
-      const activeCadet = await prisma.user.findFirst({
-        where: { role: 'CADET', status: 'ACTIVE' },
-      });
-      const anoUser = await prisma.user.findFirst({
-        where: { role: 'ADMIN_ANO' },
-      });
-
-      if (activeCadet && anoUser) {
-        await prisma.duty.createMany({
-          data: [
-            {
-              title: 'VIP Guard of Honour for Army Commander Visit',
-              dutyType: 'GUARD_OF_HONOUR',
-              location: 'AIT Main Gate & Central Plaza',
-              dutyDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-              reportingTime: '0630 hrs in ceremonial dress',
-              instructions: 'Ceremonial uniform with hackle, polished boots, brass accoutrements gleaming, white gloves.',
-              assignedCadetId: activeCadet.id,
-              assignedById: anoUser.id,
-              status: 'ASSIGNED',
-            },
-            {
-              title: 'Quarter Guard Sentry & Armoury Protocol',
-              dutyType: 'QUARTER_GUARD',
-              location: 'Battalion Quarter Guard & Flag Post',
-              dutyDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-              reportingTime: '0600 hrs sharp',
-              instructions: 'Quarter guard sentry drill, rifle handling, flawless turnout, ceremonial sash.',
-              assignedCadetId: activeCadet.id,
-              assignedById: anoUser.id,
-              status: 'ASSIGNED',
-            },
-            {
-              title: 'Station Parade Ground Pilot Escort',
-              dutyType: 'PILOT_DUTY',
-              location: 'Station Parade Ground',
-              dutyDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-              reportingTime: '0700 hrs',
-              instructions: 'Escort detail for Chief Guest vehicle convoy and VIP dais protocol.',
-              assignedCadetId: activeCadet.id,
-              assignedById: anoUser.id,
-              status: 'COMPLETED',
-            },
-          ],
-        });
-      }
-    }
-  } catch (err) {
-    console.error('ensureBaselineDuties error:', err);
-  }
-};
-
 // 1. Cadet views own assigned duties
 export const getMyDuties = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -66,8 +9,6 @@ export const getMyDuties = async (req: AuthRequest, res: Response): Promise<void
       res.status(401).json({ success: false, message: 'Authentication required' });
       return;
     }
-
-    await ensureBaselineDuties();
 
     const duties = await prisma.duty.findMany({
       where: { assignedCadetId: req.user.id },
@@ -116,8 +57,6 @@ export const getUnitDuties = async (req: AuthRequest, res: Response): Promise<vo
       res.status(403).json({ success: false, message: 'Unauthorized to view full unit duty roster' });
       return;
     }
-
-    await ensureBaselineDuties();
 
     const whereClause: any = {};
     if (req.user.role === 'SENIOR') {

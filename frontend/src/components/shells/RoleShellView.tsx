@@ -37,6 +37,7 @@ import { TimelineView } from './TimelineView';
 import { CampsActivitiesView } from './CampsActivitiesView';
 import { DutyRosterView } from './DutyRosterView';
 import { InquiryDeskView } from './InquiryDeskView';
+import { safeApiFetch } from '../../utils/api';
 
 
 interface RoleShellViewProps {
@@ -400,13 +401,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
   // Phase 10: Attendance Fetchers & Handlers
   const fetchAttendanceSessions = async () => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/attendance/sessions', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const { ok, data } = await safeApiFetch('/api/attendance/sessions');
+      if (ok && data?.success) {
         setAttendanceSessions(data.sessions || []);
         if (data.sessions?.length > 0 && !selectedAttendanceSession) {
           fetchSessionDetails(data.sessions[0].id);
@@ -418,13 +415,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   const fetchSessionDetails = async (sessionId: string) => {
-    if (!token) return;
     try {
-      const res = await fetch(`/api/attendance/sessions/${sessionId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${sessionId}`);
+      if (ok && data?.success) {
         setSelectedAttendanceSession(data.session);
       }
     } catch (err) {
@@ -433,13 +426,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   const fetchMyAttendance = async () => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/attendance/my', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const { ok, data } = await safeApiFetch('/api/attendance/my');
+      if (ok && data?.success) {
         setMyAttendanceData({ stats: data.stats, records: data.records || [] });
       }
     } catch (err) {
@@ -448,13 +437,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   const fetchAttendanceSummary = async () => {
-    if (!token) return;
     try {
-      const res = await fetch('/api/attendance/summary', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const { ok, data } = await safeApiFetch('/api/attendance/summary');
+      if (ok && data?.success) {
         setAttendanceSummaryList(data.summary || []);
       }
     } catch (err) {
@@ -463,19 +448,16 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   const handleMarkCadetAttendance = async (sessionId: string, cadetId: string, status: string) => {
-    if (!token) return;
     try {
-      const res = await fetch(`/api/attendance/sessions/${sessionId}/mark`, {
+      const { ok, data } = await safeApiFetch(`/api/attendance/sessions/${sessionId}/mark`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ cadetId, status }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         fetchSessionDetails(sessionId);
         fetchAttendanceSessions();
       } else {
-        alert(data.message || 'Failed to mark attendance');
+        alert(data?.message || 'Failed to mark attendance');
       }
     } catch (err) {
       console.error('Mark attendance error:', err);
@@ -484,15 +466,16 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
   const handleCreateAttendanceSession = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return;
     try {
-      const res = await fetch('/api/attendance/sessions', {
+      const { ok, data } = await safeApiFetch('/api/attendance/sessions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(attendanceForm),
+        body: JSON.stringify({
+          ...attendanceForm,
+          startTime: attendanceForm.timing || '06:00',
+        }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+
+      if (ok && data?.success) {
         setNewAttendanceSessionModal(false);
         setAttendanceForm({
           title: '',
@@ -509,10 +492,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           setBiometricCameraActive(true);
         }
       } else {
-        alert(data.message || 'Failed to create attendance session');
+        alert(data?.message || 'Failed to create attendance session');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create attendance session error:', err);
+      alert(err.message || 'Error creating attendance session');
     }
   };
 
