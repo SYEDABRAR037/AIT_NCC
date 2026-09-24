@@ -511,7 +511,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                     style={{
                       fontSize: '0.82rem',
                       fontWeight: 700,
-                      color: timerSeconds < 60 ? '#DC2626' : '#D97706',
+                      color: timerSeconds <= 20 ? '#DC2626' : '#D97706',
                       fontFamily: 'monospace',
                     }}
                   >
