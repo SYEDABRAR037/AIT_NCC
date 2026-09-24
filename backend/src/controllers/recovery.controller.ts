@@ -81,7 +81,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     // Generate cryptographically secure 6-digit OTP (Phase 10)
     const otpNumber = crypto.randomInt(100000, 999999).toString();
     const otpHash = await bcrypt.hash(otpNumber, 10);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes validity
+    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
     console.log('[RECOVERY] OTP_GENERATED');
 
     // Invalidate existing unused OTP records for this user (Phase 10)
@@ -154,7 +154,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       recoveryId: resetRecord.id,
       verificationId: resetRecord.id,
       maskedEmail: maskEmail(user.email),
-      expiresInSeconds: 300,
+      expiresInSeconds: 60,
     });
   } catch (error: any) {
     console.error('[RECOVERY] RECOVERY_ERROR:', error?.message || error);
@@ -206,7 +206,7 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
     // Generate new OTP
     const otpNumber = crypto.randomInt(100000, 999999).toString();
     const otpHash = await bcrypt.hash(otpNumber, 10);
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
 
     const newResetRecord = await prisma.passwordReset.create({
       data: {
@@ -263,7 +263,7 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
       recoveryId: newResetRecord.id,
       verificationId: newResetRecord.id,
       maskedEmail: maskEmail(previousReset.user.email),
-      expiresInSeconds: 300,
+      expiresInSeconds: 60,
     });
   } catch (error) {
     console.error('resendPasswordResetOtp error:', error);

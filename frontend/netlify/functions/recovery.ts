@@ -43,7 +43,7 @@ Your NCC account recovery OTP is:
 
 ${otp}
 
-This OTP is valid for 1 minutes.
+This OTP is valid for 60 seconds only.
 
 Please do not share this OTP with anyone.
 
@@ -89,7 +89,7 @@ NCC Digital Command & Cadet Management System`;
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
         <div class="otp-code">${otp}</div>
-        <div class="validity">Valid for 5 minutes only</div>
+        <div class="validity">Valid for 60 seconds only</div>
       </div>
       <div class="notice">
         Please do not share this OTP with anyone.<br><br>
@@ -182,7 +182,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       const otp = crypto.randomInt(100000, 999999).toString();
       const otpHash = await bcrypt.hash(otp, 10);
       const recoveryId = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
 
       // Invalidate existing unused records
       await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW() WHERE "userId" = $1 AND "usedAt" IS NULL', [
@@ -222,7 +222,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
           recoveryId,
           verificationId: recoveryId,
           maskedEmail: maskEmail(user.email),
-          expiresInSeconds: 300,
+          expiresInSeconds: 60,
         }),
       };
     }
@@ -268,7 +268,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       const otp = crypto.randomInt(100000, 999999).toString();
       const otpHash = await bcrypt.hash(otp, 10);
       const newRecoveryId = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
 
       await pgClient.query(
         'INSERT INTO "PasswordReset" (id, "userId", "otpHash", "expiresAt", "attemptCount", "lastResendAt", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, 0, NOW(), NOW(), NOW())',
@@ -297,7 +297,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
           recoveryId: newRecoveryId,
           verificationId: newRecoveryId,
           maskedEmail: maskEmail(prev.email),
-          expiresInSeconds: 300,
+          expiresInSeconds: 60,
         }),
       };
     }

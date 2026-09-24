@@ -84,7 +84,7 @@ Your NCC account recovery OTP is:
 
 ${otp}
 
-This OTP is valid for ${expiresInMinutes} minutes.
+This OTP is valid for 60 seconds only.
 
 Please do not share this OTP with anyone.
 
@@ -130,7 +130,7 @@ NCC Digital Command & Cadet Management System`;
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
         <div class="otp-code">${otp}</div>
-        <div class="validity">Valid for ${expiresInMinutes} minutes only</div>
+        <div class="validity">Valid for 60 seconds only</div>
       </div>
       <div class="notice">
         Please do not share this OTP with anyone.<br><br>

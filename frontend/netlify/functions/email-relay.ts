@@ -76,7 +76,7 @@ Your One-Time Password (OTP) for NCC account recovery is:
 
 ${otp}
 
-This OTP is valid for ${expiresInMinutes} minutes.
+This OTP is valid for 60 seconds only.
 
 If you did not request an account recovery, please ignore this email.
 
@@ -123,7 +123,7 @@ Official Account Recovery System`;
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
         <div class="otp-code">${otp}</div>
-        <div class="validity">Valid for ${expiresInMinutes} minutes only</div>
+        <div class="validity">Valid for 60 seconds only</div>
       </div>
       <div class="notice">
         If you did not request an account recovery, please ignore this email. Do not share this OTP with anyone.

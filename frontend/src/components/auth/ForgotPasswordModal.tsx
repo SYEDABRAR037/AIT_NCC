@@ -27,7 +27,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Timers and UI states
-  const [timerSeconds, setTimerSeconds] = useState(300); // 5 minutes
+  const [timerSeconds, setTimerSeconds] = useState(60); // 60 seconds
   const [resendCooldown, setResendCooldown] = useState(0); // 45s cooldown
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       setResetToken('');
       setNewPassword('');
       setConfirmPassword('');
-      setTimerSeconds(300);
+      setTimerSeconds(60);
       setResendCooldown(0);
     }
   }, [isOpen]);
@@ -111,7 +111,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       if (isSuccessful) {
         const id = data?.recoveryId || data?.verificationId || '';
         const masked = data?.maskedEmail || email.trim();
-        const seconds = Number(data?.expiresInSeconds) || 300;
+        const seconds = Number(data?.expiresInSeconds) || 60;
         setRecoveryId(id);
         setMaskedEmail(masked);
         setTimerSeconds(seconds);
@@ -160,7 +160,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       if (isSuccessful) {
         const id = data?.recoveryId || data?.verificationId || recoveryId;
         const masked = data?.maskedEmail || maskedEmail;
-        const seconds = Number(data?.expiresInSeconds) || 300;
+        const seconds = Number(data?.expiresInSeconds) || 60;
         setRecoveryId(id);
         setMaskedEmail(masked);
         setTimerSeconds(seconds);
