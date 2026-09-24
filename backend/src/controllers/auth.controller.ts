@@ -18,6 +18,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       enrollmentDetails,
       dateOfJoining,
       password,
+      profilePhotoUrl,
+      profilePhoto,
+      photoSnapshot,
+      faceDescriptor,
+      qualityScore,
     } = req.body;
 
     // 1. Required Field Validation
@@ -30,7 +35,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 2. Mandatory Biometric Validation (Phase 13)
-    const { faceDescriptor, photoSnapshot, qualityScore } = req.body;
     if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length < 128) {
       res.status(400).json({
         success: false,
@@ -45,8 +49,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const trimmedRoll = collegeRollNumber.trim().toUpperCase();
 
     // 3. Strict Duplicate Detection (Phase 11 & 14)
-    const existingEmail = await prisma.user.findUnique({
-      where: { email: trimmedEmail },
+    const existingEmail = await prisma.user.findFirst({
+      where: { email: { equals: trimmedEmail, mode: 'insensitive' } },
     });
     if (existingEmail) {
       res.status(409).json({
@@ -57,8 +61,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const existingRegimental = await prisma.user.findUnique({
-      where: { regimentalNumber: trimmedRegimental },
+    const existingRegimental = await prisma.user.findFirst({
+      where: { regimentalNumber: { equals: trimmedRegimental, mode: 'insensitive' } },
     });
     if (existingRegimental) {
       res.status(409).json({
@@ -69,8 +73,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const existingRoll = await prisma.user.findUnique({
-      where: { collegeRollNumber: trimmedRoll },
+    const existingRoll = await prisma.user.findFirst({
+      where: { collegeRollNumber: { equals: trimmedRoll, mode: 'insensitive' } },
     });
     if (existingRoll) {
       res.status(409).json({
@@ -85,7 +89,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 5. Atomic Registration Transaction (Phase 12)
+    // Profile photo & biometric snapshot normalization
+    const finalProfilePhoto = profilePhotoUrl || profilePhoto || photoSnapshot || null;
+    const finalBiometricSnapshot = photoSnapshot || profilePhoto || profilePhotoUrl || null;
+
+    // 5. Atomic Registration Transaction (Phase 8 & 12)
     const [newUser] = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
@@ -99,6 +107,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           platoonName: platoon || 'Senior Division',
           enrollmentDetails: enrollmentDetails ? enrollmentDetails.trim() : null,
           dateOfJoining: dateOfJoining ? new Date(dateOfJoining) : new Date(),
+          profilePhotoUrl: finalProfilePhoto,
           passwordHash,
           role: 'CADET', // Strictly CADET for public enrollment
           status: 'UNDER_REVIEW', // Account enters multi-tier review queue
@@ -109,7 +118,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         data: {
           cadetId: user.id,
           descriptor: JSON.stringify(faceDescriptor),
-          photoSnapshot: photoSnapshot || null,
+          photoSnapshot: finalBiometricSnapshot,
           qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.98,
           registeredBy: 'SELF_ENROLLMENT (Cadet Registration)',
         },
@@ -118,12 +127,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return [user];
     });
 
+    console.log(`[REGISTRATION] New cadet registered: ${newUser.fullName} (${newUser.regimentalNumber}). ProfilePhoto: ${!!newUser.profilePhotoUrl}, Biometrics: Yes`);
+
     res.status(201).json({
       success: true,
       message: 'Registration submitted successfully. Your application is under institutional review.',
       userId: newUser.id,
       status: newUser.status,
       biometricEnrolled: true,
+      profilePhotoSaved: Boolean(newUser.profilePhotoUrl),
     });
   } catch (error: any) {
     console.error('Registration error:', error);

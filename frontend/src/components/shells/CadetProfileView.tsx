@@ -117,9 +117,18 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               fontSize: '1.75rem',
               fontWeight: 800,
               border: '3px solid #CBD5E1',
+              overflow: 'hidden',
             }}
           >
-            {user?.fullName?.charAt(0) || 'C'}
+            {user?.profilePhotoUrl ? (
+              <img
+                src={user.profilePhotoUrl}
+                alt={user.fullName}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              user?.fullName?.charAt(0) || 'C'
+            )}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>

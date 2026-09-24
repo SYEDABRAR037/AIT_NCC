@@ -13,6 +13,7 @@ export interface AuthRequest extends Request {
     role: Role;
     status: AccountStatus;
     platoonName: string;
+    profilePhotoUrl?: string | null;
   };
 }
 
@@ -53,6 +54,7 @@ export const authenticateToken = async (
         role: true,
         status: true,
         platoonName: true,
+        profilePhotoUrl: true,
       },
     });
 

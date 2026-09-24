@@ -24,7 +24,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     confirmPassword: '',
   });
 
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [photoStatus, setPhotoStatus] = useState<string | null>(null);
+  const [faceSnapshot, setFaceSnapshot] = useState<string | null>(null);
   const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -55,7 +57,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       password: '',
       confirmPassword: '',
     });
-    setPhotoPreview(null);
+    setProfilePhoto(null);
+    setPhotoStatus(null);
+    setFaceSnapshot(null);
     setFaceDescriptor(null);
     setBiometricStatus('Biometric Face Registration (FaceNet 128-d) for automatic muster.');
     setErrorMsg(null);
@@ -213,12 +217,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                     if (ctx && videoRef.current) {
                       ctx.drawImage(videoRef.current, 0, 0, 180, 180);
                       const snapshot = canvas.toDataURL('image/jpeg', 0.85);
-                      setPhotoPreview(snapshot);
+                      setFaceSnapshot(snapshot);
+                      if (!profilePhoto) {
+                        setProfilePhoto(snapshot);
+                      }
                     }
 
                     const descriptor = Array.from(single.descriptor);
                     setFaceDescriptor(descriptor);
-                    setBiometricStatus('✓ Live Camera Biometric Template Captured (128-d Vector Ready)');
+                    setBiometricStatus('Face registered successfully.');
                     stopCamera();
                     return;
                   }
@@ -255,7 +262,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        setPhotoPreview(reader.result as string);
+        const result = reader.result as string;
+        setProfilePhoto(result);
+        setPhotoStatus('Profile photo saved successfully.');
       };
       reader.readAsDataURL(file);
     }
@@ -285,13 +294,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     try {
       const payload: any = {
         ...formData,
-        photoSnapshot: photoPreview,
+        profilePhotoUrl: profilePhoto || faceSnapshot,
+        profilePhoto: profilePhoto || faceSnapshot,
+        photoSnapshot: faceSnapshot || profilePhoto,
         faceDescriptor: faceDescriptor || undefined,
         qualityScore: faceDescriptor ? 0.98 : undefined,
       };
       const res = await registerCadet(payload);
       if (res.success) {
-        setSuccessMsg(res.message || 'Registration submitted successfully. Your application is under review.');
+        setSuccessMsg(res.message || 'Registration submitted successfully. Profile photo and face biometrics are permanently recorded in the institutional database. Application is under review.');
       } else {
         setErrorMsg(res.message || 'Registration failed. Please check the entered fields.');
       }
@@ -564,7 +575,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                 CADET UNIFORM / PROFILE PHOTO
               </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <div
                   style={{
                     width: '64px',
@@ -578,18 +589,25 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                     backgroundColor: 'var(--white-surface)',
                   }}
                 >
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {profilePhoto || faceSnapshot ? (
+                    <img src={profilePhoto || faceSnapshot || ''} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <Camera size={24} style={{ color: 'var(--navy-text-muted)' }} />
                   )}
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  style={{ fontSize: '0.85rem' }}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  {photoStatus && (
+                    <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
+                      ✓ {photoStatus}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 

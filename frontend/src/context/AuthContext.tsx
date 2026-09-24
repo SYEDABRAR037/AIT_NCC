@@ -235,7 +235,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (contentType && contentType.includes('application/json')) {
         const data = await res.json();
         if (res.ok && data.success) {
-          return { success: true, message: data.message };
+          return {
+            success: true,
+            message: data.message,
+            profilePhotoSaved: data.profilePhotoSaved,
+            biometricEnrolled: data.biometricEnrolled,
+          };
         } else {
           return {
             success: false,
@@ -244,60 +249,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
         }
       }
-      // If server returned HTML (Netlify static SPA fallback)
-      throw new Error('Non-JSON response from server');
+      throw new Error('Institutional server returned an invalid response.');
     } catch (err: any) {
-      if (apiBase) {
-        return { success: false, message: err.message || 'Institutional registration service unavailable.' };
-      }
-      console.warn('Backend server offline or unreachable. Registering in cloud preview queue:', err);
-
-      try {
-        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-        const cleanEmail = formData.email?.trim().toLowerCase();
-        const cleanReg = formData.regimentalNumber?.trim().toUpperCase();
-        const cleanRoll = formData.collegeRollNumber?.trim().toUpperCase();
-
-        if (offlineCadets.some((c: any) => c.email?.toLowerCase() === cleanEmail)) {
-          return { success: false, field: 'email', message: 'This email is already registered.' };
-        }
-        if (offlineCadets.some((c: any) => c.regimentalNumber?.toUpperCase() === cleanReg)) {
-          return { success: false, field: 'regimentalNumber', message: 'This regimental number is already registered.' };
-        }
-        if (offlineCadets.some((c: any) => c.collegeRollNumber?.toUpperCase() === cleanRoll)) {
-          return { success: false, field: 'collegeRollNumber', message: 'This college roll number is already registered.' };
-        }
-
-        const newCadet = {
-          id: 'cadet-' + Date.now(),
-          fullName: formData.fullName,
-          regimentalNumber: cleanReg,
-          collegeRollNumber: cleanRoll,
-          email: cleanEmail,
-          phone: formData.phone || null,
-          year: formData.year || 'FE (1st Year)',
-          branch: formData.branch || 'Computer Engineering',
-          platoonName: formData.platoon || 'Senior Division',
-          enrollmentDetails: formData.enrollmentDetails || null,
-          dateOfJoining: formData.dateOfJoining || new Date().toISOString().split('T')[0],
-          role: 'CADET',
-          status: 'UNDER_REVIEW',
-          password: formData.password,
-          createdAt: new Date().toISOString(),
-          photoSnapshot: formData.photoSnapshot || null,
-          faceDescriptor: formData.faceDescriptor || null,
-        };
-
-        offlineCadets.push(newCadet);
-        localStorage.setItem('ncc_offline_cadets', JSON.stringify(offlineCadets));
-
-        return {
-          success: true,
-          message: 'Registration submitted successfully! Your application has been filed in the institutional queue.',
-        };
-      } catch (localErr) {
-        return { success: false, message: 'Institutional registration error. Please try again.' };
-      }
+      console.error('Registration server communication error:', err);
+      return {
+        success: false,
+        message: err.message || 'Institutional registration service unavailable. Please try again.',
+      };
     }
   };
 
