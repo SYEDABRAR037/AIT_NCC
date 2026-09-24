@@ -24,6 +24,11 @@ export const getApiBaseUrl = (): string => {
     return String((window as any).__NCC_API_BASE_URL__).trim().replace(/\/$/, '');
   }
 
+  // 4. In production deployed on Netlify, connect directly to production command server
+  if (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')) {
+    return 'https://ait-ncc.onrender.com';
+  }
+
   return '';
 };
 
@@ -77,7 +82,7 @@ export const safeApiFetch = async <T = any>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const timeoutMs = options.timeoutMs || 15000;
+  const timeoutMs = options.timeoutMs || 25000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
