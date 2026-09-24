@@ -84,6 +84,14 @@ app.use('/api/calendar', calendarRoutes);
 app.use('/api/duties', dutyRoutes);
 app.use('/api/camps', campRoutes);
 
+// 404 JSON Handler for all API routes (Phases 2 & 4: API endpoints must never return HTML)
+app.all('/api/*', (_req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    message: 'Institutional command endpoint not found or inactive.',
+  });
+});
+
 // Error Handling Middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Server Unhandled Error:', err);

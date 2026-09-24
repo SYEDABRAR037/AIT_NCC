@@ -109,7 +109,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setErrorMsg(data?.message || 'Unable to verify the provided account details.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Institutional recovery service unavailable. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('returned HTML') || msg.includes('Failed to parse') || msg.includes('failed to fetch')) {
+        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
+      } else {
+        setErrorMsg(msg || 'Account recovery service is temporarily unavailable. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -139,7 +144,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setErrorMsg(data?.message || 'Failed to resend OTP. Please try again.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to resend OTP.');
+      const msg = err?.message || '';
+      if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
+        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
+      } else {
+        setErrorMsg(msg || 'Failed to resend OTP.');
+      }
     } finally {
       setLoading(false);
     }
@@ -179,7 +189,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setErrorMsg(data?.message || 'Invalid OTP. Please check the code and try again.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'OTP verification failed. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
+        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
+      } else {
+        setErrorMsg(msg || 'OTP verification failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -219,7 +234,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setErrorMsg(data?.message || 'Password reset failed. Please try again.');
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Password reset failed.');
+      const msg = err?.message || '';
+      if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
+        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
+      } else {
+        setErrorMsg(msg || 'Password reset failed.');
+      }
     } finally {
       setLoading(false);
     }
