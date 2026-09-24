@@ -178,28 +178,40 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
         };
       }
 
-      // CONCURRENT REVIEW PROTECTION (Phase 3 Rule):
-      // Check if Senior or Platoon Senior already performed the first review
-      const priorOfficerReview = cadet.applicationReviews.find((r) =>
-        ['SENIOR_FORWARDED', 'PLATOON_SENIOR_FORWARDED', 'SENIOR_REVIEW', 'PLATOON_SENIOR_REVIEW'].includes(r.stage) &&
-        ['FORWARD', 'APPROVE'].includes(r.action)
-      );
-
-      if (['SENIOR', 'PLATOON_SENIOR'].includes(reviewerRole)) {
-        if (priorOfficerReview) {
-          const priorRoleDisplay = priorOfficerReview.reviewer?.role === 'SENIOR' ? 'Senior Cadet' : 'Platoon Senior';
-          const priorOfficerName = priorOfficerReview.reviewer?.fullName || 'another officer';
+      // STAGE-SPECIFIC CONCURRENCY PROTECTION:
+      // Prevent duplicate reviews at the same officer tier
+      if (reviewerRole === 'SENIOR') {
+        const priorSeniorReview = cadet.applicationReviews.find((r) =>
+          (r.stage === 'SENIOR_REVIEW' || r.stage === 'SENIOR_FORWARDED') &&
+          ['FORWARD', 'APPROVE'].includes(r.action)
+        );
+        if (priorSeniorReview) {
+          const priorOfficerName = priorSeniorReview.reviewer?.fullName || 'a Senior Cadet';
           throw {
             statusCode: 409,
-            message: `Concurrent Review Lock: This registration was already reviewed and forwarded by ${priorRoleDisplay} (${priorOfficerName}). It is now awaiting ANO / Admin Final Approval.`,
+            message: `Senior Review already completed by ${priorOfficerName}. Application is currently in the Platoon Senior / ANO queue.`,
+          };
+        }
+      }
+
+      if (reviewerRole === 'PLATOON_SENIOR') {
+        const priorPlatoonReview = cadet.applicationReviews.find((r) =>
+          (r.stage === 'PLATOON_SENIOR_REVIEW' || r.stage === 'PLATOON_SENIOR_FORWARDED') &&
+          ['FORWARD', 'APPROVE'].includes(r.action)
+        );
+        if (priorPlatoonReview) {
+          const priorOfficerName = priorPlatoonReview.reviewer?.fullName || 'a Platoon Senior';
+          throw {
+            statusCode: 409,
+            message: `Platoon Senior Review already completed by ${priorOfficerName}. Application is currently awaiting ANO Final Approval.`,
           };
         }
       }
 
       // Determine stage and target status
-      let stage = 'SENIOR_FORWARDED';
+      let stage = 'SENIOR_REVIEW';
       if (reviewerRole === 'PLATOON_SENIOR') {
-        stage = 'PLATOON_SENIOR_FORWARDED';
+        stage = 'PLATOON_SENIOR_REVIEW';
       } else if (reviewerRole === 'ADMIN_ANO') {
         stage = 'ANO_FINAL_APPROVAL';
       }
@@ -215,7 +227,7 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
           // ANO Final Approval: transitions to ACTIVE
           newStatus = 'ACTIVE';
         } else {
-          // Senior / Platoon Senior first approval forwards to ANO
+          // Senior / Platoon Senior first approval forwards to next review stage
           newStatus = 'UNDER_REVIEW';
         }
       } else if (normalizedAction === 'FORWARD') {
@@ -236,10 +248,42 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
         },
       });
 
-      // 2. Update Cadet User Status
+      // 2. Assignment resolution on ANO Final Approval (Phase 13 & 14)
+      if (reviewerRole === 'ADMIN_ANO' && newStatus === 'ACTIVE') {
+        let designatedSeniorId = req.body.seniorId ? String(req.body.seniorId).trim() : null;
+
+        // If not explicitly provided in request body, automatically link to the Senior Cadet
+        // who reviewed and endorsed this application during the review pipeline
+        if (!designatedSeniorId) {
+          const endorsingSeniorReview = cadet.applicationReviews.find(
+            (r) => (r.stage === 'SENIOR_REVIEW' || r.stage === 'SENIOR_FORWARDED') && r.reviewer?.role === 'SENIOR'
+          );
+          if (endorsingSeniorReview) {
+            designatedSeniorId = endorsingSeniorReview.reviewerId;
+          }
+        }
+
+        if (designatedSeniorId) {
+          await tx.seniorAssignment.upsert({
+            where: { cadetId: cadet.id },
+            update: { seniorId: designatedSeniorId },
+            create: { cadetId: cadet.id, seniorId: designatedSeniorId },
+          });
+        }
+      }
+
+      // 3. Update Cadet User Record
+      const cadetUpdateData: any = { status: newStatus };
+      if (req.body.platoonName) {
+        cadetUpdateData.platoonName = String(req.body.platoonName).trim();
+      }
+      if (req.body.team) {
+        cadetUpdateData.team = String(req.body.team).trim();
+      }
+
       const updatedCadet = await tx.user.update({
         where: { id: cadet.id },
-        data: { status: newStatus },
+        data: cadetUpdateData,
         select: {
           id: true,
           fullName: true,
@@ -250,6 +294,7 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
           year: true,
           branch: true,
           platoonName: true,
+          team: true,
           status: true,
         },
       });

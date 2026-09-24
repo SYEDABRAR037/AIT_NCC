@@ -36,34 +36,45 @@ export const listUsers = async (req: AuthRequest, res: Response): Promise<void> 
       ];
     }
 
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        fullName: true,
-        regimentalNumber: true,
-        collegeRollNumber: true,
-        email: true,
-        phone: true,
-        year: true,
-        branch: true,
-        platoonName: true,
-        role: true,
-        status: true,
-        dateOfJoining: true,
-        createdAt: true,
-        mentorAssignment: {
-          include: {
-            senior: {
-              select: { id: true, fullName: true, regimentalNumber: true },
+    const [users, totalActiveCadets] = await Promise.all([
+      prisma.user.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          fullName: true,
+          regimentalNumber: true,
+          collegeRollNumber: true,
+          email: true,
+          phone: true,
+          year: true,
+          branch: true,
+          platoonName: true,
+          battalion: true,
+          company: true,
+          group: true,
+          team: true,
+          profilePhotoUrl: true,
+          enrollmentDetails: true,
+          role: true,
+          status: true,
+          dateOfJoining: true,
+          createdAt: true,
+          mentorAssignment: {
+            include: {
+              senior: {
+                select: { id: true, fullName: true, regimentalNumber: true, role: true },
+              },
             },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({
+        where: { role: Role.CADET, status: AccountStatus.ACTIVE },
+      }),
+    ]);
 
-    res.json({ success: true, count: users.length, users });
+    res.json({ success: true, count: users.length, totalActiveCadets, users });
   } catch (error) {
     console.error('listUsers error:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve unit personnel' });
@@ -190,8 +201,19 @@ export const assignCadetToSenior = async (req: AuthRequest, res: Response): Prom
   try {
     const { cadetId, seniorId } = req.body;
 
-    if (!cadetId || !seniorId) {
-      res.status(400).json({ success: false, message: 'cadetId and seniorId are required' });
+    if (!cadetId) {
+      res.status(400).json({ success: false, message: 'cadetId is required' });
+      return;
+    }
+
+    if (seniorId === 'UNASSIGN' || !seniorId) {
+      await prisma.seniorAssignment.deleteMany({
+        where: { cadetId },
+      });
+      res.json({
+        success: true,
+        message: 'Cadet mentor assignment cleared successfully.',
+      });
       return;
     }
 

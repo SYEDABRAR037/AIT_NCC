@@ -47,21 +47,31 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
     action: string;
   } | null>(null);
   const [remarks, setRemarks] = useState('');
+  const [designatedSeniorId, setDesignatedSeniorId] = useState('');
+  const [availableSeniors, setAvailableSeniors] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
 
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      const [regRes, leaveRes, reqRes] = await Promise.all([
+      const [regRes, leaveRes, reqRes, usersRes] = await Promise.all([
         safeApiFetch('/api/reviews/pending').then((r) => r.data).catch(() => ({ applications: [] })),
         safeApiFetch('/api/leave/pending').then((r) => r.data).catch(() => ({ leaves: [] })),
         safeApiFetch('/api/requests/officer').then((r) => r.data).catch(() => ({ requests: [] })),
+        role === 'ADMIN_ANO'
+          ? safeApiFetch('/api/admin/users').then((r) => r.data).catch(() => ({ users: [] }))
+          : Promise.resolve({ users: [] }),
       ]);
 
       const pendingRegs = regRes?.applications || regRes?.users || [];
       setRegistrations(pendingRegs);
       setLeaves(leaveRes?.leaves || []);
       setRequests(reqRes?.requests || []);
+      if (usersRes?.users) {
+        setAvailableSeniors(
+          usersRes.users.filter((u: any) => u.role === 'SENIOR' || u.role === 'PLATOON_SENIOR')
+        );
+      }
     } catch (err) {
       console.error('Error fetching approval desk data:', err);
     } finally {
@@ -85,6 +95,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
           body: JSON.stringify({
             action: actionModal.action,
             remarks,
+            seniorId: designatedSeniorId || undefined,
           }),
         });
 
@@ -122,10 +133,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
       setActionModal(null);
       setRemarks('');
+      setDesignatedSeniorId('');
       if (viewCadetDossier && viewCadetDossier.id === actionModal.item.id) {
         setViewCadetDossier(null);
       }
       fetchAllData();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ncc:data-updated'));
+      }
     } catch (err: any) {
       console.error('Error processing approval action:', err);
       alert(err.message || 'Error processing action');
@@ -253,13 +268,21 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
             </div>
           ) : (
             registrations.map((cadet) => {
-              const priorOfficerReview = cadet.applicationReviews?.find((r: any) =>
-                ['SENIOR_FORWARDED', 'PLATOON_SENIOR_FORWARDED', 'SENIOR_REVIEW', 'PLATOON_SENIOR_REVIEW'].includes(r.stage) &&
-                ['FORWARD', 'APPROVE'].includes(r.action)
+              const seniorReview = cadet.applicationReviews?.find((r: any) =>
+                (r.stage === 'SENIOR_REVIEW' || r.stage === 'SENIOR_FORWARDED') && ['FORWARD', 'APPROVE'].includes(r.action)
               );
-              const isAlreadyForwarded = !!priorOfficerReview;
-              const reviewerTitle = priorOfficerReview?.reviewer?.role === 'SENIOR' ? 'Senior Cadet' : 'Platoon Senior';
-              const reviewerName = priorOfficerReview?.reviewer?.fullName || 'Authorized Officer';
+              const hasSeniorReviewed = !!seniorReview;
+              const seniorReviewerName = seniorReview?.reviewer?.fullName || 'Senior Cadet';
+
+              const platoonReview = cadet.applicationReviews?.find((r: any) =>
+                (r.stage === 'PLATOON_SENIOR_REVIEW' || r.stage === 'PLATOON_SENIOR_FORWARDED') && ['FORWARD', 'APPROVE'].includes(r.action)
+              );
+              const hasPlatoonReviewed = !!platoonReview;
+              const platoonReviewerName = platoonReview?.reviewer?.fullName || 'Platoon Senior';
+
+              const isSeniorOfficer = role === 'SENIOR';
+              const isPlatoonSeniorOfficer = role === 'PLATOON_SENIOR';
+              const isAnoOfficer = role === 'ADMIN_ANO';
 
               return (
                 <div key={cadet.id} className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
@@ -270,7 +293,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                           {cadet.name || cadet.fullName}
                         </h3>
                         <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
-                          {cadet.status}
+                          {hasPlatoonReviewed ? 'PLATOON SENIOR REVIEWED' : hasSeniorReviewed ? 'SENIOR REVIEWED' : (cadet.status || 'UNDER_REVIEW')}
                         </span>
                         <span className="badge-institutional">{cadet.platoon || cadet.platoonName || 'Platoon'}</span>
                         {cadet.biometricTemplate ? (
@@ -298,7 +321,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                         <span>VIEW FULL PROFILE</span>
                       </button>
 
-                      {role === 'ADMIN_ANO' ? (
+                      {isAnoOfficer ? (
                         <>
                           <button
                             onClick={() =>
@@ -327,74 +350,129 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                             Reject
                           </button>
                         </>
-                      ) : isAlreadyForwarded ? (
-                        <span
-                          style={{
-                            fontSize: '0.78rem',
-                            color: '#047857',
-                            fontWeight: 700,
-                            padding: '0.4rem 0.75rem',
-                            background: '#ECFDF5',
-                            borderRadius: '4px',
-                            border: '1px solid #A7F3D0',
-                          }}
-                        >
-                          ✓ Forwarded to ANO
-                        </span>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() =>
-                              setActionModal({
-                                type: 'registration',
-                                item: cadet,
-                                action: 'FORWARD',
-                              })
-                            }
-                            className="btn-primary btn-sm"
+                      ) : isSeniorOfficer ? (
+                        hasSeniorReviewed ? (
+                          <span
+                            style={{
+                              fontSize: '0.78rem',
+                              color: '#047857',
+                              fontWeight: 700,
+                              padding: '0.4rem 0.75rem',
+                              background: '#ECFDF5',
+                              borderRadius: '4px',
+                              border: '1px solid #A7F3D0',
+                            }}
                           >
-                            Forward to Command
-                          </button>
-                          <button
-                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
-                            className="btn-secondary btn-sm"
-                            style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                            ✓ Senior Review Completed
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() =>
+                                setActionModal({
+                                  type: 'registration',
+                                  item: cadet,
+                                  action: 'FORWARD',
+                                })
+                              }
+                              className="btn-primary btn-sm"
+                            >
+                              Endorse &amp; Forward (Senior Review)
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
+                              className="btn-secondary btn-sm"
+                              style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                            >
+                              Return
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
+                              className="btn-secondary btn-sm"
+                              style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )
+                      ) : isPlatoonSeniorOfficer ? (
+                        hasPlatoonReviewed ? (
+                          <span
+                            style={{
+                              fontSize: '0.78rem',
+                              color: '#047857',
+                              fontWeight: 700,
+                              padding: '0.4rem 0.75rem',
+                              background: '#ECFDF5',
+                              borderRadius: '4px',
+                              border: '1px solid #A7F3D0',
+                            }}
                           >
-                            Return
-                          </button>
-                          <button
-                            onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
-                            className="btn-secondary btn-sm"
-                            style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
+                            ✓ Platoon Senior Endorsed
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() =>
+                                setActionModal({
+                                  type: 'registration',
+                                  item: cadet,
+                                  action: 'FORWARD',
+                                })
+                              }
+                              className="btn-primary btn-sm"
+                            >
+                              Endorse &amp; Forward to ANO
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
+                              className="btn-secondary btn-sm"
+                              style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                            >
+                              Return
+                            </button>
+                            <button
+                              onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
+                              className="btn-secondary btn-sm"
+                              style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )
+                      ) : null}
                     </div>
                   </div>
 
-                  {/* 3-Stage Cadet Registration Pipeline Stepper */}
+                  {/* 4-Stage Cadet Registration Pipeline Stepper */}
                   <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '0.65rem 0.85rem', margin: '0.65rem 0' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--navy-primary)', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
                       CADET ONBOARDING PIPELINE:
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
                       <div>
                         <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>✓ 1. Registered</div>
                         <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Online Application</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: isAlreadyForwarded ? '#047857' : '#D97706' }}>
-                          {isAlreadyForwarded ? `✓ 2. Forwarded by ${reviewerTitle}` : '● 2. Senior / Platoon Senior Review'}
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasSeniorReviewed ? '#047857' : '#D97706' }}>
+                          {hasSeniorReviewed ? `✓ 2. Senior Review` : '● 2. Senior Review'}
                         </div>
                         <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
-                          {isAlreadyForwarded ? reviewerName : 'Awaiting Officer Endorsement'}
+                          {hasSeniorReviewed ? seniorReviewerName : 'Squad Endorsement'}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: isAlreadyForwarded ? (role === 'ADMIN_ANO' ? '#D97706' : '#1E3A8A') : '#94A3B8' }}>
-                          {isAlreadyForwarded ? '● 3. Awaiting ANO Sanction' : '3. ANO Final Approval'}
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed ? '#047857' : (hasSeniorReviewed ? '#D97706' : '#94A3B8') }}>
+                          {hasPlatoonReviewed ? `✓ 3. Platoon Sr.` : (hasSeniorReviewed ? '● 3. Platoon Sr.' : '3. Platoon Sr.')}
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                          {hasPlatoonReviewed ? platoonReviewerName : 'Platoon Endorsement'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed || hasSeniorReviewed ? '#D97706' : '#94A3B8' }}>
+                          4. ANO Final Approval
                         </div>
                         <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Associate NCC Officer</div>
                       </div>
@@ -714,6 +792,34 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   }}
                 />
               </div>
+
+              {actionModal.type === 'registration' && actionModal.action === 'APPROVE' && role === 'ADMIN_ANO' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                    ASSIGN SENIOR CADET MENTOR (OPTIONAL)
+                  </label>
+                  <select
+                    value={designatedSeniorId}
+                    onChange={(e) => setDesignatedSeniorId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '0.6rem',
+                      borderRadius: '4px',
+                      border: '1px solid var(--navy-border)',
+                      fontSize: '0.85rem',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                    }}
+                  >
+                    <option value="">Auto-Assign (from Senior Endorsement, or leave pending)</option>
+                    {availableSeniors.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.fullName} ({s.regimentalNumber}) — {s.role}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--white-border)' }}>
                 <button

@@ -20,6 +20,7 @@ import {
   Camera,
   Check,
   X,
+  Eye,
   Award,
   Printer,
   ShieldCheck,
@@ -95,6 +96,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   // Phase 7-9: Senior & Platoon Senior assigned cadets
   const [assignedCadets, setAssignedCadets] = useState<any[]>([]);
   const [platoonCadets, setPlatoonCadets] = useState<any[]>([]);
+  const [totalActiveCadets, setTotalActiveCadets] = useState<number | null>(null);
+  const [selectedCadetForProfile, setSelectedCadetForProfile] = useState<any | null>(null);
 
   // Phase 7-9: Leave Management State
   const [leaveApplications, setLeaveApplications] = useState<any[]>([]); // for review (senior/PS/admin)
@@ -133,7 +136,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const [biometricCameraActive, setBiometricCameraActive] = useState(false);
   const [enrollCadetTarget, setEnrollCadetTarget] = useState<any | null>(null);
   // Inline confirm state for accidental-change-prone dropdowns
-  const [pendingAction, setPendingAction] = useState<{ userId: string; userName: string; type: 'role' | 'status' | 'platoon'; value: string } | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ userId: string; userName: string; type: 'role' | 'status' | 'platoon' | 'senior'; value: string } | null>(null);
 
   // Phase 11: Digital Certificate Vault State
   const [cadetCertificates, setCadetCertificates] = useState<any[]>([]);
@@ -283,12 +286,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       if (filterRole) params.append('role', filterRole);
       if (filterPlatoon) params.append('platoon', filterPlatoon);
 
-      const res = await fetch(`/api/admin/users?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setUsersList(data.users);
+      const { ok, data } = await safeApiFetch(`/api/admin/users?${params.toString()}`);
+      if (ok && data?.success) {
+        setUsersList(data.users || []);
+        if (typeof data.totalActiveCadets === 'number') {
+          setTotalActiveCadets(data.totalActiveCadets);
+        }
       }
     } catch (err) {
       console.error('Fetch users error:', err);
@@ -301,12 +304,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const fetchSeniorCadets = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/hierarchy/senior/cadets', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setAssignedCadets(data.assignedCadets);
+      const { ok, data } = await safeApiFetch('/api/hierarchy/senior/cadets');
+      if (ok && data?.success) {
+        setAssignedCadets(data.assignedCadets || []);
       }
     } catch (err) {
       console.error('Fetch senior cadets error:', err);
@@ -317,12 +317,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const fetchPlatoonCadets = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/hierarchy/platoon-senior/cadets', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setPlatoonCadets(data.cadets);
+      const { ok, data } = await safeApiFetch('/api/hierarchy/platoon-senior/cadets');
+      if (ok && data?.success) {
+        setPlatoonCadets(data.cadets || []);
       }
     } catch (err) {
       console.error('Fetch platoon cadets error:', err);
@@ -336,24 +333,35 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const fetchPendingReviews = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/reviews/pending', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const contentType = res.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (res.ok && data.success && Array.isArray(data.applications)) {
-          setPendingReviews(data.applications);
-          return;
-        }
+      const { ok, data } = await safeApiFetch('/api/reviews/pending');
+      if (ok && data?.success && Array.isArray(data.applications)) {
+        setPendingReviews(data.applications);
+        return;
       }
-      throw new Error('Non-JSON response');
     } catch (err) {
       console.warn('Fetch pending reviews fallback:', err);
       try {
         const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
         setPendingReviews(offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD'));
       } catch {}
+    }
+  };
+
+  // Assign Cadet to Senior Mentor
+  const handleAssignSenior = async (cadetId: string, seniorId: string) => {
+    try {
+      const { ok, data } = await safeApiFetch('/api/admin/assignments/senior', {
+        method: 'POST',
+        body: JSON.stringify({ cadetId, seniorId }),
+      });
+      if (ok && data?.success) {
+        fetchAdminUsers();
+        fetchSeniorCadets();
+      } else {
+        alert(data?.message || 'Assignment failed');
+      }
+    } catch (err) {
+      console.error('Assign senior error:', err);
     }
   };
 
@@ -777,24 +785,29 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     }
   }, [role, token, filterRole, filterPlatoon]);
 
-
+  // Real-time synchronization across officer panels (Phase 15)
+  useEffect(() => {
+    const handleDataUpdated = () => {
+      fetchAdminUsers();
+      fetchSeniorCadets();
+      fetchPlatoonCadets();
+      fetchPendingReviews();
+    };
+    window.addEventListener('ncc:data-updated', handleDataUpdated);
+    return () => window.removeEventListener('ncc:data-updated', handleDataUpdated);
+  }, []);
 
   // Admin Actions
   const handleUpdateRole = async (userId: string, newRole: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
+      const { ok, data } = await safeApiFetch(`/api/admin/users/${userId}/role`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ role: newRole }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         fetchAdminUsers();
       } else {
-        alert(data.message || 'Action rejected');
+        alert(data?.message || 'Action rejected');
       }
     } catch (err) {
       console.error('Role update error:', err);
@@ -803,19 +816,16 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
+      const { ok, data } = await safeApiFetch(`/api/admin/users/${userId}/status`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ status: newStatus }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         fetchAdminUsers();
+        fetchSeniorCadets();
+        fetchPlatoonCadets();
       } else {
-        alert(data.message || 'Status update failed');
+        alert(data?.message || 'Status update failed');
       }
     } catch (err) {
       console.error('Status update error:', err);
@@ -824,19 +834,15 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
   const handleTransferPlatoon = async (userId: string, platoonName: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/platoon`, {
+      const { ok, data } = await safeApiFetch(`/api/admin/users/${userId}/platoon`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ platoonName }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (ok && data?.success) {
         fetchAdminUsers();
+        fetchPlatoonCadets();
       } else {
-        alert(data.message || 'Transfer failed');
+        alert(data?.message || 'Transfer failed');
       }
     } catch (err) {
       console.error('Transfer error:', err);
@@ -851,6 +857,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     if (type === 'role') await handleUpdateRole(userId, value);
     else if (type === 'status') await handleUpdateStatus(userId, value);
     else if (type === 'platoon') await handleTransferPlatoon(userId, value);
+    else if (type === 'senior') await handleAssignSenior(userId, value);
   };
 
 
@@ -1007,7 +1014,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'inquiries', name: 'Official Inquiries' },
             { id: 'leave', name: 'Leave Sanctions' },
             { id: 'attendance', name: 'Platoon Attendance & Biometrics' },
-            { id: 'cadets', name: 'Platoon Cadets' },
+            { id: 'cadets', name: 'My Platoon Cadets' },
             { id: 'camps', name: 'Camps & Nominations' },
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
             { id: 'timeline', name: 'Activity Timeline' },
@@ -1025,7 +1032,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'inquiries', name: 'Official Inquiries' },
             { id: 'leave', name: 'Leave Sanctions' },
             { id: 'attendance', name: 'Squad Attendance & Biometrics' },
-            { id: 'assigned', name: 'Assigned Cadets' },
+            { id: 'assigned', name: 'My Cadets' },
             { id: 'camps', name: 'Camps & Activities' },
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
             { id: 'timeline', name: 'Activity Timeline' },
@@ -1436,10 +1443,15 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Unit Personnel & Roles</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Authorized management for cadet roles, statuses, platoons, and mentor assignments.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>CADET DIRECTORY &amp; ROLES</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                        Total Active Cadets: {totalActiveCadets !== null ? totalActiveCadets : usersList.filter(u => u.status === 'ACTIVE' && u.role === 'CADET').length}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
+                        Institutional Command Scope &bull; Personnel Directory &bull; Mentor Assignments
+                      </span>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button onClick={() => setCadetImportModal(true)} className="btn-primary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1497,7 +1509,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
                         <th style={{ padding: '0.75rem 1rem' }}>Cadet / Officer</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Regimental No</th>
-                        <th style={{ padding: '0.75rem 1rem' }}>Wing / Contingent</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>Wing / Platoon</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>Senior Mentor</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Role</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Status</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Admin Actions</th>
@@ -1506,7 +1519,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <tbody>
                       {usersList.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--navy-text-muted)' }}>
+                          <td colSpan={7} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--navy-text-muted)' }}>
                             <Users size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.35, color: 'var(--navy-primary)' }} />
                             <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
                               No Cadets Found
@@ -1520,7 +1533,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         usersList.map((u) => (
                         <tr key={u.id} style={{ borderBottom: '1px solid var(--white-border)', verticalAlign: 'middle' }}>
                           <td style={{ padding: '0.75rem 1rem', fontWeight: 600 }}>
-                            {u.fullName}
+                            <div
+                              style={{ cursor: 'pointer', color: 'var(--navy-primary)' }}
+                              onClick={() => setSelectedCadetForProfile(u)}
+                            >
+                              {u.fullName}
+                            </div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', fontWeight: 400 }}>{u.email}</div>
                           </td>
                           <td style={{ padding: '0.75rem 1rem' }}>{u.regimentalNumber}</td>
@@ -1533,6 +1551,26 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               <option value="Senior Division">Senior Division</option>
                               <option value="Senior Wing">Senior Wing</option>
                             </select>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            {u.role === 'CADET' ? (
+                              <select
+                                value={pendingAction && pendingAction.userId === u.id && pendingAction.type === 'senior' ? pendingAction.value : (u.mentorAssignment?.senior?.id || '')}
+                                onChange={(e) => setPendingAction({ userId: u.id, userName: u.fullName, type: 'senior', value: e.target.value })}
+                                style={{ padding: '0.3rem', fontSize: '0.8rem', borderRadius: '3px', border: '1px solid var(--white-border)', cursor: 'pointer', maxWidth: '160px' }}
+                              >
+                                <option value="">Unassigned</option>
+                                {usersList
+                                  .filter((s: any) => s.role === 'SENIOR' || s.role === 'PLATOON_SENIOR')
+                                  .map((s: any) => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.fullName} ({s.role === 'SENIOR' ? 'Senior' : 'Platoon Sr.'})
+                                    </option>
+                                  ))}
+                              </select>
+                            ) : (
+                              <span style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>Commander</span>
+                            )}
                           </td>
                           <td style={{ padding: '0.75rem 1rem' }}>
                             <select
@@ -1593,6 +1631,21 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           </td>
                           <td style={{ padding: '0.75rem 1rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                              <button
+                                className="btn-secondary btn-sm"
+                                style={{
+                                  padding: '0.25rem 0.6rem',
+                                  fontSize: '0.75rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.25rem',
+                                  borderColor: 'var(--navy-primary)',
+                                  color: 'var(--navy-primary)',
+                                }}
+                                onClick={() => setSelectedCadetForProfile(u)}
+                              >
+                                <Eye size={12} /> View Profile
+                              </button>
                               {/* Quick Approve for pending cadets */}
                               {(u.status === 'UNDER_REVIEW' || u.status === 'REJECTED') && (
                                 <button
@@ -2277,30 +2330,65 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
             {role === 'SENIOR' && activeTab === 'assigned' && (
               <div>
-                <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.5rem' }}>My Assigned Squad Cadets</h2>
-                <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginBottom: '1.5rem' }}>
-                  Authorized mentorship scope: Access restricted strictly to cadets assigned to your squad.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>MY CADETS</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                        Total Cadets: {assignedCadets.length}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
+                        Authorized mentorship scope &bull; Real database muster
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchSeniorCadets}
+                    className="btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <RefreshCw size={14} /> <span>REFRESH CADETS</span>
+                  </button>
+                </div>
+
                 {assignedCadets.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <Users size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
                     <h4>No cadets are currently assigned to your squad.</h4>
-                    <p>Admin will assign cadets under your mentorship.</p>
+                    <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>Command / ANO will assign enrolled active cadets under your mentorship.</p>
                   </div>
                 ) : (
                   <div className="grid-2">
                     {assignedCadets.map((c) => (
-                      <div key={c.id} className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
+                      <div
+                        key={c.id}
+                        className="institutional-card"
+                        style={{ borderLeft: '4px solid var(--navy-primary)', cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+                        onClick={() => setSelectedCadetForProfile(c)}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)' }}>{c.fullName}</h4>
-                          <span className="badge-institutional">{c.status}</span>
+                          <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: 0 }}>{c.fullName}</h4>
+                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                            {c.status || 'ACTIVE'}
+                          </span>
                         </div>
                         <div style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
                           <div><strong>Regimental:</strong> {c.regimentalNumber}</div>
                           <div><strong>Roll:</strong> {c.collegeRollNumber}</div>
                           <div><strong>Branch:</strong> {c.branch} ({c.year})</div>
-                          <div><strong>Platoon:</strong> {c.platoonName}</div>
+                          <div><strong>Platoon:</strong> {c.platoonName || 'Senior Division'}</div>
+                          <div><strong>Team:</strong> {c.team || 'Team Alpha'}</div>
                           {c.email && <div><strong>Email:</strong> {c.email}</div>}
+                        </div>
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--white-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn-secondary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                            onClick={(e) => { e.stopPropagation(); setSelectedCadetForProfile(c); }}
+                          >
+                            <Eye size={12} />
+                            <span>VIEW PROFILE</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -2842,31 +2930,65 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
             {role === 'PLATOON_SENIOR' && activeTab === 'cadets' && (
               <div>
-                <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.5rem' }}>
-                  Unit Cadet Roster
-                </h2>
-                <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginBottom: '1.5rem' }}>
-                  Authorized command scope: Full visibility of all enrolled active cadets in the unit.
-                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>MY PLATOON CADETS</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                        Total Cadets: {platoonCadets.length}
+                      </span>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
+                        Authorized platoon command scope &bull; Real database muster
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchPlatoonCadets}
+                    className="btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                  >
+                    <RefreshCw size={14} /> <span>REFRESH CADETS</span>
+                  </button>
+                </div>
+
                 {platoonCadets.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <Users size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-                    <h4>No cadets found in unit roster</h4>
+                    <h4>No active cadets found in your platoon roster</h4>
+                    <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>Approved and active cadets belonging to your platoon will appear here.</p>
                   </div>
                 ) : (
                   <div className="grid-2">
                     {platoonCadets.map((c) => (
-                      <div key={c.id} className="institutional-card" style={{ borderLeft: '4px solid var(--navy-hover)' }}>
+                      <div
+                        key={c.id}
+                        className="institutional-card"
+                        style={{ borderLeft: '4px solid var(--navy-hover)', cursor: 'pointer', transition: 'transform 0.15s ease, box-shadow 0.15s ease' }}
+                        onClick={() => setSelectedCadetForProfile(c)}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)' }}>{c.fullName}</h4>
-                          <span className="badge-institutional">{c.status}</span>
+                          <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: 0 }}>{c.fullName}</h4>
+                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                            {c.status || 'ACTIVE'}
+                          </span>
                         </div>
                         <div style={{ fontSize: '0.85rem', lineHeight: '1.6' }}>
                           <div><strong>Regimental:</strong> {c.regimentalNumber}</div>
                           <div><strong>Roll:</strong> {c.collegeRollNumber}</div>
                           <div><strong>Branch:</strong> {c.branch} ({c.year})</div>
+                          <div><strong>Platoon:</strong> {c.platoonName || 'Senior Division'}</div>
+                          <div><strong>Team:</strong> {c.team || 'Team Alpha'}</div>
                           {c.email && <div><strong>Email:</strong> {c.email}</div>}
-                          {c.phone && <div><strong>Phone:</strong> {c.phone}</div>}
+                        </div>
+                        <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--white-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            className="btn-secondary btn-sm"
+                            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                            onClick={(e) => { e.stopPropagation(); setSelectedCadetForProfile(c); }}
+                          >
+                            <Eye size={12} />
+                            <span>VIEW PROFILE</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -5398,6 +5520,72 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <span>{importingCadets ? 'Importing...' : `IMPORT ${cadetImportPreview.length} CADETS TO ROSTER`}</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* VERIFIED CADET PROFILE MODAL (Phase 12) */}
+      {selectedCadetForProfile && (
+        <div
+          className="modal-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(6, 19, 37, 0.85)',
+            zIndex: 1300,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+            backdropFilter: 'blur(4px)',
+          }}
+          onClick={() => setSelectedCadetForProfile(null)}
+        >
+          <div
+            className="institutional-modal-card"
+            style={{
+              maxWidth: '960px',
+              width: '95%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: 0,
+              overflow: 'hidden',
+              backgroundColor: '#FFFFFF',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '1rem 1.5rem',
+                backgroundColor: 'var(--navy-primary)',
+                color: '#FFFFFF',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Shield size={20} />
+                <span style={{ fontWeight: 700, fontSize: '1.05rem', letterSpacing: '0.04em' }}>
+                  CADET DOSSIER &amp; PROFILE RECORD
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedCadetForProfile(null)}
+                style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '1.5rem' }}>
+              <CadetProfileView user={selectedCadetForProfile} token={token} />
             </div>
           </div>
         </div>
