@@ -1,30 +1,30 @@
 /* ==========================================================================
-   PRIMARY REFERENCE HEADER: DEEP NAVY BLUE + WHITE
+   PRIMARY NCC NAVBAR: REACT BITS GOOEYNAV + INSTITUTIONAL BRANDING
    ========================================================================== */
 
 .ref-site-header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background-color: #06152B; /* Deep Navy Blue matching reference */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  background-color: #06152B; /* Deep Institutional Navy Blue */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   height: 74px;
   transition: all 0.3s ease;
 }
 
 .ref-header-inner {
-  max-width: 1320px;
+  max-width: 1400px;
   margin: 0 auto;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 1.5rem;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
-/* Left Brand */
+/* Left Brand Identity */
 .ref-brand {
   display: flex;
   align-items: center;
@@ -36,13 +36,14 @@
   align-items: center;
   gap: 0.85rem;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .ref-ncc-logo {
   width: 44px;
   height: 48px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.45));
 }
 
 .ref-brand-text {
@@ -51,7 +52,7 @@
 }
 
 .ref-brand-title {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 1.15rem;
   font-weight: 800;
   color: #FFFFFF;
@@ -74,43 +75,22 @@
   letter-spacing: 0.04em;
 }
 
-/* Center Desktop Navigation */
-.ref-desktop-nav {
+/* Center: React Bits GooeyNav Container */
+.ref-gooey-nav-wrapper {
   display: flex;
   align-items: center;
-  gap: 1.6rem;
+  justify-content: center;
+  flex: 1;
+  max-width: 650px;
+  margin: 0 auto;
 }
 
-.ref-nav-item {
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: #CBD5E1;
-  text-decoration: none;
-  padding: 0.4rem 0;
-  position: relative;
-  transition: color 0.2s ease;
-  white-space: nowrap;
-}
-
-.ref-nav-item:hover {
-  color: #FFFFFF;
-}
-
-/* Active navigation item with solid white/light underline */
-.ref-nav-item.active {
-  color: #FFFFFF;
-  font-weight: 600;
-}
-
-.ref-nav-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: #FFFFFF;
-  border-radius: 2px;
+/* Right Action Buttons & Role Shells */
+.ref-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
 }
 
 /* Shells Dropdown in Header */
@@ -119,29 +99,41 @@
 }
 
 .ref-shells-toggle {
-  background: none;
-  border: none;
+  background: transparent;
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50px;
+  padding: 6px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.35rem;
   font-family: inherit;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ref-shells-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #FFFFFF;
 }
 
 .ref-caret {
-  font-size: 0.75rem;
-  opacity: 0.7;
+  font-size: 0.72rem;
+  opacity: 0.8;
+  margin-left: 2px;
 }
 
 .ref-dropdown-menu {
   position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.5rem;
-  background-color: #0A192F;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: #06152B;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
   min-width: 230px;
   padding: 0.5rem;
   z-index: 1010;
@@ -154,7 +146,7 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0.4rem 0.65rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 0.35rem;
 }
 
@@ -176,43 +168,37 @@
 }
 
 .ref-dropdown-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.12);
   color: #FFFFFF;
 }
 
-/* Right Action Buttons (Matching Reference) */
-.ref-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-
+/* User Auth Buttons */
 .ref-auth-buttons {
   display: flex;
   align-items: center;
   gap: 0.65rem;
 }
 
-/* Login button: Navy background with white/translucent border */
+/* Login: transparent/navy-outline style */
 .ref-btn-login {
   background: transparent;
   color: #FFFFFF;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 50px;
-  padding: 6px 20px;
+  padding: 6px 18px;
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .ref-btn-login:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   border-color: #FFFFFF;
 }
 
-/* Register button: Solid white background with dark navy text */
+/* Register: white filled pill */
 .ref-btn-register {
   background: #FFFFFF;
   color: #06152B;
@@ -223,7 +209,8 @@
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
 }
 
 .ref-btn-register:hover {
@@ -251,6 +238,7 @@
   align-items: center;
   gap: 0.4rem;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .ref-btn-command:hover {
@@ -295,10 +283,10 @@
   right: 0;
   bottom: 0;
   background: rgba(6, 21, 43, 0.98);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(14px);
   z-index: 999;
   overflow-y: auto;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   animation: slideDown 0.25s ease-out forwards;
 }
 
@@ -320,18 +308,25 @@
   gap: 1rem;
 }
 
+.ref-mobile-nav {
+  display: flex;
+  flex-direction: column;
+}
+
 .ref-mobile-link {
   font-size: 1rem;
   font-weight: 600;
   color: #E2E8F0;
   text-decoration: none;
-  padding: 0.6rem 0;
+  padding: 0.75rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.2s ease;
 }
 
 .ref-mobile-link.active {
   color: #FFFFFF;
   border-bottom-color: #FFFFFF;
+  font-weight: 700;
 }
 
 .ref-mobile-roles {
@@ -354,7 +349,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem;
+  padding: 0.55rem;
   background: none;
   border: none;
   color: #E2E8F0;
@@ -380,8 +375,19 @@
 }
 
 /* Responsive Media Queries */
+@media (max-width: 1140px) {
+  .ref-brand-sub,
+  .ref-brand-tagline {
+    display: none;
+  }
+}
+
 @media (max-width: 1024px) {
-  .ref-desktop-nav {
+  .ref-gooey-nav-wrapper {
+    display: none;
+  }
+
+  .ref-shells-dropdown {
     display: none;
   }
 
@@ -389,5 +395,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .ref-auth-buttons {
+    display: none;
+  }
+
+  .ref-header-inner {
+    padding: 0 1rem;
   }
 }
