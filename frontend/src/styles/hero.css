@@ -26,8 +26,8 @@
   height: 100%;
   object-fit: cover;
   object-position: center 30%;
-  transform: scale(1.02);
-  transition: transform 10s ease;
+  transform: scale(1.015);
+  will-change: transform;
 }
 
 /* Institutional Navy Gradient Overlay matching the reference screenshot */
@@ -118,6 +118,12 @@
   background: var(--color-surface);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+.ref-hero-btn-primary:focus-visible,
+.ref-hero-btn-secondary:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 4px;
 }
 
 /* Secondary Button: Navy with Border & Play Icon */
@@ -215,12 +221,37 @@
   to { opacity: 1; }
 }
 
+@keyframes hero-image-drift {
+  from { transform: scale(1.015); }
+  to { transform: scale(1.065); }
+}
+
+@keyframes hero-content-arrive {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ref-hero-bg-img { animation: hero-image-drift 22s ease-in-out alternate infinite; }
+  .ref-hero-eyebrow,
+  .ref-hero-title,
+  .ref-hero-subtitle,
+  .ref-hero-cta-group { animation: hero-content-arrive 650ms ease-out both; }
+  .ref-hero-title { animation-delay: 90ms; }
+  .ref-hero-subtitle { animation-delay: 170ms; }
+  .ref-hero-cta-group { animation-delay: 240ms; }
+}
+
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .ref-hero-section {
     min-height: 460px;
     height: auto;
     padding: 3.5rem 0;
+  }
+
+  .ref-hero-bg-img {
+    object-position: 56% center;
   }
 
   .ref-hero-title {

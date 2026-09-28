@@ -26,6 +26,8 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
             src="/assets/hero_cadets.jpg"
             alt="National Cadet Corps parade formation"
             className="ref-hero-bg-img"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="ref-hero-gradient-overlay" />
         </div>
@@ -50,7 +52,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
             <div className="ref-hero-cta-group">
               <button className="ref-hero-btn-primary" onClick={handleExploreClick}>
                 <span>Explore NCC</span>
-                <ArrowRight size={18} />
+                <ArrowRight size={18} aria-hidden="true" />
               </button>
 
               <button
@@ -58,7 +60,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
                 onClick={() => setVideoModalOpen(true)}
               >
                 <span>Watch Video</span>
-                <Play size={15} fill="var(--color-background)" />
+                <Play size={15} fill="var(--color-background)" aria-hidden="true" />
               </button>
             </div>
           </div>
