@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, ChevronDown, ChevronUp, Compass, Flag, Medal, Mountain, Shield, Sparkles, Users } from 'lucide-react';
 import './KnowledgeHub.css';
+import { RankExplorer } from './RankExplorer';
 
 const topics = [
   {
@@ -84,6 +85,7 @@ export const KnowledgeHub: React.FC = () => {
           })}
         </div>
         <p className="knowledge-hub-note">For current instructions, eligibility, and official uniform guidance, follow your NCC unit and authorized NCC publications.</p>
+        <RankExplorer />
       </div>
     </section>
   );
