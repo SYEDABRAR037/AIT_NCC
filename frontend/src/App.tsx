@@ -15,6 +15,7 @@ import { GallerySection } from './components/home/GallerySection';
 import { JoinNCC } from './components/home/JoinNCC';
 import { ContactSection } from './components/home/ContactSection';
 import { Footer } from './components/home/Footer';
+import { KnowledgeHub } from './components/home/KnowledgeHub';
 import { LoginModal } from './components/auth/LoginModal';
 import { RegisterModal } from './components/auth/RegisterModal';
 import { RoleShellView } from './components/shells/RoleShellView';
@@ -82,6 +83,8 @@ const AppContent: React.FC = () => {
 
             {/* Institutional Foundation */}
             <AboutSection />
+
+            <KnowledgeHub />
 
             {/* AIT Pune NCC Unit Detachment & Affiliation */}
             <UnitIntroduction />
