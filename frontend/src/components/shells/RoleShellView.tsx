@@ -32,6 +32,7 @@ import { useAuth } from '../../context/AuthContext';
 import { FaceAttendanceModal } from '../attendance/FaceAttendanceModal';
 import { FaceEnrollmentModal } from '../attendance/FaceEnrollmentModal';
 import { CadetProfileView } from './CadetProfileView';
+import { CadetLifecycleDialog, CadetLifecycleSubmission, CadetLifecycleAction } from './CadetLifecycleDialog';
 import { RequestCenterView } from './RequestCenterView';
 import { ApprovalCenterView } from './ApprovalCenterView';
 import { TimelineView } from './TimelineView';
@@ -96,8 +97,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   // Phase 7-9: Senior & Platoon Senior assigned cadets
   const [assignedCadets, setAssignedCadets] = useState<any[]>([]);
   const [platoonCadets, setPlatoonCadets] = useState<any[]>([]);
+  const [cadetStatusFilter, setCadetStatusFilter] = useState('ACTIVE');
   const [totalActiveCadets, setTotalActiveCadets] = useState<number | null>(null);
   const [selectedCadetForProfile, setSelectedCadetForProfile] = useState<any | null>(null);
+  const [cadetLifecycleTarget, setCadetLifecycleTarget] = useState<{ cadet: any; action: CadetLifecycleAction } | null>(null);
+  const [cadetLifecycleSubmitting, setCadetLifecycleSubmitting] = useState(false);
 
   // Phase 7-9: Leave Management State
   const [leaveApplications, setLeaveApplications] = useState<any[]>([]); // for review (senior/PS/admin)
@@ -314,10 +318,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   // Fetch Platoon Cadets
-  const fetchPlatoonCadets = async () => {
+  const fetchPlatoonCadets = async (statusFilter = cadetStatusFilter) => {
     if (!token) return;
     try {
-      const { ok, data } = await safeApiFetch('/api/hierarchy/platoon-senior/cadets');
+      const { ok, data } = await safeApiFetch(`/api/hierarchy/platoon-senior/cadets?status=${encodeURIComponent(statusFilter)}`);
       if (ok && data?.success) {
         setPlatoonCadets(data.cadets || []);
       }
@@ -815,6 +819,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
+    const selectedCadet = [...usersList, ...platoonCadets].find((cadet) => cadet.id === userId && cadet.role === 'CADET');
+    if (selectedCadet
+      && (['INACTIVE', 'PASSED_OUT'].includes(newStatus)
+        || ['INACTIVE', 'PASSED_OUT'].includes(selectedCadet.status))) {
+      alert('Use the audited cadet lifecycle dialog to deactivate or reactivate a cadet.');
+      return;
+    }
     try {
       const { ok, data } = await safeApiFetch(`/api/admin/users/${userId}/status`, {
         method: 'PATCH',
@@ -829,6 +840,26 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       }
     } catch (err) {
       console.error('Status update error:', err);
+    }
+  };
+
+  const submitCadetLifecycle = async (values: CadetLifecycleSubmission): Promise<string | null> => {
+    if (!cadetLifecycleTarget) return 'No cadet was selected';
+    setCadetLifecycleSubmitting(true);
+    try {
+      const { ok, data } = await safeApiFetch(`/api/hierarchy/cadets/${encodeURIComponent(cadetLifecycleTarget.cadet.id)}/lifecycle`, {
+        method: 'POST',
+        body: JSON.stringify(values),
+      });
+      if (!ok || !data?.success) return data?.message || 'Cadet status update failed';
+      if (role === 'PLATOON_SENIOR') await fetchPlatoonCadets(cadetStatusFilter);
+      if (role === 'ADMIN_ANO') await fetchAdminUsers();
+      return null;
+    } catch (error) {
+      console.error('Cadet lifecycle update error:', error);
+      return 'Unable to update cadet status. Please try again.';
+    } finally {
+      setCadetLifecycleSubmitting(false);
     }
   };
 
@@ -1604,11 +1635,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             >
                               <option value="UNDER_REVIEW">UNDER_REVIEW</option>
                               <option value="APPROVED">APPROVED</option>
-                              <option value="ACTIVE">ACTIVE</option>
+                              <option value="ACTIVE" disabled={u.role === 'CADET' && ['INACTIVE', 'PASSED_OUT'].includes(u.status)}>ACTIVE</option>
                               <option value="HOLD">HOLD</option>
                               <option value="REJECTED">REJECTED</option>
-                              <option value="INACTIVE">INACTIVE</option>
-                              <option value="PASSED_OUT">PASSED_OUT</option>
+                              <option value="INACTIVE" disabled={u.role === 'CADET'}>INACTIVE (use lifecycle action)</option>
+                              <option value="PASSED_OUT" disabled={u.role === 'CADET'}>PASSED_OUT (use lifecycle action)</option>
                             </select>
                             {/* Inline confirm for dropdown changes */}
                             {pendingAction && pendingAction.userId === u.id && (
@@ -1664,9 +1695,23 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                   <CheckCircle size={11} /> Approve
                                 </button>
                               )}
-                              {/* Deactivate / Activate */}
-                              {u.id !== user?.id && (
-                                u.status !== 'INACTIVE' ? (
+                              {/* Cadet lifecycle changes use the reason/date/audit workflow. */}
+                              {u.role === 'CADET' && u.id !== user?.id && (
+                                ['INACTIVE', 'PASSED_OUT'].includes(u.status) ? (
+                                  <button
+                                    className="btn-secondary btn-sm"
+                                    style={{
+                                      padding: '0.25rem 0.6rem',
+                                      fontSize: '0.75rem',
+                                      backgroundColor: 'var(--color-success)',
+                                      borderColor: 'var(--color-success)',
+                                      color: 'var(--color-background)',
+                                    }}
+                                    onClick={() => setCadetLifecycleTarget({ cadet: u, action: 'REACTIVATE' })}
+                                  >
+                                    Reactivate
+                                  </button>
+                                ) : (
                                   <button
                                     className="btn-secondary btn-sm"
                                     style={{
@@ -1675,22 +1720,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                       borderColor: 'var(--color-error)',
                                       color: 'var(--color-error)',
                                     }}
-                                    onClick={() => handleUpdateStatus(u.id, 'INACTIVE')}
+                                    onClick={() => setCadetLifecycleTarget({ cadet: u, action: 'DEACTIVATE' })}
                                   >
                                     Deactivate
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="btn-primary btn-sm"
-                                    style={{
-                                      padding: '0.25rem 0.6rem',
-                                      fontSize: '0.75rem',
-                                      backgroundColor: 'var(--color-success)',
-                                      borderColor: 'var(--color-success)',
-                                    }}
-                                    onClick={() => handleUpdateStatus(u.id, 'ACTIVE')}
-                                  >
-                                    Activate
                                   </button>
                                 )
                               )}
@@ -2942,8 +2974,25 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       </span>
                     </div>
                   </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--navy-primary)', fontSize: '0.85rem', fontWeight: 650 }}>
+                    Status
+                    <select
+                      value={cadetStatusFilter}
+                      onChange={(event) => {
+                        const nextFilter = event.target.value;
+                        setCadetStatusFilter(nextFilter);
+                        fetchPlatoonCadets(nextFilter);
+                      }}
+                      aria-label="Filter cadets by status"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="PASSED_OUT">Passed Out</option>
+                      <option value="ALL">All</option>
+                    </select>
+                  </label>
                   <button
-                    onClick={fetchPlatoonCadets}
+                    onClick={() => fetchPlatoonCadets()}
                     className="btn-secondary btn-sm"
                     style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                   >
@@ -2954,8 +3003,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 {platoonCadets.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <Users size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-                    <h4>No active cadets found in your platoon roster</h4>
-                    <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>Approved and active cadets belonging to your platoon will appear here.</p>
+                    <h4>{cadetStatusFilter === 'ACTIVE' ? 'No active cadets found in your platoon roster' : 'No cadets found for this status'}</h4>
+                    <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>
+                      {cadetStatusFilter === 'ACTIVE'
+                        ? 'Active cadets belonging to your authorized platoon will appear here.'
+                        : 'Try another status filter to view cadets in your authorized platoon.'}
+                    </p>
                   </div>
                 ) : (
                   <div className="grid-2">
@@ -2968,7 +3021,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                           <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: 0 }}>{c.fullName}</h4>
-                          <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
+                          <span className="badge-institutional" style={{
+                            background: c.status === 'ACTIVE' || c.status === 'APPROVED' ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
+                            color: c.status === 'ACTIVE' || c.status === 'APPROVED' ? 'var(--color-success)' : 'var(--color-primary)',
+                          }}>
                             {c.status || 'ACTIVE'}
                           </span>
                         </div>
@@ -2979,6 +3035,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           <div><strong>Platoon:</strong> {c.platoonName || 'Senior Division'}</div>
                           <div><strong>Team:</strong> {c.team || 'Team Alpha'}</div>
                           {c.email && <div><strong>Email:</strong> {c.email}</div>}
+                          {c.statusDetails && (
+                            <div style={{ marginTop: '0.35rem', color: 'var(--navy-text-muted)' }}>
+                              <div><strong>Effective:</strong> {new Date(c.statusDetails.effectiveDate).toLocaleDateString()}</div>
+                              <div><strong>Reason:</strong> {c.statusDetails.reason}</div>
+                            </div>
+                          )}
                         </div>
                         <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--white-border)', display: 'flex', justifyContent: 'flex-end' }}>
                           <button
@@ -2989,6 +3051,30 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <Eye size={12} />
                             <span>VIEW PROFILE</span>
                           </button>
+                          {['ACTIVE', 'APPROVED'].includes(c.status) && (
+                            <button
+                              className="btn-secondary btn-sm"
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCadetLifecycleTarget({ cadet: c, action: 'DEACTIVATE' });
+                              }}
+                            >
+                              DEACTIVATE
+                            </button>
+                          )}
+                          {['INACTIVE', 'PASSED_OUT'].includes(c.status) && (
+                            <button
+                              className="btn-primary btn-sm"
+                              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setCadetLifecycleTarget({ cadet: c, action: 'REACTIVATE' });
+                              }}
+                            >
+                              REACTIVATE
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -5524,6 +5610,15 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           </div>
         </div>
       )}
+      {cadetLifecycleTarget && (
+        <CadetLifecycleDialog
+          cadet={cadetLifecycleTarget.cadet}
+          action={cadetLifecycleTarget.action}
+          submitting={cadetLifecycleSubmitting}
+          onClose={() => setCadetLifecycleTarget(null)}
+          onSubmit={submitCadetLifecycle}
+        />
+      )}
       {/* VERIFIED CADET PROFILE MODAL (Phase 12) */}
       {selectedCadetForProfile && (
         <div
@@ -5593,7 +5688,3 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     </div>
   );
 };
-
-
-
-

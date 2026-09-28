@@ -235,6 +235,19 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    const eligibleCadet = await prisma.user.findFirst({
+      where: { id: String(cadetId), role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } },
+      select: { id: true },
+    });
+    if (!eligibleCadet) {
+      res.status(409).json({
+        success: false,
+        code: 'CADET_NOT_ACTIVE',
+        message: 'Attendance can only be changed for an active or approved cadet. Historical attendance is preserved.',
+      });
+      return;
+    }
+
     // Upsert: create if not exists, update if exists
     const record = await prisma.trainingAttendance.upsert({
       where: {

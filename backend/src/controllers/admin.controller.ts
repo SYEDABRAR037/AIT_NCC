@@ -140,6 +140,25 @@ export const updateUserStatus = async (req: AuthRequest, res: Response): Promise
       return;
     }
 
+    const currentUser = await prisma.user.findUnique({
+      where: { id: String(id) },
+      select: { role: true, status: true },
+    });
+    if (!currentUser) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    const lifecycleStatuses = ['INACTIVE', 'PASSED_OUT'];
+    if (currentUser.role === 'CADET'
+      && currentUser.status !== status
+      && (lifecycleStatuses.includes(currentUser.status) || lifecycleStatuses.includes(status))) {
+      res.status(409).json({
+        success: false,
+        message: 'Use the audited cadet lifecycle action to deactivate, pass out, or reactivate a cadet.',
+      });
+      return;
+    }
+
     const updated = await prisma.user.update({
       where: { id: String(id) },
       data: { status },

@@ -135,7 +135,10 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               <h2 style={{ fontSize: '1.5rem', color: 'var(--navy-primary)', margin: 0 }}>
                 {user?.fullName}
               </h2>
-              <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
+              <span className="badge-institutional" style={{
+                background: ['INACTIVE', 'PASSED_OUT'].includes(user?.status) ? 'var(--color-warning-soft)' : 'var(--color-success-soft)',
+                color: ['INACTIVE', 'PASSED_OUT'].includes(user?.status) ? 'var(--color-primary)' : 'var(--color-success)',
+              }}>
                 {user?.status || 'ACTIVE'}
               </span>
               <span className="badge-institutional">CADET</span>
@@ -155,6 +158,32 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
           <span>REQUEST PROFILE CORRECTION</span>
         </button>
       </div>
+
+      {user?.statusDetails && (
+        <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
+          <h3 style={{ color: 'var(--navy-primary)', fontSize: '1rem', marginBottom: '0.5rem' }}>Cadet lifecycle status</h3>
+          <p><strong>Status:</strong> {user.status}</p>
+          <p><strong>Effective:</strong> {new Date(user.statusDetails.effectiveDate).toLocaleDateString()}</p>
+          <p><strong>Reason:</strong> {user.statusDetails.reason}</p>
+          {user.statusDetails.remarks && <p><strong>Remarks:</strong> {user.statusDetails.remarks}</p>}
+        </div>
+      )}
+
+      {Array.isArray(user?.lifecycleHistory) && user.lifecycleHistory.length > 0 && (
+        <div className="institutional-card">
+          <h3 style={{ color: 'var(--navy-primary)', fontSize: '1rem', marginBottom: '0.75rem' }}>Cadet status history</h3>
+          <ol style={{ display: 'grid', gap: '0.7rem', paddingLeft: '1.25rem' }}>
+            {user.lifecycleHistory.map((entry: any, index: number) => (
+              <li key={`${entry.timestamp}-${index}`} style={{ color: 'var(--navy-text-muted)', lineHeight: 1.5 }}>
+                <strong>{new Date(entry.timestamp).toLocaleDateString()}</strong> · {entry.previousStatus} → {entry.newStatus}
+                <div>Reason: {entry.reason || 'Status transition'}</div>
+                <div>Effective: {new Date(entry.effectiveDate).toLocaleDateString()} · Changed by {entry.actorName} ({entry.officerRole})</div>
+                {entry.remarks && <div>Remarks: {entry.remarks}</div>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* 2-Column Info Grid */}
       <div className="grid-2" style={{ gap: '1.5rem' }}>

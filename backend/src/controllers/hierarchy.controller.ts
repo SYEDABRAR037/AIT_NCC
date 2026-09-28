@@ -1,6 +1,8 @@
 import { Response } from 'express';
+import { AccountStatus } from '@prisma/client';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { getCadetLifecycleHistory, resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
 
 // 1. Senior Panel Cadets: strictly active assigned cadets only
 export const getMyAssignedCadets = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -77,31 +79,27 @@ export const getMyPlatoonCadets = async (req: AuthRequest, res: Response): Promi
       return;
     }
 
-    // Determine platoon scope for Platoon Senior
-    const targetPlatoons: string[] = [];
-    if (req.user.platoonName) {
-      targetPlatoons.push(req.user.platoonName);
+    const targetPlatoons = req.user.role === 'ADMIN_ANO'
+      ? []
+      : await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
+    const statusFilter = typeof req.query.status === 'string' ? req.query.status : 'ACTIVE';
+    const allowedStatusFilters = ['ALL', 'ACTIVE', 'INACTIVE', 'PASSED_OUT'];
+    if (!allowedStatusFilters.includes(statusFilter)) {
+      res.status(400).json({ success: false, message: 'Invalid cadet status filter' });
+      return;
     }
-
-    const platoonAssignments = await prisma.platoonSeniorAssignment.findMany({
-      where: { platoonSeniorId: req.user.id },
-      include: { platoon: true },
-    });
-    for (const pa of platoonAssignments) {
-      if (pa.platoon?.name && !targetPlatoons.includes(pa.platoon.name)) {
-        targetPlatoons.push(pa.platoon.name);
-      }
-    }
-
-    if (targetPlatoons.length === 0) {
-      targetPlatoons.push('Senior Division');
-    }
+    const statusesByFilter: Record<string, AccountStatus[]> = {
+      ALL: ['ACTIVE', 'APPROVED', 'INACTIVE', 'PASSED_OUT'],
+      ACTIVE: ['ACTIVE'],
+      INACTIVE: ['INACTIVE'],
+      PASSED_OUT: ['PASSED_OUT'],
+    };
 
     const cadets = await prisma.user.findMany({
       where: {
         role: 'CADET',
-        status: 'ACTIVE', // Phase 9: strictly ACTIVE cadets
-        platoonName: { in: targetPlatoons },
+        status: { in: statusesByFilter[statusFilter] },
+        ...(targetPlatoons.length > 0 ? { platoonName: { in: targetPlatoons } } : {}),
       },
       select: {
         id: true,
@@ -130,20 +128,28 @@ export const getMyPlatoonCadets = async (req: AuthRequest, res: Response): Promi
       orderBy: { fullName: 'asc' },
     });
 
+    const lifecycleHistoryByCadet = await getCadetLifecycleHistory(cadets.map((cadet) => cadet.id));
+    const cadetsWithHistory = cadets.map((cadet) => {
+      const lifecycleHistory = lifecycleHistoryByCadet.get(cadet.id) || [];
+      const statusDetails = ['INACTIVE', 'PASSED_OUT'].includes(cadet.status)
+        ? lifecycleHistory.find((event) => event.newStatus === cadet.status) || null
+        : null;
+      return { ...cadet, lifecycleHistory, statusDetails };
+    });
+
     res.json({
       success: true,
-      platoon: targetPlatoons.join(', '),
+      platoon: targetPlatoons.length > 0 ? targetPlatoons.join(', ') : 'All authorized unit platoons',
       platoonSenior: {
         id: req.user.id,
         fullName: req.user.fullName,
       },
-      totalCadets: cadets.length,
-      cadetCount: cadets.length,
-      cadets,
+      totalCadets: cadetsWithHistory.length,
+      cadetCount: cadetsWithHistory.length,
+      cadets: cadetsWithHistory,
     });
   } catch (error) {
     console.error('getMyPlatoonCadets error:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve platoon cadets' });
   }
 };
-

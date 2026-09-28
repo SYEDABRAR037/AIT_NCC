@@ -4,6 +4,7 @@ import {
   getMyPlatoonCadets,
 } from '../controllers/hierarchy.controller';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
+import { changeCadetLifecycle } from '../controllers/cadetLifecycle.controller';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.get('/my-assigned-cadets', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMI
 router.get('/platoon-senior/cadets', requireRole(['PLATOON_SENIOR', 'ADMIN_ANO']), getMyPlatoonCadets);
 router.get('/platoon-cadets', requireRole(['PLATOON_SENIOR', 'ADMIN_ANO']), getMyPlatoonCadets);
 router.get('/my-platoon-cadets', requireRole(['PLATOON_SENIOR', 'ADMIN_ANO']), getMyPlatoonCadets);
+router.post('/cadets/:cadetId/lifecycle', requireRole(['PLATOON_SENIOR', 'ADMIN_ANO']), changeCadetLifecycle);
 
 export default router;
