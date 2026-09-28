@@ -1,25 +1,31 @@
 {
-  "name": "NCC Digital Command & Cadet Management System",
-  "short_name": "NCC Command",
-  "description": "Official Institutional Digital Command & Cadet Management System for the National Cadet Corps (NCC) Unit at Army Institute of Technology (AIT), Pune (2 Maharashtra Bn NCC).",
+  "name": "Army Institute of Technology NCC",
+  "short_name": "NCC AIT Pune",
+  "description": "NCC information and digital services for Army Institute of Technology, Pune.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#061325",
-  "background_color": "#061325",
+  "theme_color": "#071A33",
+  "background_color": "#071A33",
   "icons": [
     {
       "src": "/assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

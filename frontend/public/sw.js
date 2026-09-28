@@ -1,92 +1,61 @@
-// ============================================================
-// NCC Digital Command System - Progressive Web App Service Worker
-// Offline Caching & Background Sync for Field Operations
-// ============================================================
-
-const CACHE_NAME = 'ncc-command-v1';
+// Static asset caching only. Pages and every API/auth request remain network-only.
+const CACHE_NAME = 'ncc-static-v2';
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/assets/logos/ncc_logo.png',
   '/assets/logos/ait_logo.gif',
+  '/assets/hero_cadets.jpg',
+  '/assets/strength_dusk.jpg',
   '/assets/icons/icon-192.png',
   '/assets/icons/icon-512.png',
+  '/assets/icons/icon-512-maskable.png',
 ];
 
 // Install: Precache shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[NCC PWA ServiceWorker] Precaching App Shell');
       return cache.addAll(PRECACHE_ASSETS);
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate: Clean up old caches
+// Remove caches from the previous worker, which also cached API and HTML responses.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('[NCC PWA ServiceWorker] Removing Old Cache', cacheName);
+          if (cacheName === 'ncc-command-v1' || (cacheName.startsWith('ncc-static-') && cacheName !== CACHE_NAME)) {
             return caches.delete(cacheName);
           }
+          return undefined;
         })
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// Fetch: Network First with Cache Fallback for API / Pages
+// Intercept only same-origin static assets under the public asset/model directories.
 self.addEventListener('fetch', (event) => {
-  // Ignore non-GET or chrome-extension requests
-  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
 
-  // Static assets: Cache First
-  if (event.request.url.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2|css)$/)) {
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return networkResponse;
-        });
-      })
-    );
-    return;
-  }
+  const safeStaticPath = requestUrl.pathname.startsWith('/assets/') || requestUrl.pathname.startsWith('/models/');
+  const staticFile = /\.(?:avif|bin|css|gif|ico|jpe?g|js|json|png|svg|webp|woff2)$/i.test(requestUrl.pathname);
+  if (!safeStaticPath || !staticFile) return;
 
-  // HTML & API: Network First with Cache Fallback
   event.respondWith(
-    fetch(event.request)
-      .then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return networkResponse;
-      })
-      .catch(() => {
-        return caches.match(event.request).then((cached) => {
-          if (cached) return cached;
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/');
-          }
-          return new Response(
-            JSON.stringify({ offline: true, message: 'Offline Mode: Field Connection Unavailable' }),
-            { headers: { 'Content-Type': 'application/json' } }
-          );
-        });
-      })
+    fetch(event.request).then(async (networkResponse) => {
+      if (networkResponse.ok && networkResponse.type === 'basic') {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(event.request, networkResponse.clone());
+      }
+      return networkResponse;
+    }).catch(async () => {
+      const cachedResponse = await caches.match(event.request);
+      return cachedResponse || Response.error();
+    })
   );
 });
