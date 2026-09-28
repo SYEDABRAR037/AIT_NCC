@@ -1278,7 +1278,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         </aside>
 
         {/* Content Area */}
-        <main style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
+        <main id="role-main-content" tabIndex={-1} style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
             {/* CENTRAL APPROVAL DESK (MODULE 3 & 7) */}
             {activeTab === 'approvals' && (
@@ -1475,14 +1475,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && fetchAdminUsers()}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--white-border)', borderRadius: '4px', outline: 'none', fontSize: '0.88rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--white-border)', borderRadius: '4px', fontSize: '0.88rem' }}
                     />
                   </div>
 
                   <select
                     value={filterRole}
                     onChange={(e) => setFilterRole(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem', outline: 'none' }}
+                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="">All Cadets</option>
                     <option value="CADET">Enrolled Cadets</option>
@@ -1494,7 +1494,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={filterPlatoon}
                     onChange={(e) => setFilterPlatoon(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem', outline: 'none' }}
+                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="">All Wings / Contingents</option>
                     <option value="Senior Division">Senior Division (SD)</option>
@@ -4140,7 +4140,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="e.g. Combined Annual Training Camp (CATC-104)"
                   value={campForm.name}
                   onChange={(e) => setCampForm({ ...campForm, name: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4152,7 +4152,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={campForm.campType}
                     onChange={(e) => setCampForm({ ...campForm, campType: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="Combined Annual Training Camp">CATC</option>
                     <option value="Thal Sainik Camp">TSC</option>
@@ -4172,7 +4172,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     max={500}
                     value={campForm.capacity}
                     onChange={(e) => setCampForm({ ...campForm, capacity: Number(e.target.value) })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -4187,7 +4187,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="e.g. AIT Drill Ground & Camp Arena, Pune"
                   value={campForm.location}
                   onChange={(e) => setCampForm({ ...campForm, location: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4201,7 +4201,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     required
                     value={campForm.startDate}
                     onChange={(e) => setCampForm({ ...campForm, startDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
                 <div>
@@ -4213,7 +4213,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     required
                     value={campForm.endDate}
                     onChange={(e) => setCampForm({ ...campForm, endDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -4227,7 +4227,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="Weapon classification, obstacle course training, map reading & night march syllabus..."
                   value={campForm.description}
                   onChange={(e) => setCampForm({ ...campForm, description: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4301,7 +4301,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="e.g. Kargil Vijay Diwas Ceremonial Parade"
                   value={eventForm.title}
                   onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4315,7 +4315,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     required
                     value={eventForm.eventDate}
                     onChange={(e) => setEventForm({ ...eventForm, eventDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
                 <div>
@@ -4325,7 +4325,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={eventForm.isPublic ? 'true' : 'false'}
                     onChange={(e) => setEventForm({ ...eventForm, isPublic: e.target.value === 'true' })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="true">Public (Shown on Homepage)</option>
                     <option value="false">Internal Cadet Order</option>
@@ -4343,7 +4343,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="e.g. AIT Parade Ground, Pune"
                   value={eventForm.location}
                   onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4356,7 +4356,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="Dress regulation: Ceremonial Khaki with Beret and Hackle. Reporting at 0630 hrs..."
                   value={eventForm.description}
                   onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4430,7 +4430,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="e.g. Mandatory Drill Inspection & Hackle Turnout Check"
                   value={noticeForm.title}
                   onChange={(e) => setNoticeForm({ ...noticeForm, title: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4442,7 +4442,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={noticeForm.category}
                     onChange={(e) => setNoticeForm({ ...noticeForm, category: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="General">General Order</option>
                     <option value="Training">Training & Drill</option>
@@ -4481,7 +4481,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="Full text of the order, instructions, turnout regulations, and consequences of non-compliance..."
                   value={noticeForm.content}
                   onChange={(e) => setNoticeForm({ ...noticeForm, content: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -4532,7 +4532,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <select
                   value={leaveForm.leaveType}
                   onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 >
                   <option value="Medical">Medical Leave</option>
                   <option value="Academic">Academic / Examination Leave</option>
@@ -4544,12 +4544,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>FROM DATE *</label>
                   <input type="date" required value={leaveForm.startDate} onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }} />
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>TO DATE *</label>
                   <input type="date" required value={leaveForm.endDate} onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }} />
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }} />
                 </div>
               </div>
               <div>
@@ -4557,7 +4557,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <textarea rows={3} required placeholder="State the specific reason for leave. For medical leave, mention doctor's advice..."
                   value={leaveForm.reason}
                   onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--white-border)' }}>
@@ -4616,7 +4616,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <textarea rows={3} placeholder="Enter your remarks for this leave sanction decision..."
                   value={leaveRemarks}
                   onChange={(e) => setLeaveRemarks(e.target.value)}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--white-border)' }}>
@@ -4673,7 +4673,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <select
                   value={attendanceForm.activity}
                   onChange={(e) => setAttendanceForm({ ...attendanceForm, activity: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 >
                   <option value="Morning Physical Training & Foot Drill">Morning Physical Training & Foot Drill</option>
                   <option value="Arms Drill & Weapon Handling">Arms Drill & Weapon Handling</option>
@@ -4691,7 +4691,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     required
                     value={attendanceForm.date}
                     onChange={(e) => setAttendanceForm({ ...attendanceForm, date: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
                 <div>
@@ -4702,7 +4702,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     placeholder="06:00"
                     value={attendanceForm.timing}
                     onChange={(e) => setAttendanceForm({ ...attendanceForm, timing: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -4713,7 +4713,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={attendanceForm.targetPlatoon}
                     onChange={(e) => setAttendanceForm({ ...attendanceForm, targetPlatoon: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="All Cadets">Entire Unit Muster (All Cadets)</option>
                     <option value="Senior Division">Senior Division (SD)</option>
@@ -4727,7 +4727,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     required
                     value={attendanceForm.location}
                     onChange={(e) => setAttendanceForm({ ...attendanceForm, location: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -5057,7 +5057,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   required
                   value={certificateForm.cadetId}
                   onChange={(e) => setCertificateForm({ ...certificateForm, cadetId: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 >
                   <option value="">-- Choose enrolled cadet --</option>
                   {usersList
@@ -5076,7 +5076,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={certificateForm.certificateType}
                     onChange={(e) => setCertificateForm({ ...certificateForm, certificateType: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="NCC 'B' Certificate">NCC 'B' Certificate</option>
                     <option value="NCC 'A' Certificate">NCC 'A' Certificate</option>
@@ -5090,7 +5090,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <select
                     value={certificateForm.grade}
                     onChange={(e) => setCertificateForm({ ...certificateForm, grade: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="A">Grade 'A' (Distinction)</option>
                     <option value="B">Grade 'B' (First Class)</option>
@@ -5106,7 +5106,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   required
                   value={certificateForm.title}
                   onChange={(e) => setCertificateForm({ ...certificateForm, title: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -5116,7 +5116,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   type="text"
                   value={certificateForm.campName}
                   onChange={(e) => setCertificateForm({ ...certificateForm, campName: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -5126,7 +5126,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   rows={2}
                   value={certificateForm.remarks}
                   onChange={(e) => setCertificateForm({ ...certificateForm, remarks: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -5184,7 +5184,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   placeholder="Enter Certificate Serial No. or SHA-256 Hash..."
                   value={verifyQuery}
                   onChange={(e) => setVerifyQuery(e.target.value)}
-                  style={{ flex: 1, padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                  style={{ flex: 1, padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.85rem', fontFamily: 'monospace' }}
                 />
                 <button
                   type="button"
@@ -5593,7 +5593,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     </div>
   );
 };
-
 
 
 

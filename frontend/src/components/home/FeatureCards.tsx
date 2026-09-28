@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Users, CalendarCheck, Award, Tent, ShieldCheck, MessageSquare, ArrowRight, X } from 'lucide-react';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface FeatureCardsProps {
   onOpenLogin: () => void;
@@ -17,6 +18,7 @@ interface FeatureInfoModal {
 
 export const FeatureCards: React.FC<FeatureCardsProps> = ({ onOpenLogin, onOpenRegister }) => {
   const [activeModal, setActiveModal] = useState<FeatureInfoModal | null>(null);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(Boolean(activeModal), () => setActiveModal(null));
 
   const features = [
     {
@@ -140,8 +142,10 @@ export const FeatureCards: React.FC<FeatureCardsProps> = ({ onOpenLogin, onOpenR
                 onClick={() => setActiveModal(item.modalInfo)}
                 role="button"
                 tabIndex={0}
+                aria-label={`${item.title}: ${item.description}`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     setActiveModal(item.modalInfo);
                   }
                 }}
@@ -162,12 +166,12 @@ export const FeatureCards: React.FC<FeatureCardsProps> = ({ onOpenLogin, onOpenR
 
       {/* Feature Information Modal */}
       {activeModal && (
-        <div className="ref-modal-backdrop" onClick={() => setActiveModal(null)}>
+        <div ref={dialogRef} className="ref-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title" tabIndex={-1} onClick={() => setActiveModal(null)}>
           <div className="ref-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="ref-modal-header">
               <div>
                 <span className="ref-modal-badge">{activeModal.badge}</span>
-                <h3 className="ref-modal-title">{activeModal.title}</h3>
+                <h3 id="feature-modal-title" className="ref-modal-title">{activeModal.title}</h3>
               </div>
               <button
                 className="ref-modal-close-btn"

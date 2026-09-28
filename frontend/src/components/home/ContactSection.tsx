@@ -263,10 +263,10 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="contact-field-1">
                   FULL NAME / CADET RANK
                 </label>
-                <input
+                <input id="contact-field-1"
                   type="text"
                   required
                   value={fullName}
@@ -278,7 +278,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     padding: '0.65rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     backgroundColor: user ? 'var(--color-surface)' : 'var(--color-background)',
                     cursor: user ? 'not-allowed' : 'text',
                   }}
@@ -286,10 +285,10 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="contact-field-2">
                   INSTITUTIONAL EMAIL
                 </label>
-                <input
+                <input id="contact-field-2"
                   type="email"
                   required
                   value={email}
@@ -301,7 +300,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     padding: '0.65rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     backgroundColor: user ? 'var(--color-surface)' : 'var(--color-background)',
                     cursor: user ? 'not-allowed' : 'text',
                   }}
@@ -309,10 +307,10 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="contact-field-3">
                   INQUIRY SUBJECT
                 </label>
-                <input
+                <input id="contact-field-3"
                   type="text"
                   required
                   value={subject}
@@ -324,16 +322,15 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     padding: '0.65rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="contact-field-4">
                   MESSAGE CONTENT
                 </label>
-                <textarea
+                <textarea id="contact-field-4"
                   rows={4}
                   required
                   value={message}
@@ -345,7 +342,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     padding: '0.65rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     resize: 'vertical',
                     fontFamily: 'inherit',
                   }}

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { X, UserPlus, Shield, Camera, AlertCircle, CheckCircle2 } from 'lucide-react';
 import * as faceapi from '@vladmandic/face-api';
 import { useAuth } from '../../context/AuthContext';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -73,20 +74,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     onClose();
   };
 
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(isOpen, handleCloseModal);
+
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleCloseModal();
-      }
-    };
     if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
       setErrorMsg(null);
       setSuccessMsg(null);
     }
     return () => {
       stopCamera();
-      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
@@ -313,6 +309,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="register-modal-title"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         inset: 0,
@@ -355,7 +356,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <Shield size={20} />
-            <h3 style={{ color: 'var(--white-pure)', fontSize: '1.15rem' }}>CADET ENROLLMENT REGISTRATION</h3>
+            <h3 id="register-modal-title" style={{ color: 'var(--white-pure)', fontSize: '1.15rem' }}>CADET ENROLLMENT REGISTRATION</h3>
           </div>
           <button
             onClick={handleCloseModal}
@@ -371,6 +372,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           {/* Success Banner */}
           {successMsg && (
             <div
+              role="status"
+              aria-live="polite"
               style={{
                 backgroundColor: 'var(--color-success-soft)',
                 border: '1px solid var(--color-success)',
@@ -400,6 +403,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           {/* Error Banner */}
           {errorMsg && (
             <div
+              role="alert"
+              aria-live="assertive"
               style={{
                 backgroundColor: 'var(--color-error-soft)',
                 border: '1px solid var(--color-error)',
@@ -438,51 +443,51 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             </span>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <form onSubmit={handleSubmit} aria-busy={submitting} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {/* Identity */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-1">
                   FULL NAME (AS PER COLLEGE ID) *
                 </label>
-                <input
+                <input id="register-field-1"
                   type="text"
                   name="fullName"
                   required
                   placeholder="e.g. Vikramaditya Rathore"
                   value={formData.fullName}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-2">
                   REGIMENTAL NUMBER *
                 </label>
-                <input
+                <input id="register-field-2"
                   type="text"
                   name="regimentalNumber"
                   required
                   placeholder="e.g. MH26SDA109999"
                   value={formData.regimentalNumber}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-3">
                   COLLEGE ROLL NUMBER *
                 </label>
-                <input
+                <input id="register-field-3"
                   type="text"
                   name="collegeRollNumber"
                   required
                   placeholder="e.g. 261099"
                   value={formData.collegeRollNumber}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
             </div>
@@ -490,44 +495,44 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             {/* Contact */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-4">
                   OFFICIAL EMAIL *
                 </label>
-                <input
+                <input id="register-field-4"
                   type="email"
                   name="email"
                   required
                   placeholder="cadet@aitpune.edu.in"
                   value={formData.email}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-5">
                   PHONE (WHERE PERMITTED)
                 </label>
-                <input
+                <input id="register-field-5"
                   type="tel"
                   name="phone"
                   placeholder="+91 98765 43210"
                   value={formData.phone}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-6">
                   DATE OF JOINING
                 </label>
-                <input
+                <input id="register-field-6"
                   type="date"
                   name="dateOfJoining"
                   value={formData.dateOfJoining}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
             </div>
@@ -535,14 +540,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             {/* Academic & Branch Allocation */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-7">
                   ACADEMIC YEAR *
                 </label>
-                <select
+                <select id="register-field-7"
                   name="year"
                   value={formData.year}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 >
                   <option value="FE (1st Year)">FE (1st Year)</option>
                   <option value="SE (2nd Year)">SE (2nd Year)</option>
@@ -552,14 +557,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-8">
                   ENGINEERING BRANCH *
                 </label>
-                <select
+                <select id="register-field-8"
                   name="branch"
                   value={formData.branch}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 >
                   <option value="Computer Engineering">Computer Engineering</option>
                   <option value="Information Technology">Information Technology</option>
@@ -572,7 +577,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
             {/* Profile Photo Upload */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+              <label htmlFor="register-field-9" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                 CADET UNIFORM / PROFILE PHOTO
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -597,13 +602,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   <input
+                    id="register-field-9"
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoUpload}
                     style={{ fontSize: '0.85rem' }}
                   />
                   {photoStatus && (
-                    <span style={{ fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600 }}>
+                    <span role="status" aria-live="polite" style={{ fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600 }}>
                       ✓ {photoStatus}
                     </span>
                   )}
@@ -613,48 +619,48 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
             {/* Enrollment Notes */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-10">
                 NCC ENROLLMENT DETAILS & PRIOR CERTIFICATES (A / B / C)
               </label>
-              <textarea
+              <textarea id="register-field-10"
                 name="enrollmentDetails"
                 rows={2}
                 placeholder="Mention previous NCC experience, schooling certificates (NCC A Certificate), sports honours, or blood group..."
                 value={formData.enrollmentDetails}
                 onChange={handleChange}
-                style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
               />
             </div>
 
             {/* Password */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-11">
                   ACCOUNT PASSWORD *
                 </label>
-                <input
+                <input id="register-field-11"
                   type="password"
                   name="password"
                   required
                   placeholder="••••••••••••"
                   value={formData.password}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-12">
                   CONFIRM PASSWORD *
                 </label>
-                <input
+                <input id="register-field-12"
                   type="password"
                   name="confirmPassword"
                   required
                   placeholder="••••••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
             </div>
@@ -754,7 +760,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                           detectionTone === 'success' ? 'var(--color-success)' : detectionTone === 'warning' ? 'var(--color-gold)' : 'var(--color-accent)',
                       }}
                     />
-                    <span>{faceDetectionStatus}</span>
+                    <span role="status" aria-live="polite">{faceDetectionStatus}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
                     <button

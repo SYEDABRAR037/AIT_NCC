@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Menu, X, ExternalLink, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 import { GooeyNavPill, NavPillItem } from './GooeyNavPill';
 import '../../styles/header.css';
 
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [shellsDropdownOpen, setShellsDropdownOpen] = useState(false);
   const [activeNav, setActiveNav] = useState('Home');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileDrawerRef = useAccessibleDialog<HTMLDivElement>(mobileMenuOpen, () => setMobileMenuOpen(false));
 
   // Close Role Shells dropdown on outside click
   useEffect(() => {
@@ -139,7 +141,17 @@ export const Header: React.FC<HeaderProps> = ({
         {/* ZONE 3 — RIGHT: ROLE SHELLS, LOGIN, REGISTER */}
         <div className="ref-header-actions">
           {/* Role Dashboards Outline Dropdown Button */}
-          <div className="ref-shells-dropdown" ref={dropdownRef}>
+          <div
+            className="ref-shells-dropdown"
+            ref={dropdownRef}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && shellsDropdownOpen) {
+                event.preventDefault();
+                setShellsDropdownOpen(false);
+                dropdownRef.current?.querySelector('button')?.focus();
+              }
+            }}
+          >
             <button
               className="ref-btn-shells"
               onClick={() => setShellsDropdownOpen(!shellsDropdownOpen)}
@@ -224,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* MOBILE DRAWER */}
       {mobileMenuOpen && (
-        <div className="ref-mobile-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation Drawer">
+        <div ref={mobileDrawerRef} className="ref-mobile-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation Drawer" tabIndex={-1}>
           <div className="ref-mobile-inner">
             <nav className="ref-mobile-nav" aria-label="Mobile Links">
               {navLinks.map((link) => (

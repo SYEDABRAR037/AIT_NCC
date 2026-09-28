@@ -391,7 +391,6 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
               padding: '0.55rem 0.75rem 0.55rem 2.25rem',
               borderRadius: '4px',
               border: '1px solid var(--white-border)',
-              outline: 'none',
               fontSize: '0.85rem',
               color: 'var(--navy-primary)',
               backgroundColor: 'var(--white-surface)',
@@ -787,7 +786,6 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     padding: '0.6rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     fontSize: '0.85rem',
                     color: 'var(--navy-primary)',
                     resize: 'none',
@@ -874,7 +872,6 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     padding: '0.6rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     fontSize: '0.88rem',
                     color: 'var(--navy-primary)',
                   }}
@@ -902,7 +899,6 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     padding: '0.6rem',
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
-                    outline: 'none',
                     fontSize: '0.85rem',
                     color: 'var(--navy-primary)',
                     resize: 'none',
@@ -987,7 +983,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   placeholder="e.g., Combined Annual Training Camp (CATC 2026)"
                   value={newCamp.name}
                   onChange={(e) => setNewCamp({ ...newCamp, name: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -999,7 +995,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   <select
                     value={newCamp.campType}
                     onChange={(e) => setNewCamp({ ...newCamp, campType: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="CATC">CATC (Annual Training)</option>
                     <option value="NIC">NIC (National Integration)</option>
@@ -1021,7 +1017,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     placeholder="e.g., AIT Grounds & Barracks, Pune"
                     value={newCamp.location}
                     onChange={(e) => setNewCamp({ ...newCamp, location: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -1036,7 +1032,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     required
                     value={newCamp.startDate}
                     onChange={(e) => setNewCamp({ ...newCamp, startDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
 
@@ -1049,7 +1045,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     required
                     value={newCamp.endDate}
                     onChange={(e) => setNewCamp({ ...newCamp, endDate: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -1064,7 +1060,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     placeholder="e.g., 0600 hrs Main Gate"
                     value={newCamp.reportingTime}
                     onChange={(e) => setNewCamp({ ...newCamp, reportingTime: e.target.value })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
 
@@ -1076,7 +1072,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     type="number"
                     value={newCamp.capacity}
                     onChange={(e) => setNewCamp({ ...newCamp, capacity: parseInt(e.target.value) || 50 })}
-                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                    style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
               </div>
@@ -1089,7 +1085,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   type="text"
                   value={newCamp.eligibility}
                   onChange={(e) => setNewCamp({ ...newCamp, eligibility: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -1101,7 +1097,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   type="text"
                   value={newCamp.requiredDocuments}
                   onChange={(e) => setNewCamp({ ...newCamp, requiredDocuments: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 
@@ -1113,7 +1109,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   type="text"
                   value={newCamp.assignedOfficers}
                   onChange={(e) => setNewCamp({ ...newCamp, assignedOfficers: e.target.value })}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none', fontSize: '0.88rem' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 />
               </div>
 

@@ -766,7 +766,6 @@ export const AiCadetAssistant: React.FC = () => {
                   borderRadius: '8px',
                   border: '1px solid var(--color-border)',
                   fontSize: '0.88rem',
-                  outline: 'none',
                   color: 'var(--color-primary)',
                 }}
                 onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}

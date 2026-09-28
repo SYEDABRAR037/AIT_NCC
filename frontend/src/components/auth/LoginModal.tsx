@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, LogIn, Shield, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -17,19 +18,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(isOpen, onClose);
 
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
     if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
       setErrorMsg(null);
       setAccountStatus(null);
     }
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -63,6 +58,11 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-modal-title"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         inset: 0,
@@ -105,7 +105,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <Shield size={20} />
-            <h3 style={{ color: 'var(--white-pure)', fontSize: '1.15rem' }}>COMMAND PORTAL LOGIN</h3>
+            <h3 id="login-modal-title" style={{ color: 'var(--white-pure)', fontSize: '1.15rem' }}>COMMAND PORTAL LOGIN</h3>
           </div>
           <button
             onClick={onClose}
@@ -121,6 +121,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           {/* Status Message Display */}
           {errorMsg && (
             <div
+              role="alert"
+              aria-live="assertive"
               style={{
                 backgroundColor: accountStatus === 'UNDER_REVIEW' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)',
                 border: accountStatus === 'UNDER_REVIEW' ? '1px solid var(--color-gold)' : '1px solid var(--color-error)',
@@ -146,13 +148,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleSubmit} aria-busy={submitting} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+              <label htmlFor="login-identifier" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                 REGIMENTAL NUMBER / OFFICIAL EMAIL / ROLL NO *
               </label>
               <input
                 type="text"
+                id="login-identifier"
                 required
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
@@ -163,17 +166,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   borderRadius: '4px',
                   border: '1px solid var(--white-border)',
                   fontSize: '0.92rem',
-                  outline: 'none',
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+              <label htmlFor="login-password" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                 PASSWORD *
               </label>
               <input
                 type="password"
+                id="login-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -184,7 +187,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   borderRadius: '4px',
                   border: '1px solid var(--white-border)',
                   fontSize: '0.92rem',
-                  outline: 'none',
                 }}
               />
             </div>

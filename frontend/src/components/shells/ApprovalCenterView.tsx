@@ -808,7 +808,6 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                       border: '1px solid var(--navy-border)',
                       fontSize: '0.85rem',
                       fontFamily: 'inherit',
-                      outline: 'none',
                     }}
                   >
                     <option value="">Auto-Assign (from Senior Endorsement, or leave pending)</option>

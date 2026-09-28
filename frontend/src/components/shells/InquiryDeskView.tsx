@@ -282,7 +282,6 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                   fontSize: '0.82rem',
                   border: '1px solid var(--white-border)',
                   borderRadius: '4px',
-                  outline: 'none',
                 }}
               />
             </div>
@@ -643,7 +642,6 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                         padding: '0.75rem',
                         borderRadius: '4px',
                         border: '1px solid var(--navy-border)',
-                        outline: 'none',
                         fontSize: '0.88rem',
                         fontFamily: 'inherit',
                         resize: 'vertical',
@@ -743,7 +741,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                 <select
                   value={newStatus}
                   onChange={(e) => setNewStatus(e.target.value)}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 >
                   <option value="UNDER_REVIEW">UNDER REVIEW (In Progress)</option>
                   <option value="REPLIED">REPLIED (Awaiting Cadet Action)</option>
@@ -763,7 +761,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                   placeholder="Enter administrative reason or routing instructions..."
                   value={statusRemarks}
                   onChange={(e) => setStatusRemarks(e.target.value)}
-                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', outline: 'none' }}
+                  style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
               </div>
 

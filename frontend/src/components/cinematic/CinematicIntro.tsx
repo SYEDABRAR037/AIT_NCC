@@ -69,7 +69,7 @@ export const CinematicIntro: React.FC<CinematicIntroProps> = ({ onIntroComplete 
   const isIntroFading = stage === 'paused' || stage === 'revealing';
 
   return (
-    <div className={`cinematic-container ${isCurtainOpen ? 'completed' : ''}`} aria-hidden={isCurtainOpen}>
+    <div className={`cinematic-container ${isCurtainOpen ? 'completed' : ''}`} aria-hidden="true">
       {/* Intro Stage with Logos and Loading Progress */}
       <div className={`intro-stage ${isIntroFading ? 'fade-out' : ''}`}>
         <div className="intro-logos-wrapper">

@@ -50,6 +50,13 @@
   border-color: var(--color-border);
 }
 
+.ref-feature-card:focus-visible,
+.ref-notice-row[role="button"]:focus-visible,
+.grid-4 > button:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
 .ref-feature-icon-wrapper {
   width: 58px;
   height: 58px;

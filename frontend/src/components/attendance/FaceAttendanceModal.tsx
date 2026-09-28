@@ -912,7 +912,6 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                       padding: '0.6rem 0.85rem',
                       color: 'var(--color-background)',
                       fontSize: '0.85rem',
-                      outline: 'none',
                     }}
                   />
                   {manualSearch && (

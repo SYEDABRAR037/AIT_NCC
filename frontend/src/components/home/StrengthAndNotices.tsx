@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Building, Flag, Calendar, Bell, ArrowRight, X, FileText, AlertCircle } from 'lucide-react';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface StatsData {
   totalApprovedCadets: number;
@@ -25,6 +26,8 @@ export const StrengthAndNotices: React.FC = () => {
   const [loadingNotices, setLoadingNotices] = useState(true);
   const [selectedNotice, setSelectedNotice] = useState<NoticeItem | null>(null);
   const [showAllNoticesModal, setShowAllNoticesModal] = useState(false);
+  const detailDialogRef = useAccessibleDialog<HTMLDivElement>(Boolean(selectedNotice), () => setSelectedNotice(null));
+  const noticesDialogRef = useAccessibleDialog<HTMLDivElement>(showAllNoticesModal, () => setShowAllNoticesModal(false));
 
   useEffect(() => {
     // 1. Fetch real public stats
@@ -169,8 +172,12 @@ export const StrengthAndNotices: React.FC = () => {
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') setSelectedNotice(n);
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedNotice(n);
+                      }
                     }}
+                    aria-label={`Read notice: ${n.title}`}
                   >
                     <div className="ref-notice-row-left">
                       <span className={`ref-notice-badge ${getCategoryBadgeClass(n.category)}`}>
@@ -191,7 +198,7 @@ export const StrengthAndNotices: React.FC = () => {
 
       {/* Individual Notice Detail Lightbox Modal */}
       {selectedNotice && (
-        <div className="ref-modal-backdrop" onClick={() => setSelectedNotice(null)}>
+        <div ref={detailDialogRef} className="ref-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="notice-dialog-title" tabIndex={-1} onClick={() => setSelectedNotice(null)}>
           <div className="ref-modal-box" onClick={(e) => e.stopPropagation()}>
             <div className="ref-modal-header">
               <div>
@@ -206,7 +213,7 @@ export const StrengthAndNotices: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <h3 className="ref-modal-title">{selectedNotice.title}</h3>
+                <h3 id="notice-dialog-title" className="ref-modal-title">{selectedNotice.title}</h3>
                 <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
                   Published on {formatNoticeDate(selectedNotice.createdAt)}
                 </div>
@@ -238,12 +245,12 @@ export const StrengthAndNotices: React.FC = () => {
 
       {/* View All Notices Modal */}
       {showAllNoticesModal && (
-        <div className="ref-modal-backdrop" onClick={() => setShowAllNoticesModal(false)}>
+        <div ref={noticesDialogRef} className="ref-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="all-notices-title" tabIndex={-1} onClick={() => setShowAllNoticesModal(false)}>
           <div className="ref-modal-box" style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ref-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Bell size={20} style={{ color: 'var(--color-accent)' }} />
-                <h3 className="ref-modal-title">All Institutional Notices</h3>
+                <h3 id="all-notices-title" className="ref-modal-title">All Institutional Notices</h3>
               </div>
               <button
                 className="ref-modal-close-btn"
@@ -264,6 +271,16 @@ export const StrengthAndNotices: React.FC = () => {
                     onClick={() => {
                       setShowAllNoticesModal(false);
                       setSelectedNotice(n);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Read notice: ${n.title}`}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setShowAllNoticesModal(false);
+                        setSelectedNotice(n);
+                      }
                     }}
                     style={{ padding: '0.9rem 0' }}
                   >

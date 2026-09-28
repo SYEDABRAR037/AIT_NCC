@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image as ImageIcon, X, Maximize2 } from 'lucide-react';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface GalleryItem {
   title: string;
@@ -11,6 +12,7 @@ interface GalleryItem {
 export const GallerySection: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('ALL');
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(Boolean(selectedImage), () => setSelectedImage(null));
 
   const images: GalleryItem[] = [
     {
@@ -66,13 +68,16 @@ export const GallerySection: React.FC = () => {
           {categories.map((cat) => (
             <button
               key={cat}
+              type="button"
               onClick={() => setActiveCategory(cat)}
+              aria-pressed={activeCategory === cat}
               style={{
                 background: activeCategory === cat ? 'var(--color-primary)' : 'var(--color-surface)',
                 color: activeCategory === cat ? 'var(--color-background)' : 'var(--color-text-secondary)',
                 border: 'none',
                 borderRadius: '50px',
                 padding: '6px 18px',
+                minHeight: '44px',
                 fontSize: '0.82rem',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -87,33 +92,27 @@ export const GallerySection: React.FC = () => {
         {/* Image Grid */}
         <div className="grid-4" style={{ gap: '1.25rem' }}>
           {filteredImages.map((img) => (
-            <div
+            <button
               key={img.title}
+              type="button"
               onClick={() => setSelectedImage(img)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') setSelectedImage(img);
-              }}
               style={{
+                display: 'block',
+                width: '100%',
+                padding: 0,
+                color: 'inherit',
+                font: 'inherit',
+                textAlign: 'left',
+                cursor: 'pointer',
                 backgroundColor: 'var(--color-background)',
                 borderRadius: '12px',
                 overflow: 'hidden',
                 border: '1px solid var(--color-border)',
                 boxShadow: '0 4px 15px rgba(7, 26, 51, 0.05)',
-                cursor: 'pointer',
                 transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(7, 26, 51, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(7, 26, 51, 0.05)';
-              }}
             >
-              <div style={{ height: '210px', overflow: 'hidden', position: 'relative' }}>
+              <span style={{ display: 'block', height: '210px', overflow: 'hidden', position: 'relative' }}>
                 <img
                   src={img.src}
                   alt={img.alt}
@@ -138,7 +137,7 @@ export const GallerySection: React.FC = () => {
                 >
                   {img.category}
                 </span>
-                <div
+                <span
                   style={{
                     position: 'absolute',
                     bottom: '0.75rem',
@@ -154,14 +153,14 @@ export const GallerySection: React.FC = () => {
                   }}
                 >
                   <Maximize2 size={14} />
-                </div>
-              </div>
-              <div style={{ padding: '1rem 1.15rem' }}>
-                <h4 style={{ fontSize: '0.92rem', color: 'var(--color-primary)', fontWeight: 700, margin: 0, lineHeight: 1.4 }}>
+                </span>
+              </span>
+              <span style={{ display: 'block', padding: '1rem 1.15rem' }}>
+                <span style={{ display: 'block', fontSize: '0.92rem', color: 'var(--color-primary)', fontWeight: 700, margin: 0, lineHeight: 1.4 }}>
                   {img.title}
-                </h4>
-              </div>
-            </div>
+                </span>
+              </span>
+            </button>
           ))}
         </div>
       </div>
@@ -169,7 +168,12 @@ export const GallerySection: React.FC = () => {
       {/* Lightbox Viewer */}
       {selectedImage && (
         <div
+          ref={dialogRef}
           className="ref-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gallery-dialog-title"
+          tabIndex={-1}
           onClick={() => setSelectedImage(null)}
           style={{ padding: '1rem' }}
         >
@@ -190,7 +194,7 @@ export const GallerySection: React.FC = () => {
                 <span style={{ fontSize: '0.72rem', color: 'var(--color-info-border)', fontWeight: 700, textTransform: 'uppercase' }}>
                   {selectedImage.category}
                 </span>
-                <h3 style={{ color: 'var(--color-background)', fontSize: '1.05rem', margin: '2px 0 0' }}>{selectedImage.title}</h3>
+                <h3 id="gallery-dialog-title" style={{ color: 'var(--color-background)', fontSize: '1.05rem', margin: '2px 0 0' }}>{selectedImage.title}</h3>
               </div>
               <button
                 onClick={() => setSelectedImage(null)}

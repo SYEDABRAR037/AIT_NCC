@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Shield, Mail, KeyRound, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { safeApiFetch } from '../../utils/api';
 import { OTPVerification } from '../common/OTPVerification';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -32,6 +33,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(isOpen, onClose);
 
   const maskEmailAddress = (address: string) => {
     const [localPart, domain] = address.split('@');
@@ -297,6 +299,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="recovery-modal-title"
+      tabIndex={-1}
       style={{
         position: 'fixed',
         inset: 0,
@@ -338,7 +345,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <KeyRound size={20} color="var(--gold-accent, var(--color-gold))" />
-            <h3 style={{ color: 'var(--white-pure)', fontSize: '1.05rem', margin: 0, letterSpacing: '0.04em' }}>
+            <h3 id="recovery-modal-title" style={{ color: 'var(--white-pure)', fontSize: '1.05rem', margin: 0, letterSpacing: '0.04em' }}>
               {step === 'IDENTIFY' && 'ACCOUNT RECOVERY'}
               {step === 'OTP' && 'VERIFY OTP'}
               {step === 'NEW_PASSWORD' && 'RESET PASSWORD'}
@@ -359,6 +366,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {/* Error Message Display */}
           {errorMsg && (
             <div
+              role="alert"
+              aria-live="assertive"
               style={{
                 backgroundColor: 'var(--color-error-soft)',
                 border: '1px solid var(--color-error)',
@@ -385,6 +394,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {/* Success Notification */}
           {successNotice && (
             <div
+              role="status"
+              aria-live="polite"
               style={{
                 backgroundColor: 'var(--color-success-soft)',
                 border: '1px solid var(--color-success)',
@@ -411,11 +422,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               </p>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }} htmlFor="forgotpassword-field-1">
                   REGISTERED EMAIL ID *
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input
+                  <input id="forgotpassword-field-1"
                     type="email"
                     required
                     value={email}
@@ -427,7 +438,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       borderRadius: '4px',
                       border: '1px solid var(--white-border)',
                       fontSize: '0.92rem',
-                      outline: 'none',
                     }}
                   />
                   <Mail size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
@@ -435,11 +445,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }} htmlFor="forgotpassword-field-2">
                   REGIMENTAL NUMBER *
                 </label>
                 <div style={{ position: 'relative' }}>
-                  <input
+                  <input id="forgotpassword-field-2"
                     type="text"
                     required
                     value={regimentalNumber}
@@ -452,7 +462,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       border: '1px solid var(--white-border)',
                       fontSize: '0.92rem',
                       textTransform: 'uppercase',
-                      outline: 'none',
                     }}
                   />
                   <Shield size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
@@ -514,10 +523,10 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               </p>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }} htmlFor="forgotpassword-field-3">
                   NEW PASSWORD *
                 </label>
-                <input
+                <input id="forgotpassword-field-3"
                   type="password"
                   required
                   value={newPassword}
@@ -529,16 +538,15 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
                     fontSize: '0.92rem',
-                    outline: 'none',
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }} htmlFor="forgotpassword-field-4">
                   CONFIRM NEW PASSWORD *
                 </label>
-                <input
+                <input id="forgotpassword-field-4"
                   type="password"
                   required
                   value={confirmPassword}
@@ -550,7 +558,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
                     fontSize: '0.92rem',
-                    outline: 'none',
                   }}
                 />
               </div>

@@ -47,6 +47,7 @@
   align-items: center;
   justify-content: center;
   padding: 6px 14px;
+  min-height: 44px;
   text-decoration: none !important;
   border-radius: 9999px;
   cursor: pointer;

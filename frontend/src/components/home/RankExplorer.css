@@ -92,5 +92,5 @@
   .rank-explorer-option.is-selected { display: flex; }
   .rank-explorer-mobile-controls { display: flex; align-items: center; gap: 0.4rem; }
   .rank-explorer-mobile-controls span { color: var(--color-text-secondary); font-size: 0.75rem; white-space: nowrap; }
-  .rank-explorer-mobile-controls button { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-background); color: var(--color-primary); }
+  .rank-explorer-mobile-controls button { display: grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-background); color: var(--color-primary); }
 }

@@ -53,6 +53,9 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="app-root">
+      <a className="skip-link" href={currentRole ? '#role-main-content' : '#main-content'}>
+        Skip to main content
+      </a>
       {/* 1. Cinematic Entrance with Deep Navy Theatre Curtains */}
       <CinematicIntro />
 
@@ -68,7 +71,7 @@ const AppContent: React.FC = () => {
             onSelectShell={handleSelectShell}
           />
 
-          <main id="main-content">
+          <main id="main-content" tabIndex={-1}>
             {/* Cinematic Hero matching reference */}
             <HeroVideo
               onOpenLogin={() => setLoginModalOpen(true)}

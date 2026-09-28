@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Play, X } from 'lucide-react';
 import '../../styles/hero.css';
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
 interface HeroVideoProps {
   onOpenLogin?: () => void;
@@ -9,6 +10,7 @@ interface HeroVideoProps {
 
 export const HeroVideo: React.FC<HeroVideoProps> = () => {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const dialogRef = useAccessibleDialog<HTMLDivElement>(videoModalOpen, () => setVideoModalOpen(false));
 
   const handleExploreClick = () => {
     const target = document.getElementById('features') || document.getElementById('about');
@@ -69,10 +71,10 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
 
       {/* Interactive Official NCC Video Lightbox Modal */}
       {videoModalOpen && (
-        <div className="ref-video-modal-backdrop" onClick={() => setVideoModalOpen(false)}>
+        <div ref={dialogRef} className="ref-video-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="hero-video-title" tabIndex={-1} onClick={() => setVideoModalOpen(false)}>
           <div className="ref-video-modal-container" onClick={(e) => e.stopPropagation()}>
             <div className="ref-video-modal-header">
-              <span className="ref-video-modal-title">National Cadet Corps &bull; Official Documentary</span>
+              <span id="hero-video-title" className="ref-video-modal-title">National Cadet Corps &bull; Official Documentary</span>
               <button
                 className="ref-video-modal-close"
                 onClick={() => setVideoModalOpen(false)}

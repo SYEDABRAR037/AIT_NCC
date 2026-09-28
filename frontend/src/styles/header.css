@@ -312,6 +312,8 @@
 /* Mobile Toggle Hamburger Button */
 .ref-mobile-toggle {
   display: none;
+  min-width: 44px;
+  min-height: 44px;
   background: none;
   border: none;
   color: var(--color-background);
