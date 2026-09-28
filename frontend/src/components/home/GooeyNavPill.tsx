@@ -141,7 +141,7 @@ export const GooeyNavPill: React.FC<GooeyNavPillProps> = ({
     const currentIndex = items.findIndex((it) => it.name === activeNav);
     const targetEl = linkRefs.current[targetIndex];
 
-    if (targetEl) {
+    if (targetEl && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       triggerGooeyParticles(currentIndex >= 0 ? currentIndex : 0, targetIndex, targetEl);
     }
 
@@ -209,7 +209,7 @@ export const GooeyNavPill: React.FC<GooeyNavPillProps> = ({
                 href={item.href}
                 className={`ncc-nav-pill-link ${isActive ? 'active' : ''}`}
                 onClick={(e) => handleClick(e, item, idx)}
-                aria-current={isActive ? 'page' : undefined}
+                aria-current={isActive ? 'location' : undefined}
               >
                 <span className="ncc-nav-pill-text">{item.name}</span>
               </a>

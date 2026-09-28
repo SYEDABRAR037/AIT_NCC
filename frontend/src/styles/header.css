@@ -196,6 +196,19 @@
   color: var(--color-background);
 }
 
+.ref-dropdown-item:focus-visible,
+.ref-btn-shells:focus-visible,
+.ref-btn-login:focus-visible,
+.ref-btn-register:focus-visible,
+.ref-btn-command:focus-visible,
+.ref-btn-logout:focus-visible,
+.ref-mobile-toggle:focus-visible,
+.ref-mobile-link:focus-visible,
+.ref-mobile-role-btn:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
 /* User Auth Buttons */
 .ref-auth-buttons {
   display: flex;

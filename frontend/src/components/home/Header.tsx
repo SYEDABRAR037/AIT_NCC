@@ -54,9 +54,10 @@ export const Header: React.FC<HeaderProps> = ({
 
   // Smooth scroll handler for links
   const handleNavSelect = (name: string, href: string) => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setActiveNav(name);
     if (!href || href === '#') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
       window.history.pushState(null, '', window.location.pathname);
       return;
     }
@@ -68,7 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
       const elementPos = el.getBoundingClientRect().top + window.scrollY;
       window.scrollTo({
         top: elementPos - navOffset,
-        behavior: 'smooth',
+        behavior: reduceMotion ? 'auto' : 'smooth',
       });
       window.history.pushState(null, '', href);
     } else {
@@ -236,7 +237,7 @@ export const Header: React.FC<HeaderProps> = ({
                     handleNavSelect(link.name, link.href);
                     setMobileMenuOpen(false);
                   }}
-                  aria-current={activeNav === link.name ? 'page' : undefined}
+                  aria-current={activeNav === link.name ? 'location' : undefined}
                 >
                   {link.name}
                 </a>

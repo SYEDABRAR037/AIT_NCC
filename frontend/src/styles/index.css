@@ -87,6 +87,10 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+main[id="main-content"] section[id] {
+  scroll-margin-top: calc(var(--header-height) + 0.5rem);
+}
+
 body {
   min-height: 100vh;
   overflow-x: hidden;
