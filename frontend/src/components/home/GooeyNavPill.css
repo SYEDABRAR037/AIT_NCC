@@ -1,0 +1,159 @@
+/* ==========================================================================
+   UNIFIED NCC NAVIGATION PILL (MATCHING DESIGN REFERENCE)
+   Single capsule/pill containing: Home, About, Activities, Gallery, Notices, Contact
+   ========================================================================== */
+
+.ncc-nav-pill-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ONE Single Outer Rounded Navigation Capsule */
+.ncc-nav-pill-bar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  /* Subtle light contrasting surface as specified in design reference */
+  background: rgba(230, 237, 245, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 9999px;
+  padding: 4px 6px;
+  box-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.22),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  user-select: none;
+  overflow: hidden; /* Keeps liquid gooey particles cleanly contained */
+  max-width: 100%;
+}
+
+/* The row of public links */
+.ncc-nav-pill-links {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  z-index: 3;
+}
+
+/* Individual nav item inside the single capsule — high specificity to beat global a {} reset */
+.ncc-nav-pill-bar .ncc-nav-pill-link,
+.ncc-nav-pill-bar .ncc-nav-pill-link:visited,
+.ncc-nav-pill-bar .ncc-nav-pill-link:hover,
+.ncc-nav-pill-bar .ncc-nav-pill-link:focus {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  text-decoration: none !important;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  outline: none;
+  color: #06152B;
+}
+
+/* Navigation typography: clean, readable, dark navy */
+.ncc-nav-pill-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #06152B;
+  letter-spacing: 0.015em;
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+/* Subtle hover state on inactive items without layout shift */
+.ncc-nav-pill-link:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.45);
+}
+
+.ncc-nav-pill-link:not(.active):hover .ncc-nav-pill-text {
+  color: #000000;
+}
+
+.ncc-nav-pill-link:focus-visible {
+  box-shadow: 0 0 0 2px #06152B;
+}
+
+/* Active navigation item: bold dark navy text */
+.ncc-nav-pill-link.active .ncc-nav-pill-text {
+  color: #06152B;
+  font-weight: 700;
+}
+
+/* Active Sliding Highlight Pill inside the container */
+.ncc-nav-pill-active-bg {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  box-shadow:
+    0 2px 8px rgba(6, 21, 43, 0.16),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.45, 0.64, 1),
+    width 0.35s cubic-bezier(0.34, 1.45, 0.64, 1),
+    opacity 0.2s ease;
+  will-change: transform, width;
+}
+
+/* Gooey Liquid Particles Layer (NO black box artifact) */
+.ncc-nav-pill-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  filter: url(#ncc-pill-goo);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+/* Individual liquid bubble particle */
+.ncc-gooey-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: #FFFFFF;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0.6);
+  animation-name: nccBubbleArc;
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes nccBubbleArc {
+  0% {
+    transform: translate(var(--bx-start), var(--by-start)) scale(0.6);
+    opacity: 0.95;
+  }
+  35% {
+    transform: translate(var(--bx-mid), var(--by-mid)) scale(1.15);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translate(var(--bx-end), var(--by-end)) scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(var(--bx-end), var(--by-end)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* Responsive adjust for mid screens */
+@media (max-width: 1200px) {
+  .ncc-nav-pill-link {
+    padding: 5px 11px;
+  }
+  .ncc-nav-pill-text {
+    font-size: 0.82rem;
+  }
+}

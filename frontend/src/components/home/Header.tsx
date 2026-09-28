@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Shield, Menu, X, ExternalLink, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { GooeyNav } from '../GooeyNav';
+import { GooeyNavPill, NavPillItem } from './GooeyNavPill';
 import '../../styles/header.css';
 
 interface HeaderProps {
@@ -18,31 +18,10 @@ export const Header: React.FC<HeaderProps> = ({
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [shellsDropdownOpen, setShellsDropdownOpen] = useState(false);
+  const [activeNav, setActiveNav] = useState('Home');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const navItems = [
-    { label: 'Home', href: '#' },
-    { label: 'About', href: '#about' },
-    { label: 'Activities', href: '#activities' },
-    { label: 'Gallery', href: '#gallery' },
-    { label: 'Notices', href: '#notices' },
-    { label: 'Contact', href: '#contact' },
-  ];
-
-  const getIndexFromUrl = (): number => {
-    const hash = window.location.hash.toLowerCase();
-    const path = window.location.pathname.toLowerCase();
-    if (hash === '#contact' || path === '/contact') return 5;
-    if (hash === '#notices' || path === '/notices') return 4;
-    if (hash === '#gallery' || path === '/gallery') return 3;
-    if (hash === '#activities' || path === '/activities' || hash === '#training' || path === '/training') return 2;
-    if (hash === '#about' || path === '/about') return 1;
-    return 0; // Home
-  };
-
-  const [activeIndex, setActiveIndex] = useState<number>(getIndexFromUrl);
-
-  // Close dropdown when clicking outside
+  // Close Role Shells dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -55,55 +34,17 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [shellsDropdownOpen]);
 
-  // Synchronize active navigation item with route and scroll position
-  useEffect(() => {
-    const handleUrlChange = () => {
-      setActiveIndex(getIndexFromUrl());
-    };
+  // The 6 public navigation links
+  const navLinks: NavPillItem[] = [
+    { name: 'Home', href: '#' },
+    { name: 'Notices', href: '#notices' },
+    { name: 'About', href: '#about' },
+    { name: 'Activities', href: '#activities' },
+    { name: 'Gallery', href: '#gallery' },
+    { name: 'Contact', href: '#contact' },
+  ];
 
-    window.addEventListener('hashchange', handleUrlChange);
-    window.addEventListener('popstate', handleUrlChange);
-
-    const sectionIds = ['contact', 'notices', 'gallery', 'activities', 'about'];
-    let scrollTimeout: any = null;
-
-    const handleScroll = () => {
-      if (scrollTimeout) return;
-      scrollTimeout = setTimeout(() => {
-        scrollTimeout = null;
-        if (window.scrollY < 200) {
-          setActiveIndex(0);
-          return;
-        }
-        const scrollPosition = window.scrollY + 200;
-        for (const id of sectionIds) {
-          const el = document.getElementById(id);
-          if (el) {
-            const top = el.offsetTop;
-            const height = el.offsetHeight;
-            if (scrollPosition >= top && scrollPosition < top + height) {
-              if (id === 'contact') setActiveIndex(5);
-              else if (id === 'notices') setActiveIndex(4);
-              else if (id === 'gallery') setActiveIndex(3);
-              else if (id === 'activities') setActiveIndex(2);
-              else if (id === 'about') setActiveIndex(1);
-              return;
-            }
-          }
-        }
-      }, 50);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener('hashchange', handleUrlChange);
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-    };
-  }, []);
-
+  // The 4 institutional roles
   const roles = [
     { id: 'ADMIN_ANO', name: 'ANO / Admin Command' },
     { id: 'PLATOON_SENIOR', name: 'Platoon Senior' },
@@ -111,34 +52,57 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'CADET', name: 'Cadet Portal' },
   ];
 
-  const handleMobileNavClick = (href: string, index: number) => {
-    setActiveIndex(index);
-    setMobileMenuOpen(false);
+  // Smooth scroll handler for links
+  const handleNavSelect = (name: string, href: string) => {
+    setActiveNav(name);
+    if (!href || href === '#') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.history.pushState(null, '', window.location.pathname);
+      return;
+    }
 
-    if (href.startsWith('#')) {
-      const targetId = href.replace('#', '');
-      if (!targetId) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        window.history.pushState(null, '', window.location.pathname);
-      } else {
-        const targetElement = document.getElementById(targetId);
-        if (targetElement) {
-          const navOffset = 76;
-          const elementPos = targetElement.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({
-            top: elementPos - navOffset,
-            behavior: 'smooth',
-          });
-          window.history.pushState(null, '', href);
-        }
-      }
+    const targetId = href.replace('#', '');
+    const el = document.getElementById(targetId);
+    if (el) {
+      const navOffset = 74;
+      const elementPos = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: elementPos - navOffset,
+        behavior: 'smooth',
+      });
+      window.history.pushState(null, '', href);
+    } else {
+      window.location.hash = href;
     }
   };
+
+  // Scrollspy to keep active nav item updated during scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY < 120) {
+        setActiveNav('Home');
+        return;
+      }
+
+      const sections = ['notices', 'about', 'activities', 'gallery', 'contact']
+        .map((id) => ({ id, element: document.getElementById(id) }))
+        .filter((entry): entry is { id: string; element: HTMLElement } => Boolean(entry.element))
+        .filter(({ element }) => element.getBoundingClientRect().top <= 140);
+      const activeSection = sections[sections.length - 1];
+      if (activeSection) {
+        const matched = navLinks.find((link) => link.href === `#${activeSection.id}`);
+        if (matched) setActiveNav(matched.name);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <header className="ref-site-header" role="banner">
       <div className="ref-header-inner">
-        {/* LEFT: NCC BRAND IDENTITY */}
+        {/* ZONE 1 — LEFT: NCC BRANDING (Unchanged) */}
         <div className="ref-brand">
           <a
             href="#"
@@ -146,9 +110,7 @@ export const Header: React.FC<HeaderProps> = ({
             aria-label="National Cadet Corps Home"
             onClick={(e) => {
               e.preventDefault();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              setActiveIndex(0);
-              window.history.pushState(null, '', window.location.pathname);
+              handleNavSelect('Home', '#');
             }}
           >
             <img
@@ -164,29 +126,21 @@ export const Header: React.FC<HeaderProps> = ({
           </a>
         </div>
 
-        {/* CENTER: REACT BITS GOOEYNAV */}
-        <div className="ref-gooey-nav-wrapper">
-          <GooeyNav
-            items={navItems}
-            particleCount={15}
-            particleDistances={[90, 10]}
-            particleR={100}
-            animationTime={600}
-            timeVariance={300}
-            colors={[1, 2, 3, 1, 2, 3, 1, 4]}
-            activeIndex={activeIndex}
-            onItemClick={(_e, _item, index) => {
-              setActiveIndex(index);
-            }}
+        {/* ZONE 2 — CENTER: ONE UNIFIED NAVIGATION PILL */}
+        <div className="ref-nav-center">
+          <GooeyNavPill
+            items={navLinks}
+            activeNav={activeNav}
+            onSelect={handleNavSelect}
           />
         </div>
 
-        {/* RIGHT: ROLE SHELLS + AUTH ACTIONS */}
+        {/* ZONE 3 — RIGHT: ROLE SHELLS, LOGIN, REGISTER */}
         <div className="ref-header-actions">
-          {/* Role Dashboards Dropdown */}
+          {/* Role Dashboards Outline Dropdown Button */}
           <div className="ref-shells-dropdown" ref={dropdownRef}>
             <button
-              className="ref-shells-toggle"
+              className="ref-btn-shells"
               onClick={() => setShellsDropdownOpen(!shellsDropdownOpen)}
               aria-expanded={shellsDropdownOpen}
               aria-haspopup="true"
@@ -272,18 +226,19 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="ref-mobile-drawer" role="dialog" aria-modal="true" aria-label="Mobile Navigation Drawer">
           <div className="ref-mobile-inner">
             <nav className="ref-mobile-nav" aria-label="Mobile Links">
-              {navItems.map((item, index) => (
+              {navLinks.map((link) => (
                 <a
-                  key={item.label}
-                  href={item.href}
-                  className={`ref-mobile-link ${activeIndex === index ? 'active' : ''}`}
+                  key={link.name}
+                  href={link.href}
+                  className={`ref-mobile-link ${activeNav === link.name ? 'active' : ''}`}
                   onClick={(e) => {
                     e.preventDefault();
-                    handleMobileNavClick(item.href, index);
+                    handleNavSelect(link.name, link.href);
+                    setMobileMenuOpen(false);
                   }}
-                  aria-current={activeIndex === index ? 'page' : undefined}
+                  aria-current={activeNav === link.name ? 'page' : undefined}
                 >
-                  {item.label}
+                  {link.name}
                 </a>
               ))}
             </nav>
@@ -363,4 +318,5 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+
 export default Header;
