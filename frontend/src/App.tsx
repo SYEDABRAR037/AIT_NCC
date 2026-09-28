@@ -19,7 +19,6 @@ import { LoginModal } from './components/auth/LoginModal';
 import { RegisterModal } from './components/auth/RegisterModal';
 import { RoleShellView } from './components/shells/RoleShellView';
 import { AiCadetAssistant } from './components/assistant/AiCadetAssistant';
-import { ScrollStack, ScrollStackItem } from './components/home/ScrollStack';
 
 const AppContent: React.FC = () => {
   const { user, login } = useAuth();
@@ -75,43 +74,41 @@ const AppContent: React.FC = () => {
               onOpenRegister={() => setRegisterModalOpen(true)}
             />
 
-            <ScrollStack
-              itemDistance={100}
-              itemScale={0.03}
-              itemStackDistance={30}
-              stackPosition="20%"
-              scaleEndPosition="10%"
-              baseScale={0.97}
-              scaleDuration={0.5}
-              rotationAmount={0}
-              blurAmount={0}
-              useWindowScroll={true}
-            >
-              <ScrollStackItem className="scroll-stack-notices">
-                <StrengthAndNotices />
-              </ScrollStackItem>
-              <ScrollStackItem className="scroll-stack-about">
-                <QuoteBanner />
-                <AboutSection />
-                <UnitIntroduction />
-                <MissionVisionValues />
-              </ScrollStackItem>
-              <ScrollStackItem className="scroll-stack-activities">
-                <TrainingActivities />
-                <UpcomingEvents />
-                <Achievements />
-              </ScrollStackItem>
-              <ScrollStackItem className="scroll-stack-gallery">
-                <GallerySection />
-              </ScrollStackItem>
-              <ScrollStackItem className="scroll-stack-contact">
-                <JoinNCC
-                  onOpenRegister={() => setRegisterModalOpen(true)}
-                  onOpenLogin={() => setLoginModalOpen(true)}
-                />
-                <ContactSection onOpenLogin={() => setLoginModalOpen(true)} />
-              </ScrollStackItem>
-            </ScrollStack>
+            {/* Two-Column Our Strength (Real DB) + Latest Notices (Real DB) matching reference */}
+            <StrengthAndNotices />
+
+            {/* Inspiring Military Quote Banner with Onward to Glory & Tricolor matching reference */}
+            <QuoteBanner />
+
+            {/* Institutional Foundation */}
+            <AboutSection />
+
+            {/* AIT Pune NCC Unit Detachment & Affiliation */}
+            <UnitIntroduction />
+
+            {/* Institutional Principles, Mission & Ethos */}
+            <MissionVisionValues />
+
+            {/* Training Curriculum & Regimental Drills */}
+            <TrainingActivities />
+
+            {/* Upcoming Activities & Camps (Real DB) */}
+            <UpcomingEvents />
+
+            {/* Public Verified Cadet Achievements (Real DB) */}
+            <Achievements />
+
+            {/* Authorized Regimental Media Gallery */}
+            <GallerySection />
+
+            {/* Ready to Join NCC Enrollment CTA */}
+            <JoinNCC
+              onOpenRegister={() => setRegisterModalOpen(true)}
+              onOpenLogin={() => setLoginModalOpen(true)}
+            />
+
+            {/* Unit Liaison & Contact */}
+            <ContactSection onOpenLogin={() => setLoginModalOpen(true)} />
           </main>
 
           {/* Deep Navy Institutional Footer matching reference */}
