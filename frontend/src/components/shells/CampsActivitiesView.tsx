@@ -253,21 +253,21 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case 'APPLIED':
-        return { backgroundColor: '#EFF6FF', color: '#1D4ED8', border: '1px solid #BFDBFE' };
+        return { backgroundColor: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
       case 'RECOMMENDED':
-        return { backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' };
+        return { backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-gold)' };
       case 'SELECTED':
-        return { backgroundColor: '#F3E8FF', color: '#7E22CE', border: '1px solid #E9D5FF' };
+        return { backgroundColor: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
       case 'CONFIRMED':
-        return { backgroundColor: '#D1FAE5', color: '#047857', border: '1px solid #A7F3D0' };
+        return { backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success-border)' };
       case 'PARTICIPATED':
-        return { backgroundColor: '#CCFBF1', color: '#0F766E', border: '1px solid #99F6E4' };
+        return { backgroundColor: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
       case 'COMPLETED':
-        return { backgroundColor: '#DCFCE7', color: '#15803D', border: '1px solid #86EFAC' };
+        return { backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success)' };
       case 'REJECTED':
-        return { backgroundColor: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' };
+        return { backgroundColor: 'var(--color-error-soft)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)' };
       default:
-        return { backgroundColor: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1' };
+        return { backgroundColor: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' };
     }
   };
 
@@ -339,30 +339,30 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
           <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Scheduled training cadres</div>
         </div>
 
-        <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+        <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Cadet Nominations</span>
-            <Users size={20} style={{ color: '#2563EB' }} />
+            <Users size={20} style={{ color: 'var(--color-accent)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>{totalNominations}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>{totalNominations}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Applied & nominated cadets</div>
         </div>
 
-        <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+        <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Annual Training</span>
-            <CheckCircle size={20} style={{ color: '#047857' }} />
+            <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>{catcCamps}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>{catcCamps}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>CATC mandatory cadres</div>
         </div>
 
-        <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+        <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>National Expeditions</span>
-            <Shield size={20} style={{ color: '#D97706' }} />
+            <Shield size={20} style={{ color: 'var(--color-primary)' }} />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>{nationalCamps}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{nationalCamps}</div>
           <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>NIC / RDC / TSC cadres</div>
         </div>
       </div>
@@ -428,7 +428,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
 
       {/* Error state */}
       {error && (
-        <div style={{ padding: '0.85rem 1rem', borderRadius: '4px', backgroundColor: '#FEE2E2', border: '1px solid #FECACA', color: '#DC2626', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ padding: '0.85rem 1rem', borderRadius: '4px', backgroundColor: 'var(--color-error-soft)', border: '1px solid var(--color-error-border)', color: 'var(--color-error)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <AlertTriangle size={16} />
           <span>{error}</span>
         </div>
@@ -493,9 +493,9 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                           onClick={() => handleDeleteCamp(camp.id, camp.name)}
                           title="Decommission Camp"
                           style={{
-                            background: '#FEE2E2',
-                            border: '1px solid #FECACA',
-                            color: '#DC2626',
+                            background: 'var(--color-error-soft)',
+                            border: '1px solid var(--color-error-border)',
+                            color: 'var(--color-error)',
                             borderRadius: '4px',
                             padding: '0.35rem 0.55rem',
                             cursor: 'pointer',
@@ -558,7 +558,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
 
                     <div>
                       <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Capacity</span>
-                      <strong style={{ color: '#047857' }}>
+                      <strong style={{ color: 'var(--color-success)' }}>
                         {participantCount} / {campCapacity} Cadets
                       </strong>
                     </div>
@@ -620,7 +620,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                 </div>
 
                 <div style={{ padding: '0.75rem', borderRadius: '4px', backgroundColor: 'var(--white-surface)', border: '1px solid var(--white-border)' }}>
-                  <strong style={{ display: 'block', fontSize: '0.72rem', color: '#B45309', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                  <strong style={{ display: 'block', fontSize: '0.72rem', color: 'var(--color-primary)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                     Required Documents & NOC
                   </strong>
                   <p style={{ margin: 0, color: 'var(--navy-text)' }}>
@@ -680,7 +680,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                               {cadetReg} {p.cadet?.platoonName ? `· ${p.cadet.platoonName}` : ''}
                             </div>
                             {p.remarks && (
-                              <div style={{ fontSize: '0.72rem', color: '#B45309', marginTop: '0.2rem' }}>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', marginTop: '0.2rem' }}>
                                 <em>"{p.remarks}"</em>
                               </div>
                             )}
@@ -730,7 +730,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -755,7 +755,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
             <div style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--white-pure)', margin: 0 }}>Apply for Camp Nomination</h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94A3B8' }}>{applyTargetCamp.name}</p>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>{applyTargetCamp.name}</p>
               </div>
               <button
                 onClick={() => setApplyModalOpen(false)}
@@ -824,7 +824,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -849,7 +849,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
             <div style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--white-pure)', margin: 0 }}>Review Camp Participant</h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94A3B8' }}>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>
                   {targetParticipant.cadet?.fullName || targetParticipant.user?.name} ({targetParticipant.cadet?.regimentalNumber || targetParticipant.user?.regimentalNumber})
                 </p>
               </div>
@@ -939,7 +939,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -966,7 +966,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
             <div style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--white-pure)', margin: 0 }}>Commission New Camp Operation</h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94A3B8' }}>Creates camp and syncs automatically to master calendar</p>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>Creates camp and syncs automatically to master calendar</p>
               </div>
               <button
                 onClick={() => setCreateModalOpen(false)}

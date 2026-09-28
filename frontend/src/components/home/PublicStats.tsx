@@ -75,14 +75,14 @@ export const PublicStats: React.FC = () => {
     <section id="stats" className="section-py section-dark-navy" aria-label="Live Public NCC Statistics">
       <div className="container">
         <div className="section-header" style={{ marginBottom: '2.5rem' }}>
-          <span className="sub-title" style={{ color: '#93C5FD' }}>
+          <span className="sub-title" style={{ color: 'var(--color-info-border)' }}>
             <Activity size={16} />
             Verified Unit Strength
           </span>
           <h2 className="cinzel-title" style={{ color: 'var(--white-pure)' }}>
             Public Unit Statistics
           </h2>
-          <p className="description" style={{ color: '#CBD5E1' }}>
+          <p className="description" style={{ color: 'var(--color-border)' }}>
             Directly connected to PostgreSQL database records. Institutional strength is calculated
             dynamically from verified approvals without hardcoded estimates.
           </p>
@@ -104,15 +104,15 @@ export const PublicStats: React.FC = () => {
                 }}
               >
                 <div style={{ display: 'inline-flex', padding: '0.75rem', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.1)', marginBottom: '1rem' }}>
-                  <Icon size={24} style={{ color: '#93C5FD' }} />
+                  <Icon size={24} style={{ color: 'var(--color-info-border)' }} />
                 </div>
                 <div style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--white-pure)', fontFamily: 'monospace', lineHeight: 1 }}>
                   {loading ? '...' : item.value}
                 </div>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#F1F5F9', marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-surface)', marginTop: '0.5rem' }}>
                   {item.label}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.25rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-disabled)', marginTop: '0.25rem' }}>
                   {item.subtext}
                 </div>
               </div>
@@ -120,12 +120,12 @@ export const PublicStats: React.FC = () => {
           })}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '2rem', fontSize: '0.8rem', color: '#94A3B8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginTop: '2rem', fontSize: '0.8rem', color: 'var(--color-disabled)' }}>
           <span>PostgreSQL Active Sync</span>
           <button
             onClick={fetchStats}
             title="Refresh database counts"
-            style={{ background: 'none', border: 'none', color: '#93C5FD', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+            style={{ background: 'none', border: 'none', color: 'var(--color-info-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
             <RefreshCw size={13} className={loading ? 'spinning' : ''} />
             <span>Sync</span>
@@ -133,7 +133,7 @@ export const PublicStats: React.FC = () => {
         </div>
 
         {error && (
-          <div style={{ textAlign: 'center', color: '#CBD5E1', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+          <div style={{ textAlign: 'center', color: 'var(--color-border)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
             {error}
           </div>
         )}

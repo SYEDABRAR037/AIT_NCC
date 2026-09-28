@@ -1,45 +1,69 @@
 /* ==========================================================================
    NCC DIGITAL COMMAND & CADET MANAGEMENT SYSTEM
    ARMY INSTITUTE OF TECHNOLOGY (AIT), PUNE
-   GLOBAL DESIGN SYSTEM: STRICT NAVY BLUE + WHITE
+   GLOBAL DESIGN SYSTEM: DEEP NAVY, ROYAL BLUE, AND RESTRAINED SAFFRON
    ========================================================================== */
 
 :root {
-  /* Institutional Navy Palette */
-  --navy-deepest: #030B17;
-  --navy-dark: #061325;
-  --navy-primary: #0A192F;
-  --navy-card: #0F233E;
-  --navy-surface: #122B4D;
-  --navy-border: #1B3B66;
-  --navy-hover: #1E4475;
-  --navy-subtle: #234E85;
-  --navy-text: #0A192F;
-  --navy-text-muted: #334E68;
-  
-  /* Institutional White / Light Palette */
-  --white-pure: #FFFFFF;
-  --white-surface: #F8FAFC;
-  --white-card: #FFFFFF;
-  --white-border: #E2E8F0;
-  --white-border-subtle: #CBD5E1;
-  --white-muted: #64748B;
-  --white-hover: #F1F5F9;
+  /* Canonical product palette */
+  --color-primary: #071A33;
+  --color-secondary: #0D2A4A;
+  --color-accent: #155EEF;
+  --color-accent-hover: #0F4CCC;
+  --color-gold: #F4B400;
+  --color-background: #FFFFFF;
+  --color-surface: #F5F8FC;
+  --color-text: #102A43;
+  --color-text-secondary: #52667A;
+  --color-border: #D9E2EC;
+  --color-success: #16803C;
+  --color-error: #D92D20;
+  --color-warning: #F4B400;
+  --color-info: #155EEF;
+  --color-info-border: #B2CCFF;
+  --color-success-soft: #ECFDF3;
+  --color-success-border: #ABEFC6;
+  --color-error-soft: #FEF3F2;
+  --color-error-border: #FDA29B;
+  --color-warning-soft: #FFF4CC;
+  --color-info-soft: #EEF4FF;
+  --color-disabled: #94A3B8;
+  --color-border-dark: #25476B;
 
-  /* Accent Tones (Strict subtle Navy variants / institutional badge) */
-  --navy-badge-bg: #E0EBF7;
-  --navy-badge-text: #0A192F;
-  --navy-badge-border: #BCD3EB;
+  /* Backward-compatible aliases used throughout existing UI and role panels */
+  --navy-deepest: var(--color-primary);
+  --navy-dark: var(--color-primary);
+  --navy-primary: var(--color-primary);
+  --navy-card: var(--color-secondary);
+  --navy-surface: var(--color-secondary);
+  --navy-border: var(--color-border-dark);
+  --navy-hover: var(--color-accent);
+  --navy-subtle: var(--color-accent);
+  --navy-text: var(--color-text);
+  --navy-text-muted: var(--color-text-secondary);
+
+  --white-pure: var(--color-background);
+  --white-surface: var(--color-surface);
+  --white-card: var(--color-background);
+  --white-border: var(--color-border);
+  --white-border-subtle: var(--color-border);
+  --white-muted: var(--color-text-secondary);
+  --white-hover: var(--color-surface);
+
+  --navy-badge-bg: var(--color-info-soft);
+  --navy-badge-text: var(--color-secondary);
+  --navy-badge-border: var(--color-info-border);
+  --gold-accent: var(--color-gold);
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Cinzel', serif;
 
   /* Shadows (Subtle, professional) */
-  --shadow-sm: 0 1px 2px rgba(10, 25, 47, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(10, 25, 47, 0.08), 0 2px 4px -1px rgba(10, 25, 47, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(10, 25, 47, 0.1), 0 4px 6px -2px rgba(10, 25, 47, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(10, 25, 47, 0.12), 0 10px 10px -5px rgba(10, 25, 47, 0.04);
+  --shadow-sm: 0 1px 2px rgba(7, 26, 51, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(7, 26, 51, 0.08), 0 2px 4px -1px rgba(7, 26, 51, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(7, 26, 51, 0.1), 0 4px 6px -2px rgba(7, 26, 51, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(7, 26, 51, 0.12), 0 10px 10px -5px rgba(7, 26, 51, 0.04);
 
   /* Layout */
   --max-width: 1240px;
@@ -100,13 +124,50 @@ p {
 }
 
 a {
-  color: var(--navy-primary);
+  color: var(--color-accent);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 a:hover {
-  color: var(--navy-hover);
+  color: var(--color-accent);
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+select,
+textarea {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  background-color: var(--color-background);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 0.85;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--color-accent);
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+table {
+  color: var(--color-text);
+}
+
+th {
+  color: var(--color-secondary);
+  border-color: var(--color-border);
+}
+
+td {
+  border-color: var(--color-border);
 }
 
 img {
@@ -121,21 +182,21 @@ img {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background-color: var(--navy-primary);
+  background-color: var(--color-accent);
   color: var(--white-pure);
   font-weight: 600;
   font-size: 0.95rem;
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
-  border: 1px solid var(--navy-primary);
+  border: 1px solid var(--color-accent);
   cursor: pointer;
   transition: all 0.2s ease;
   letter-spacing: 0.02em;
 }
 
 .btn-primary:hover {
-  background-color: var(--navy-hover);
-  border-color: var(--navy-hover);
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
   color: var(--white-pure);
   box-shadow: var(--shadow-md);
 }
@@ -151,15 +212,15 @@ img {
   font-size: 0.95rem;
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
-  border: 1.5px solid var(--navy-primary);
+  border: 1px solid var(--color-border);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-secondary:hover {
   background-color: var(--white-hover);
-  color: var(--navy-primary);
-  border-color: var(--navy-hover);
+  color: var(--color-primary);
+  border-color: var(--color-accent);
 }
 
 .btn-outline-white {
@@ -269,7 +330,7 @@ img {
 .institutional-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  border-color: var(--navy-border);
+  border-color: var(--color-accent);
 }
 
 /* Section padding */
@@ -343,7 +404,7 @@ img {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(6, 19, 37, 0.78);
+  background-color: rgba(7, 26, 51, 0.78);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -357,7 +418,7 @@ img {
   background-color: #FFFFFF;
   border: 2px solid var(--navy-primary);
   border-radius: 8px;
-  box-shadow: 0 25px 50px -12px rgba(6, 19, 37, 0.4);
+  box-shadow: 0 25px 50px -12px rgba(7, 26, 51, 0.4);
   position: relative;
   box-sizing: border-box;
 }

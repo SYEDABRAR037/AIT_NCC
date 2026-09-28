@@ -9,7 +9,7 @@
   z-index: 99999;
   overflow: hidden;
   pointer-events: all;
-  background-color: #030B17;
+  background-color: var(--color-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,7 +59,7 @@
 
 .intro-title-group h1 {
   font-family: var(--font-display);
-  color: #FFFFFF;
+  color: var(--color-background);
   font-size: 1.5rem;
   letter-spacing: 0.12em;
   margin-bottom: 0.5rem;
@@ -69,7 +69,7 @@
 
 .intro-title-group h2 {
   font-size: 0.95rem;
-  color: #94A3B8;
+  color: var(--color-disabled);
   letter-spacing: 0.18em;
   font-weight: 600;
   text-transform: uppercase;
@@ -94,7 +94,7 @@
 
 .progress-fill {
   height: 100%;
-  background: #FFFFFF;
+  background: var(--color-background);
   transition: width 0.15s linear;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
 }
@@ -107,14 +107,14 @@
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: #CBD5E1;
+  color: var(--color-border);
 }
 
 .progress-percentage {
   font-family: monospace;
   font-size: 1rem;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--color-background);
 }
 
 /* Theatre Curtains */
@@ -129,15 +129,15 @@
 .curtain-panel {
   width: 50%;
   height: 100%;
-  background-color: #061325;
+  background-color: var(--color-primary);
   /* Natural woven cloth texture using repetitive CSS gradient folds */
   background-image: repeating-linear-gradient(
     90deg,
-    #040D1A 0px,
-    #061325 30px,
-    #0B2545 60px,
-    #061325 90px,
-    #020812 120px
+    var(--color-primary) 0px,
+    var(--color-primary) 30px,
+    var(--color-secondary) 60px,
+    var(--color-primary) 90px,
+    var(--color-primary) 120px
   );
   position: relative;
   will-change: transform;
@@ -177,7 +177,7 @@
   left: 0;
   right: 0;
   height: 12px;
-  background: linear-gradient(90deg, #1B3B66, #2A5A9E, #1B3B66);
+  background: linear-gradient(90deg, var(--color-border-dark), var(--color-accent), var(--color-border-dark));
   border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 

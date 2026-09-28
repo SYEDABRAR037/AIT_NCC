@@ -316,7 +316,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 11, 23, 0.75)',
+        backgroundColor: 'rgba(7, 26, 51, 0.75)',
         backdropFilter: 'blur(4px)',
         zIndex: 10000,
         display: 'flex',
@@ -372,9 +372,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           {successMsg && (
             <div
               style={{
-                backgroundColor: '#ECFDF5',
-                border: '1px solid #10B981',
-                color: '#065F46',
+                backgroundColor: 'var(--color-success-soft)',
+                border: '1px solid var(--color-success)',
+                color: 'var(--color-success)',
                 padding: '1rem',
                 borderRadius: '4px',
                 fontSize: '0.9rem',
@@ -390,7 +390,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                   CADET APPLICATION FILED
                 </strong>
                 <span>{successMsg}</span>
-                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#047857' }}>
+                <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-success)' }}>
                   Your account status is currently <strong>UNDER_REVIEW</strong>. Once vetted by your Senior, Platoon Senior, and approved by the ANO, you will be able to log in.
                 </div>
               </div>
@@ -401,9 +401,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
           {errorMsg && (
             <div
               style={{
-                backgroundColor: '#FEE2E2',
-                border: '1px solid #EF4444',
-                color: '#B91C1C',
+                backgroundColor: 'var(--color-error-soft)',
+                border: '1px solid var(--color-error)',
+                color: 'var(--color-error)',
                 padding: '0.85rem 1rem',
                 borderRadius: '4px',
                 fontSize: '0.85rem',
@@ -603,7 +603,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                     style={{ fontSize: '0.85rem' }}
                   />
                   {photoStatus && (
-                    <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600 }}>
                       ✓ {photoStatus}
                     </span>
                   )}
@@ -662,25 +662,25 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
             {/* Biometric Section */}
             <div
               style={{
-                backgroundColor: faceDescriptor ? 'rgba(16, 185, 129, 0.08)' : 'var(--white-surface)',
-                border: `1px solid ${faceDescriptor ? '#10B981' : 'var(--white-border)'}`,
+                backgroundColor: faceDescriptor ? 'rgba(22, 128, 60, 0.08)' : 'var(--white-surface)',
+                border: `1px solid ${faceDescriptor ? 'var(--color-success)' : 'var(--white-border)'}`,
                 borderRadius: '6px',
                 padding: '1.25rem',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Camera size={18} style={{ color: faceDescriptor ? '#10B981' : 'var(--navy-primary)' }} />
+                  <Camera size={18} style={{ color: faceDescriptor ? 'var(--color-success)' : 'var(--navy-primary)' }} />
                   <strong style={{ fontSize: '0.9rem', color: 'var(--navy-primary)' }}>
                     Biometric Face Registration (FaceNet 128-d)
                   </strong>
                 </div>
                 {faceDescriptor ? (
-                  <span style={{ backgroundColor: '#ECFDF5', color: '#065F46', border: '1px solid #10B981', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <span style={{ backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
                     BIOMETRIC TEMPLATE READY
                   </span>
                 ) : (
-                  <span style={{ backgroundColor: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <span style={{ backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-gold)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
                     FACE NOT REGISTERED
                   </span>
                 )}
@@ -695,9 +695,9 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                       height: '200px',
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      border: detectionTone === 'success' ? '3px solid #10B981' : detectionTone === 'warning' ? '3px solid #F59E0B' : '3px solid #38BDF8',
+                      border: detectionTone === 'success' ? '3px solid var(--color-success)' : detectionTone === 'warning' ? '3px solid var(--color-gold)' : '3px solid var(--color-accent)',
                       backgroundColor: '#000000',
-                      boxShadow: detectionTone === 'success' ? '0 0 18px rgba(16, 185, 129, 0.5)' : '0 0 15px rgba(56, 189, 248, 0.4)',
+                      boxShadow: detectionTone === 'success' ? '0 0 18px rgba(22, 128, 60, 0.5)' : '0 0 15px rgba(21, 94, 239, 0.4)',
                     }}
                   >
                     <video
@@ -716,7 +716,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                           alignItems: 'center',
                           justifyContent: 'center',
                           backgroundColor: 'rgba(0,0,0,0.35)',
-                          color: '#FFFFFF',
+                          color: 'var(--color-background)',
                           fontSize: '3.25rem',
                           fontWeight: 800,
                           textShadow: '0 2px 8px rgba(0,0,0,0.8)',
@@ -737,11 +737,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                       fontSize: '0.8rem',
                       fontWeight: 600,
                       backgroundColor:
-                        detectionTone === 'success' ? '#ECFDF5' : detectionTone === 'warning' ? '#FEF3C7' : '#F1F5F9',
+                        detectionTone === 'success' ? 'var(--color-success-soft)' : detectionTone === 'warning' ? 'var(--color-warning-soft)' : 'var(--color-surface)',
                       color:
-                        detectionTone === 'success' ? '#065F46' : detectionTone === 'warning' ? '#92400E' : 'var(--navy-primary)',
+                        detectionTone === 'success' ? 'var(--color-success)' : detectionTone === 'warning' ? 'var(--color-primary)' : 'var(--navy-primary)',
                       border: `1px solid ${
-                        detectionTone === 'success' ? '#A7F3D0' : detectionTone === 'warning' ? '#FDE68A' : '#CBD5E1'
+                        detectionTone === 'success' ? 'var(--color-success-border)' : detectionTone === 'warning' ? 'var(--color-gold)' : 'var(--color-border)'
                       }`,
                     }}
                   >
@@ -751,7 +751,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                         height: '8px',
                         borderRadius: '50%',
                         backgroundColor:
-                          detectionTone === 'success' ? '#10B981' : detectionTone === 'warning' ? '#F59E0B' : '#38BDF8',
+                          detectionTone === 'success' ? 'var(--color-success)' : detectionTone === 'warning' ? 'var(--color-gold)' : 'var(--color-accent)',
                       }}
                     />
                     <span>{faceDetectionStatus}</span>
@@ -788,8 +788,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '0.4rem',
-                        backgroundColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
-                        borderColor: faceDescriptor ? '#059669' : 'var(--navy-primary)',
+                        backgroundColor: faceDescriptor ? 'var(--color-success)' : 'var(--navy-primary)',
+                        borderColor: faceDescriptor ? 'var(--color-success)' : 'var(--navy-primary)',
                       }}
                     >
                       <Camera size={14} />
@@ -802,7 +802,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                       </span>
                     </button>
                     {faceDescriptor && (
-                      <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 600 }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600 }}>
                         {biometricStatus}
                       </span>
                     )}

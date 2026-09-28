@@ -213,27 +213,27 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
     switch (status) {
       case 'ASSIGNED':
         return {
-          background: '#FEF3C7',
-          color: '#92400E',
-          border: '1px solid #FCD34D',
+          background: 'var(--color-warning-soft)',
+          color: 'var(--color-primary)',
+          border: '1px solid var(--color-gold)',
         };
       case 'COMPLETED':
         return {
-          background: '#ECFDF5',
-          color: '#065F46',
-          border: '1px solid #A7F3D0',
+          background: 'var(--color-success-soft)',
+          color: 'var(--color-success)',
+          border: '1px solid var(--color-success-border)',
         };
       case 'EXCUSED':
         return {
-          background: '#F1F5F9',
-          color: '#475569',
-          border: '1px solid #CBD5E1',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text-secondary)',
+          border: '1px solid var(--color-border)',
         };
       default:
         return {
-          background: '#F1F5F9',
-          color: '#475569',
-          border: '1px solid #CBD5E1',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text-secondary)',
+          border: '1px solid var(--color-border)',
         };
     }
   };
@@ -260,7 +260,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         className="institutional-card"
         style={{
           borderLeft: '5px solid var(--navy-primary)',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          background: 'linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%)',
           padding: '1.75rem',
         }}
       >
@@ -413,7 +413,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         <div
           className="institutional-card"
           style={{
-            borderLeft: '4px solid #DC2626',
+            borderLeft: '4px solid var(--color-error)',
             padding: '1.25rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -423,9 +423,9 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertCircle size={22} style={{ color: '#DC2626' }} />
+            <AlertCircle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
-              <h4 style={{ color: '#DC2626', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
+              <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
                 Operational Synchronization Alert
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
@@ -623,8 +623,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                       className="btn-primary btn-sm"
                       style={{
                         flex: 1,
-                        background: '#047857',
-                        borderColor: '#047857',
+                        background: 'var(--color-success)',
+                        borderColor: 'var(--color-success)',
                         fontSize: '0.78rem',
                         padding: '0.45rem',
                       }}
@@ -657,7 +657,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(3, 11, 23, 0.7)',
+            background: 'rgba(7, 26, 51, 0.7)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',

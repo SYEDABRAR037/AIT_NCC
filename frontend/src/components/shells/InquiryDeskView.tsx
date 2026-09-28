@@ -178,19 +178,19 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'SUBMITTED':
-        return { label: 'SUBMITTED', bg: '#FEF3C7', color: '#92400E', border: '#FCD34D' };
+        return { label: 'SUBMITTED', bg: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: 'var(--color-gold)' };
       case 'UNDER_REVIEW':
-        return { label: 'UNDER REVIEW', bg: '#EFF6FF', color: '#1E40AF', border: '#BFDBFE' };
+        return { label: 'UNDER REVIEW', bg: 'var(--color-info-soft)', color: 'var(--color-accent)', border: 'var(--color-info-border)' };
       case 'REPLIED':
-        return { label: 'REPLIED', bg: '#ECFDF5', color: '#065F46', border: '#A7F3D0' };
+        return { label: 'REPLIED', bg: 'var(--color-success-soft)', color: 'var(--color-success)', border: 'var(--color-success-border)' };
       case 'FORWARDED':
-        return { label: 'FORWARDED', bg: '#F5F3FF', color: '#5B21B6', border: '#DDD6FE' };
+        return { label: 'FORWARDED', bg: 'var(--color-info-soft)', color: 'var(--color-accent)', border: 'var(--color-info-border)' };
       case 'RESOLVED':
-        return { label: 'RESOLVED', bg: '#F0FDF4', color: '#166534', border: '#86EFAC' };
+        return { label: 'RESOLVED', bg: 'var(--color-success-soft)', color: 'var(--color-success)', border: 'var(--color-success)' };
       case 'CLOSED':
-        return { label: 'CLOSED', bg: '#F1F5F9', color: '#475569', border: '#CBD5E1' };
+        return { label: 'CLOSED', bg: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: 'var(--color-border)' };
       default:
-        return { label: status, bg: '#F8FAFC', color: '#334155', border: '#E2E8F0' };
+        return { label: status, bg: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: 'var(--color-border)' };
     }
   };
 
@@ -201,7 +201,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
       {/* Header Banner */}
       <div
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--color-background)',
           border: '1px solid var(--navy-border)',
           borderRadius: '8px',
           padding: '1.25rem 1.5rem',
@@ -219,7 +219,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
               {role === 'CADET' ? 'MY OFFICIAL INQUIRIES' : 'OFFICIAL INQUIRIES & COMMUNICATIONS DESK'}
             </h2>
           </div>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             {role === 'CADET'
               ? 'Authoritative communication ledger with assigned mentors and command officers.'
               : role === 'SENIOR'
@@ -257,7 +257,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
         {(!selectedInquiryId || window.innerWidth > 768) && (
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               border: '1px solid var(--navy-border)',
               borderRadius: '8px',
               padding: '1rem',
@@ -269,7 +269,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           >
             {/* Search Input */}
             <div style={{ position: 'relative' }}>
-              <Search size={15} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94A3B8' }} />
+              <Search size={15} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--color-disabled)' }} />
               <input
                 type="text"
                 placeholder="Search by ID, name, reg no, subject..."
@@ -300,8 +300,8 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                     borderRadius: '3px',
                     border: '1px solid',
                     borderColor: statusFilter === st ? 'var(--navy-primary)' : 'var(--white-border)',
-                    backgroundColor: statusFilter === st ? 'var(--navy-primary)' : '#F8FAFC',
-                    color: statusFilter === st ? '#FFFFFF' : '#475569',
+                    backgroundColor: statusFilter === st ? 'var(--navy-primary)' : 'var(--color-surface)',
+                    color: statusFilter === st ? 'var(--color-background)' : 'var(--color-text-secondary)',
                     cursor: 'pointer',
                   }}
                 >
@@ -313,14 +313,14 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
             {/* Inquiries List View */}
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
               {loadingList && (
-                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748B', fontSize: '0.85rem' }}>
+                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
                   Loading inquiry ledger...
                 </div>
               )}
 
               {!loadingList && inquiries.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748B' }}>
-                  <AlertCircle size={28} style={{ color: '#94A3B8', margin: '0 auto 0.5rem auto' }} />
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
+                  <AlertCircle size={28} style={{ color: 'var(--color-disabled)', margin: '0 auto 0.5rem auto' }} />
                   <strong style={{ display: 'block', fontSize: '0.88rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
                     NO OFFICIAL INQUIRIES
                   </strong>
@@ -342,7 +342,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                         padding: '0.75rem 0.85rem',
                         borderRadius: '6px',
                         border: isSelected ? '2px solid var(--navy-primary)' : '1px solid var(--white-border)',
-                        backgroundColor: isSelected ? '#F0F9FF' : '#FFFFFF',
+                        backgroundColor: isSelected ? 'var(--color-info-soft)' : 'var(--color-background)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                         display: 'flex',
@@ -369,21 +369,21 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                         </span>
                       </div>
 
-                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0F172A', lineHeight: '1.3' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--color-primary)', lineHeight: '1.3' }}>
                         {inq.title}
                       </div>
 
                       {role !== 'CADET' && inq.cadet && (
-                        <div style={{ fontSize: '0.75rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <User size={12} style={{ color: 'var(--navy-hover)' }} />
                           <span>{inq.cadet.fullName}</span>
-                          <span style={{ color: '#94A3B8' }}>&bull; {inq.cadet.regimentalNumber}</span>
+                          <span style={{ color: 'var(--color-disabled)' }}>&bull; {inq.cadet.regimentalNumber}</span>
                         </div>
                       )}
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: '#94A3B8', marginTop: '0.2rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--color-disabled)', marginTop: '0.2rem' }}>
                         <span>{new Date(inq.createdAt).toLocaleDateString()}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: replyCount > 0 ? '#047857' : '#94A3B8', fontWeight: 600 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: replyCount > 0 ? 'var(--color-success)' : 'var(--color-disabled)', fontWeight: 600 }}>
                           <MessageSquare size={11} />
                           {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
                         </span>
@@ -398,7 +398,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
         {/* RIGHT PANE: Selected Thread Conversation View */}
         <div
           style={{
-            backgroundColor: '#FFFFFF',
+            backgroundColor: 'var(--color-background)',
             border: '1px solid var(--navy-border)',
             borderRadius: '8px',
             padding: '1.25rem',
@@ -421,8 +421,8 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           )}
 
           {!selectedInquiryId && (
-            <div style={{ textAlign: 'center', padding: '6rem 2rem', color: '#64748B' }}>
-              <MessageSquare size={36} style={{ color: '#CBD5E1', margin: '0 auto 1rem auto' }} />
+            <div style={{ textAlign: 'center', padding: '6rem 2rem', color: 'var(--color-text-secondary)' }}>
+              <MessageSquare size={36} style={{ color: 'var(--color-border)', margin: '0 auto 1rem auto' }} />
               <strong style={{ display: 'block', fontSize: '1.1rem', color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                 SELECT AN OFFICIAL INQUIRY
               </strong>
@@ -433,7 +433,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           )}
 
           {loadingThread && (
-            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#64748B' }}>
+            <div style={{ textAlign: 'center', padding: '4rem 1rem', color: 'var(--color-text-secondary)' }}>
               Loading conversation thread...
             </div>
           )}
@@ -454,7 +454,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
               >
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.95rem', color: 'var(--navy-primary)', backgroundColor: '#F1F5F9', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '0.95rem', color: 'var(--navy-primary)', backgroundColor: 'var(--color-surface)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
                       {selectedThread.requestNumber}
                     </span>
                     {(() => {
@@ -479,7 +479,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                   <h3 style={{ fontSize: '1.25rem', color: 'var(--navy-primary)', margin: '0 0 0.4rem 0', fontWeight: 700 }}>
                     {selectedThread.title}
                   </h3>
-                  <div style={{ fontSize: '0.82rem', color: '#475569', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <span>
                       <strong>Cadet:</strong> {selectedThread.cadet?.fullName || 'Cadet'} ({selectedThread.cadet?.regimentalNumber || 'N/A'})
                     </span>
@@ -522,7 +522,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                 {/* 1. Original Cadet Inquiry Message */}
                 <div
                   style={{
-                    backgroundColor: '#F8FAFC',
+                    backgroundColor: 'var(--color-surface)',
                     borderLeft: '4px solid var(--navy-primary)',
                     borderRadius: '6px',
                     padding: '1rem 1.15rem',
@@ -536,7 +536,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                           height: '28px',
                           borderRadius: '50%',
                           backgroundColor: 'var(--navy-primary)',
-                          color: '#FFFFFF',
+                          color: 'var(--color-background)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -550,18 +550,18 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                         <strong style={{ fontSize: '0.88rem', color: 'var(--navy-primary)', display: 'block' }}>
                           {selectedThread.cadet?.fullName}
                         </strong>
-                        <span style={{ fontSize: '0.72rem', color: '#64748B' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>
                           {selectedThread.cadet?.regimentalNumber} &bull; {selectedThread.cadet?.email}
                         </span>
                       </div>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-disabled)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                       <Clock size={12} />
                       {new Date(selectedThread.createdAt).toLocaleDateString()} {new Date(selectedThread.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.9rem', color: '#1E293B', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                     {selectedThread.description}
                   </div>
                 </div>
@@ -575,12 +575,12 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                       <div
                         key={rep.id}
                         style={{
-                          backgroundColor: isSenderCadet ? '#F8FAFC' : '#F0FDF4',
-                          borderLeft: isSenderCadet ? '4px solid #94A3B8' : '4px solid #10B981',
+                          backgroundColor: isSenderCadet ? 'var(--color-surface)' : 'var(--color-success-soft)',
+                          borderLeft: isSenderCadet ? '4px solid var(--color-disabled)' : '4px solid var(--color-success)',
                           borderRadius: '6px',
                           padding: '1rem 1.15rem',
                           marginLeft: isSenderCadet ? '0' : '1.5rem',
-                          border: isSenderCadet ? '1px solid #E2E8F0' : '1px solid #BBF7D0',
+                          border: isSenderCadet ? '1px solid var(--color-border)' : '1px solid var(--color-success-border)',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -589,8 +589,8 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                               style={{
                                 padding: '0.2rem 0.5rem',
                                 borderRadius: '4px',
-                                backgroundColor: isSenderCadet ? '#E2E8F0' : 'var(--navy-primary)',
-                                color: isSenderCadet ? '#334155' : '#FFFFFF',
+                                backgroundColor: isSenderCadet ? 'var(--color-border)' : 'var(--navy-primary)',
+                                color: isSenderCadet ? 'var(--color-text-secondary)' : 'var(--color-background)',
                                 fontSize: '0.68rem',
                                 fontWeight: 800,
                                 letterSpacing: '0.04em',
@@ -603,13 +603,13 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                             </strong>
                           </div>
 
-                          <div style={{ fontSize: '0.72rem', color: '#94A3B8', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--color-disabled)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                             <Clock size={12} />
                             {new Date(rep.createdAt).toLocaleDateString()} {new Date(rep.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                         </div>
 
-                        <div style={{ fontSize: '0.9rem', color: '#1E293B', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
                           {rep.message}
                         </div>
                       </div>
@@ -621,7 +621,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
               {selectedThread.status !== 'CLOSED' ? (
                 <form onSubmit={handleSendReply} style={{ marginTop: 'auto', borderTop: '1px solid var(--white-border)', paddingTop: '1rem' }}>
                   {replyError && (
-                    <div style={{ backgroundColor: '#FEF2F2', color: '#DC2626', padding: '0.5rem 0.75rem', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                    <div style={{ backgroundColor: 'var(--color-error-soft)', color: 'var(--color-error)', padding: '0.5rem 0.75rem', borderRadius: '4px', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
                       {replyError}
                     </div>
                   )}
@@ -652,7 +652,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--color-disabled)' }}>
                       {replyMessage.length}/5000 characters &bull; Dispatches in-app notification
                     </span>
 
@@ -676,14 +676,14 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
               ) : (
                 <div
                   style={{
-                    backgroundColor: '#F1F5F9',
-                    border: '1px solid #CBD5E1',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '4px',
                     padding: '0.75rem 1rem',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.6rem',
-                    color: '#475569',
+                    color: 'var(--color-text-secondary)',
                     fontSize: '0.82rem',
                     marginTop: 'auto',
                   }}
@@ -703,7 +703,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(3px)',
             display: 'flex',
             alignItems: 'center',
@@ -714,7 +714,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               borderRadius: '8px',
               maxWidth: '480px',
               width: '100%',
@@ -729,7 +729,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
               </div>
               <button
                 onClick={() => setStatusModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)' }}
               >
                 ✕
               </button>

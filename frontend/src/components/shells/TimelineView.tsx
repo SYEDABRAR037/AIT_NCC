@@ -93,23 +93,23 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
   const getCategoryBadgeStyle = (category: string) => {
     switch (category) {
       case 'ATTENDANCE':
-        return { background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' };
+        return { background: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success-border)' };
       case 'CAMP':
-        return { background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' };
+        return { background: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-gold)' };
       case 'DUTY':
-        return { background: '#F0F9FF', color: '#0369A1', border: '1px solid #BAE6FD' };
+        return { background: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
       case 'CERTIFICATE':
-        return { background: '#FAF5FF', color: '#6B21A8', border: '1px solid #E9D5FF' };
+        return { background: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
       case 'LEAVE':
-        return { background: '#FFF7ED', color: '#C2410C', border: '1px solid #FFEDD5' };
+        return { background: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-warning-soft)' };
       case 'REQUEST':
-        return { background: '#EEF2FF', color: '#3730A3', border: '1px solid #E0E7FF' };
+        return { background: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-soft)' };
       case 'REGISTRATION':
-        return { background: '#F0FDFA', color: '#0F766E', border: '1px solid #CCFBF1' };
+        return { background: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-soft)' };
       case 'APPROVAL':
-        return { background: '#ECFDF5', color: '#047857', border: '1px solid #6EE7B7' };
+        return { background: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success-border)' };
       default:
-        return { background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1' };
+        return { background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' };
     }
   };
 
@@ -153,7 +153,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
         className="institutional-card"
         style={{
           borderLeft: '5px solid var(--navy-primary)',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          background: 'linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%)',
           padding: '1.75rem',
         }}
       >
@@ -301,7 +301,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
         <div
           className="institutional-card"
           style={{
-            borderLeft: '4px solid #DC2626',
+            borderLeft: '4px solid var(--color-error)',
             padding: '1.25rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -311,9 +311,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertTriangle size={22} style={{ color: '#DC2626' }} />
+            <AlertTriangle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
-              <h4 style={{ color: '#DC2626', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
+              <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
                 Operational Synchronization Alert
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
@@ -359,7 +359,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
           style={{
             position: 'relative',
             paddingLeft: '2.5rem',
-            borderLeft: '2px solid #CBD5E1',
+            borderLeft: '2px solid var(--color-border)',
             marginLeft: '1.25rem',
             display: 'flex',
             flexDirection: 'column',

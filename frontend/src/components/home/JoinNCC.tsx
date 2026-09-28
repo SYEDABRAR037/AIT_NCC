@@ -31,17 +31,17 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
   ];
 
   return (
-    <section id="join" className="section-py" style={{ backgroundColor: '#F8FAFC' }} aria-label="Join NCC Enrollment Steps">
+    <section id="join" className="section-py" style={{ backgroundColor: 'var(--color-surface)' }} aria-label="Join NCC Enrollment Steps">
       <div className="container">
         <div className="section-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
-          <span className="sub-title" style={{ color: '#2563EB', fontWeight: 700 }}>
+          <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
             <UserCheck size={16} />
             CADET ENROLLMENT ROADMAP
           </span>
-          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: '#0A192F', margin: '0.5rem 0' }}>
+          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             How to Join the AIT NCC Detachment
           </h2>
-          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: '#64748B' }}>
+          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>
             Enrollment is open to first and second year undergraduate engineering students
             at Army Institute of Technology, Pune (2 Maharashtra Battalion NCC).
           </p>
@@ -52,11 +52,11 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
             <div
               key={item.step}
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
+                background: 'var(--color-background)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '12px',
                 padding: '1.75rem 1.25rem',
-                boxShadow: '0 4px 15px rgba(6, 21, 43, 0.04)',
+                boxShadow: '0 4px 15px rgba(7, 26, 51, 0.04)',
                 position: 'relative',
               }}
             >
@@ -64,7 +64,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
                 style={{
                   fontSize: '2.25rem',
                   fontWeight: 900,
-                  color: '#2563EB',
+                  color: 'var(--color-accent)',
                   opacity: 0.25,
                   lineHeight: 1,
                   marginBottom: '0.75rem',
@@ -73,10 +73,10 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
               >
                 {item.step}
               </div>
-              <h3 style={{ fontSize: '1.1rem', color: '#0A192F', fontWeight: 700, marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '0.5rem' }}>
                 {item.title}
               </h3>
-              <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: '#64748B', margin: 0 }}>
+              <p style={{ fontSize: '0.86rem', lineHeight: '1.6', color: 'var(--color-text-secondary)', margin: 0 }}>
                 {item.desc}
               </p>
             </div>
@@ -86,8 +86,8 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
         {/* Primary CTA Card (Matching Reference Section 26) */}
         <div
           style={{
-            backgroundColor: '#06152B',
-            color: '#FFFFFF',
+            backgroundColor: 'var(--color-primary)',
+            color: 'var(--color-background)',
             borderRadius: '16px',
             padding: '3rem 2.5rem',
             display: 'flex',
@@ -95,18 +95,18 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
             justifyContent: 'space-between',
             flexWrap: 'wrap',
             gap: '2rem',
-            boxShadow: '0 15px 35px rgba(6, 21, 43, 0.25)',
+            boxShadow: '0 15px 35px rgba(7, 26, 51, 0.25)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
           }}
         >
           <div style={{ maxWidth: '680px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#93C5FD', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-info-border)', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               JOIN THE CADET CORPS
             </span>
-            <h3 style={{ color: '#FFFFFF', fontSize: '1.85rem', fontWeight: 800, margin: '0.4rem 0 0.75rem' }}>
+            <h3 style={{ color: 'var(--color-background)', fontSize: '1.85rem', fontWeight: 800, margin: '0.4rem 0 0.75rem' }}>
               Ready to Join NCC?
             </h3>
-            <p style={{ color: '#CBD5E1', fontSize: '0.98rem', lineHeight: '1.6', margin: 0 }}>
+            <p style={{ color: 'var(--color-border)', fontSize: '0.98rem', lineHeight: '1.6', margin: 0 }}>
               Begin your cadet registration and become part of the NCC journey. Join the ranks of disciplined leaders and serve the nation with honor.
             </p>
           </div>
@@ -115,8 +115,8 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
             <button
               onClick={onOpenRegister}
               style={{
-                background: '#FFFFFF',
-                color: '#06152B',
+                background: 'var(--color-background)',
+                color: 'var(--color-primary)',
                 border: 'none',
                 borderRadius: '50px',
                 padding: '12px 28px',
@@ -138,7 +138,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
               onClick={onOpenLogin}
               style={{
                 background: 'transparent',
-                color: '#FFFFFF',
+                color: 'var(--color-background)',
                 border: '1px solid rgba(255, 255, 255, 0.45)',
                 borderRadius: '50px',
                 padding: '12px 26px',

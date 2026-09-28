@@ -1090,7 +1090,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             <div style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 800 }}>
               {meta.title}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#93C5FD' }}>{meta.subtitle}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-info-border)' }}>{meta.subtitle}</div>
           </div>
         </div>
 
@@ -1105,7 +1105,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 border: '1px solid rgba(255,255,255,0.25)',
                 borderRadius: '4px',
                 padding: '0.45rem 0.6rem',
-                color: '#FFFFFF',
+                color: 'var(--color-background)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -1120,8 +1120,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     position: 'absolute',
                     top: '-6px',
                     right: '-6px',
-                    backgroundColor: '#DC2626',
-                    color: '#FFFFFF',
+                    backgroundColor: 'var(--color-error)',
+                    color: 'var(--color-background)',
                     borderRadius: '10px',
                     padding: '0.1rem 0.35rem',
                     fontSize: '0.68rem',
@@ -1141,8 +1141,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   top: '120%',
                   right: 0,
                   width: '320px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#061325',
+                  backgroundColor: 'var(--color-background)',
+                  color: 'var(--color-primary)',
                   border: '2px solid var(--navy-primary)',
                   borderRadius: '6px',
                   boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25)',
@@ -1152,13 +1152,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   flexDirection: 'column',
                 }}
               >
-                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--navy-primary)', color: '#FFFFFF', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>
+                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em' }}>COMMAND NOTIFICATIONS</span>
                   <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>{unreadCount} Unread</span>
                 </div>
                 <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#64748B', fontSize: '0.82rem' }}>
+                    <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
                       No notifications recorded
                     </div>
                   ) : (
@@ -1168,24 +1168,24 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         onClick={() => handleMarkNotificationRead(n.id)}
                         style={{
                           padding: '0.65rem 1rem',
-                          borderBottom: '1px solid #F1F5F9',
-                          backgroundColor: n.isRead ? '#FFFFFF' : '#F0FDF4',
+                          borderBottom: '1px solid var(--color-surface)',
+                          backgroundColor: n.isRead ? 'var(--color-background)' : 'var(--color-success-soft)',
                           cursor: 'pointer',
                           transition: 'background-color 0.15s',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.2rem' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.82rem', color: n.isUrgent ? '#DC2626' : 'var(--navy-primary)' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.82rem', color: n.isUrgent ? 'var(--color-error)' : 'var(--navy-primary)' }}>
                             {n.title}
                           </span>
                           {!n.isRead && (
-                            <span style={{ width: '7px', height: '7px', backgroundColor: '#047857', borderRadius: '50%', display: 'inline-block', flexShrink: 0, marginTop: '4px' }} />
+                            <span style={{ width: '7px', height: '7px', backgroundColor: 'var(--color-success)', borderRadius: '50%', display: 'inline-block', flexShrink: 0, marginTop: '4px' }} />
                           )}
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: '#334155', lineHeight: '1.4' }}>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', lineHeight: '1.4' }}>
                           {n.message}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#94A3B8', marginTop: '0.3rem' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-disabled)', marginTop: '0.3rem' }}>
                           {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} &bull; {new Date(n.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -1196,7 +1196,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             )}
           </div>
 
-          <span className="badge-dark" style={{ background: '#061325' }}>
+          <span className="badge-dark" style={{ background: 'var(--color-primary)' }}>
             {meta.badge}
           </span>
           <button
@@ -1238,7 +1238,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.1em', color: '#94A3B8', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.1em', color: 'var(--color-disabled)', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>
             OPERATIONAL SECTIONS
           </div>
           {meta.items.map((item) => (
@@ -1254,7 +1254,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 borderRadius: '4px',
                 border: 'none',
                 background: activeTab === item.id ? 'var(--navy-hover)' : 'transparent',
-                color: activeTab === item.id ? 'var(--white-pure)' : '#CBD5E1',
+                color: activeTab === item.id ? 'var(--white-pure)' : 'var(--color-border)',
                 fontSize: '0.88rem',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -1268,10 +1268,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           ))}
 
           <div style={{ marginTop: 'auto', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px', border: '1px solid var(--navy-border)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#93C5FD', marginBottom: '0.25rem' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-info-border)', marginBottom: '0.25rem' }}>
               SECURITY POLICY
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#94A3B8', lineHeight: '1.4' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--color-disabled)', lineHeight: '1.4' }}>
               Camera for facial attendance is strictly restricted to Platoon Senior & Senior.
             </div>
           </div>
@@ -1343,12 +1343,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     </div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Pending Review</span>
-                      <Clock size={20} style={{ color: '#D97706' }} />
+                      <Clock size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {pendingReviews.length}
                     </div>
                     <button
@@ -1359,10 +1359,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     </button>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Training Camps</span>
-                      <Flag size={20} style={{ color: '#047857' }} />
+                      <Flag size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>
                       {adminCamps.length}
@@ -1372,10 +1372,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     </div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Scheduled Events</span>
-                      <Calendar size={20} style={{ color: '#2563EB' }} />
+                      <Calendar size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>
                       {adminEvents.length}
@@ -1391,7 +1391,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
                       <h3 style={{ color: 'var(--white-pure)', fontSize: '1.2rem', marginBottom: '0.25rem' }}>Direct Command Actions</h3>
-                      <p style={{ fontSize: '0.85rem', color: '#93C5FD' }}>Execute instant unit operations with audit logging</p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-info-border)' }}>Execute instant unit operations with audit logging</p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button onClick={() => setNewCampModal(true)} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1445,7 +1445,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div>
                     <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>CADET DIRECTORY &amp; ROLES</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <span className="badge-institutional" style={{ background: 'var(--color-info-soft)', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
                         Total Active Cadets: {totalActiveCadets !== null ? totalActiveCadets : usersList.filter(u => u.status === 'ACTIVE' && u.role === 'CADET').length}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
@@ -1593,12 +1593,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 padding: '0.3rem',
                                 fontSize: '0.8rem',
                                 borderRadius: '3px',
-                                border: pendingAction && pendingAction.userId === u.id && pendingAction.type === 'status' ? '2px solid #D97706' : '1px solid var(--white-border)',
+                                border: pendingAction && pendingAction.userId === u.id && pendingAction.type === 'status' ? '2px solid var(--color-primary)' : '1px solid var(--white-border)',
                                 fontWeight: 600,
                                 cursor: 'pointer',
-                                color: u.status === 'ACTIVE' || u.status === 'APPROVED' ? '#047857'
-                                  : u.status === 'REJECTED' || u.status === 'INACTIVE' ? '#DC2626'
-                                  : u.status === 'UNDER_REVIEW' ? '#D97706'
+                                color: u.status === 'ACTIVE' || u.status === 'APPROVED' ? 'var(--color-success)'
+                                  : u.status === 'REJECTED' || u.status === 'INACTIVE' ? 'var(--color-error)'
+                                  : u.status === 'UNDER_REVIEW' ? 'var(--color-primary)'
                                   : 'inherit',
                               }}
                             >
@@ -1613,16 +1613,16 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             {/* Inline confirm for dropdown changes */}
                             {pendingAction && pendingAction.userId === u.id && (
                               <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                                <span style={{ fontSize: '0.72rem', color: '#D97706', fontWeight: 600 }}>Apply change?</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 600 }}>Apply change?</span>
                                 <button
                                   onClick={executePendingAction}
-                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.72rem', backgroundColor: '#047857', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 700 }}
+                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.72rem', backgroundColor: 'var(--color-success)', color: 'var(--color-background)', border: 'none', borderRadius: '3px', cursor: 'pointer', fontWeight: 700 }}
                                 >
                                   Yes
                                 </button>
                                 <button
                                   onClick={() => setPendingAction(null)}
-                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.72rem', backgroundColor: '#6B7280', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+                                  style={{ padding: '0.15rem 0.45rem', fontSize: '0.72rem', backgroundColor: 'var(--color-text-secondary)', color: 'var(--color-background)', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
                                 >
                                   No
                                 </button>
@@ -1653,8 +1653,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                   style={{
                                     padding: '0.25rem 0.6rem',
                                     fontSize: '0.75rem',
-                                    backgroundColor: '#047857',
-                                    borderColor: '#047857',
+                                    backgroundColor: 'var(--color-success)',
+                                    borderColor: 'var(--color-success)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.25rem',
@@ -1672,8 +1672,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.6rem',
                                       fontSize: '0.75rem',
-                                      borderColor: '#DC2626',
-                                      color: '#DC2626',
+                                      borderColor: 'var(--color-error)',
+                                      color: 'var(--color-error)',
                                     }}
                                     onClick={() => handleUpdateStatus(u.id, 'INACTIVE')}
                                   >
@@ -1685,8 +1685,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.6rem',
                                       fontSize: '0.75rem',
-                                      backgroundColor: '#047857',
-                                      borderColor: '#047857',
+                                      backgroundColor: 'var(--color-success)',
+                                      borderColor: 'var(--color-success)',
                                     }}
                                     onClick={() => handleUpdateStatus(u.id, 'ACTIVE')}
                                   >
@@ -1753,7 +1753,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 ) : (
                   <div className="grid-2">
                     {adminEvents.map((evt) => (
-                      <div key={evt.id} className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                      <div key={evt.id} className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                           <h3 style={{ fontSize: '1.15rem', color: 'var(--navy-primary)' }}>{evt.title}</h3>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1761,7 +1761,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <button
                               onClick={() => handleDeleteEvent(evt.id, evt.title)}
                               title="Delete Event"
-                              style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '2px' }}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-error)', cursor: 'pointer', padding: '2px' }}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1773,7 +1773,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         <div style={{ fontSize: '0.85rem', lineHeight: '1.6', background: 'var(--white-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px' }}>
                           <div><strong>Location:</strong> {evt.location}</div>
                           <div><strong>Date & Time:</strong> {new Date(evt.eventDate).toLocaleString()}</div>
-                          <div><strong>Status:</strong> <span style={{ color: '#047857', fontWeight: 700 }}>{evt.status}</span></div>
+                          <div><strong>Status:</strong> <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>{evt.status}</span></div>
                         </div>
                       </div>
                     ))}
@@ -1811,12 +1811,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {adminNotices.map((notice) => (
-                      <div key={notice.id} className="institutional-card" style={{ borderLeft: notice.isUrgent ? '4px solid #DC2626' : '4px solid var(--navy-primary)' }}>
+                      <div key={notice.id} className="institutional-card" style={{ borderLeft: notice.isUrgent ? '4px solid var(--color-error)' : '4px solid var(--navy-primary)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <h3 style={{ fontSize: '1.15rem', color: 'var(--navy-primary)' }}>{notice.title}</h3>
                             {notice.isUrgent && (
-                              <span className="badge-institutional" style={{ background: '#FEE2E2', color: '#991B1B', borderColor: '#EF4444' }}>
+                              <span className="badge-institutional" style={{ background: 'var(--color-error-soft)', color: 'var(--color-error)', borderColor: 'var(--color-error)' }}>
                                 URGENT DIRECTIVE
                               </span>
                             )}
@@ -1829,7 +1829,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <button
                               onClick={() => handleDeleteNotice(notice.id, notice.title)}
                               title="Delete Notice"
-                              style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '2px' }}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--color-error)', cursor: 'pointer', padding: '2px' }}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -1927,45 +1927,45 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                 {/* 4 Stat Overview Cards */}
                 <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Awaiting ANO Sanction</span>
-                      <Clock size={20} style={{ color: '#D97706' }} />
+                      <Clock size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>
                       {leaveApplications.filter((l) => l.status === 'ANO_REVIEW').length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Stage 3 pending final action</div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>In Prior Tiers</span>
-                      <FileText size={20} style={{ color: '#2563EB' }} />
+                      <FileText size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {leaveApplications.filter((l) => ['SUBMITTED', 'SENIOR_REVIEW', 'PLATOON_SENIOR_REVIEW', 'PENDING'].includes(l.status)).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Under senior/platoon review</div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Sanctioned & Approved</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>
                       {leaveApplications.filter((l) => l.status === 'APPROVED').length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Officially granted leaves</div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #DC2626' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-error)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Rejected / Returned</span>
-                      <XCircle size={20} style={{ color: '#DC2626' }} />
+                      <XCircle size={20} style={{ color: 'var(--color-error)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#DC2626' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-error)' }}>
                       {leaveApplications.filter((l) => ['REJECTED', 'RETURNED'].includes(l.status)).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Disallowed or revised</div>
@@ -1974,7 +1974,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                 {leaveApplications.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-                    <CheckCircle size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+                    <CheckCircle size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
                     <h4>No Leave Applications Registered</h4>
                     <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>All cadet leaves are current and accounted for.</p>
                   </div>
@@ -1995,10 +1995,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           className="institutional-card"
                           style={{
                             borderLeft: `4px solid ${
-                              isApproved ? '#047857' :
-                              isRejected ? '#DC2626' :
-                              isReturned ? '#D97706' :
-                              isCancelled ? '#94A3B8' : '#2563EB'
+                              isApproved ? 'var(--color-success)' :
+                              isRejected ? 'var(--color-error)' :
+                              isReturned ? 'var(--color-primary)' :
+                              isCancelled ? 'var(--color-disabled)' : 'var(--color-accent)'
                             }`,
                           }}
                         >
@@ -2011,8 +2011,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <span
                                   className="badge-institutional"
                                   style={{
-                                    backgroundColor: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : isReturned ? '#FEF3C7' : '#DBEAFE',
-                                    color: isApproved ? '#047857' : isRejected ? '#DC2626' : isReturned ? '#92400E' : '#1E40AF',
+                                    backgroundColor: isApproved ? 'var(--color-success-soft)' : isRejected ? 'var(--color-error-soft)' : isReturned ? 'var(--color-warning-soft)' : 'var(--color-info-soft)',
+                                    color: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isReturned ? 'var(--color-primary)' : 'var(--color-accent)',
                                     fontWeight: 700,
                                   }}
                                 >
@@ -2042,14 +2042,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <button
                                   onClick={() => setLeaveRemarkModal({ leave, action: 'RETURN' })}
                                   className="btn-secondary btn-sm"
-                                  style={{ borderColor: '#D97706', color: '#D97706' }}
+                                  style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                                 >
                                   Return
                                 </button>
                                 <button
                                   onClick={() => setLeaveRemarkModal({ leave, action: 'REJECT' })}
                                   className="btn-secondary btn-sm"
-                                  style={{ borderColor: '#DC2626', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                                  style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
                                 >
                                   <XCircle size={13} />
                                   <span>Reject</span>
@@ -2059,26 +2059,26 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           </div>
 
                           {/* Multi-tier Stage Progression Bar */}
-                          <div style={{ background: '#F8FAFC', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #E2E8F0', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                          <div style={{ background: 'var(--color-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>Multi-tier Workflow:</span>
-                            <span style={{ color: '#047857', fontWeight: 600 }}>1. Cadet Submission ✓</span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>1. Cadet Submission ✓</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' : '#B45309',
+                              color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' : 'var(--color-primary)',
                               fontWeight: 600,
                             }}>
                               2. Senior Endorsement {['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' : leave.status === 'PLATOON_SENIOR_REVIEW' ? '#B45309' : '#94A3B8',
+                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' : leave.status === 'PLATOON_SENIOR_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               3. Platoon Senior Review {['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: isApproved ? '#047857' : isAnoPending ? '#B45309' : '#94A3B8',
+                              color: isApproved ? 'var(--color-success)' : isAnoPending ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               4. ANO Final Sanction {isApproved ? '✓' : ''}
@@ -2088,7 +2088,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           <div style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)', marginBottom: '0.5rem' }}>
                             <strong>Reason:</strong> {leave.reason}
                             {leave.remarks && (
-                              <div style={{ marginTop: '0.25rem', color: '#1E293B' }}>
+                              <div style={{ marginTop: '0.25rem', color: 'var(--color-text)' }}>
                                 <strong>Remarks:</strong> {leave.remarks}
                               </div>
                             )}
@@ -2153,32 +2153,32 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{allCertificates.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Total institutional records</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>'A' / 'B' / 'C' Exams</span>
-                      <ShieldCheck size={20} style={{ color: '#047857' }} />
+                      <ShieldCheck size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>
                       {allCertificates.filter((c) => c.certificateType.includes('Certificate')).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Directorate certified</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Camp Commendations</span>
-                      <Flag size={20} style={{ color: '#2563EB' }} />
+                      <Flag size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {allCertificates.filter((c) => c.certificateType.includes('Camp') || c.certificateType.includes('Commendation')).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Field camp certifications</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Cryptographic Hash</span>
-                      <CheckCircle size={20} style={{ color: '#D97706' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#D97706', marginTop: '0.35rem' }}>SHA-256</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.35rem' }}>SHA-256</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>100% tamper-evident verified</div>
                   </div>
                 </div>
@@ -2225,8 +2225,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <span
                                   className="badge-institutional"
                                   style={{
-                                    backgroundColor: cert.grade === 'A' ? '#D1FAE5' : '#FEF3C7',
-                                    color: cert.grade === 'A' ? '#047857' : '#D97706',
+                                    backgroundColor: cert.grade === 'A' ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
+                                    color: cert.grade === 'A' ? 'var(--color-success)' : 'var(--color-primary)',
                                     fontWeight: 700,
                                   }}
                                 >
@@ -2254,7 +2254,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     <button
                                       onClick={() => handleRevokeCertificate(cert.id)}
                                       className="btn-secondary btn-sm"
-                                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderColor: '#DC2626', color: '#DC2626' }}
+                                      style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderColor: 'var(--color-error)', color: 'var(--color-error)' }}
                                     >
                                       REVOKE
                                     </button>
@@ -2293,20 +2293,20 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{assignedCadets.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Under your mentorship</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Pending Reviews</span>
-                      <AlertTriangle size={20} style={{ color: '#D97706' }} />
+                      <AlertTriangle size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>{pendingReviews.length}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{pendingReviews.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Applications awaiting action</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Leave Requests</span>
-                      <FileText size={20} style={{ color: '#2563EB' }} />
+                      <FileText size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {leaveApplications.filter(l => ['SUBMITTED', 'SENIOR_REVIEW', 'PENDING'].includes(l.status)).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Pending senior endorsement</div>
@@ -2334,7 +2334,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div>
                     <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>MY CADETS</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <span className="badge-institutional" style={{ background: 'var(--color-info-soft)', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
                         Total Cadets: {assignedCadets.length}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
@@ -2368,7 +2368,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                           <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: 0 }}>{c.fullName}</h4>
-                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                          <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                             {c.status || 'ACTIVE'}
                           </span>
                         </div>
@@ -2419,7 +2419,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                 {leaveApplications.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-                    <CheckCircle size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+                    <CheckCircle size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
                     <h4>No leave applications pending</h4>
                     <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>All cadet leaves are currently processed.</p>
                   </div>
@@ -2439,9 +2439,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           className="institutional-card"
                           style={{
                             borderLeft: `4px solid ${
-                              isApproved ? '#047857' :
-                              isRejected ? '#DC2626' :
-                              isReturned ? '#D97706' : '#2563EB'
+                              isApproved ? 'var(--color-success)' :
+                              isRejected ? 'var(--color-error)' :
+                              isReturned ? 'var(--color-primary)' : 'var(--color-accent)'
                             }`,
                           }}
                         >
@@ -2457,8 +2457,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <span
                               className="badge-institutional"
                               style={{
-                                backgroundColor: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : isReturned ? '#FEF3C7' : '#DBEAFE',
-                                color: isApproved ? '#047857' : isRejected ? '#DC2626' : isReturned ? '#92400E' : '#1E40AF',
+                                backgroundColor: isApproved ? 'var(--color-success-soft)' : isRejected ? 'var(--color-error-soft)' : isReturned ? 'var(--color-warning-soft)' : 'var(--color-info-soft)',
+                                color: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isReturned ? 'var(--color-primary)' : 'var(--color-accent)',
                                 fontWeight: 700,
                               }}
                             >
@@ -2471,26 +2471,26 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           </div>
 
                           {/* Multi-tier Stage Progression Bar */}
-                          <div style={{ background: '#F8FAFC', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #E2E8F0', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                          <div style={{ background: 'var(--color-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>Workflow Stage:</span>
-                            <span style={{ color: '#047857', fontWeight: 600 }}>1. Cadet Applied ✓</span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>1. Cadet Applied ✓</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: isForwarded ? '#047857' : isPendingSenior ? '#B45309' : '#94A3B8',
+                              color: isForwarded ? 'var(--color-success)' : isPendingSenior ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               2. Senior Endorsement {isForwarded ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' : leave.status === 'PLATOON_SENIOR_REVIEW' ? '#B45309' : '#94A3B8',
+                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' : leave.status === 'PLATOON_SENIOR_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               3. Platoon Senior Review {['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: isApproved ? '#047857' : leave.status === 'ANO_REVIEW' ? '#B45309' : '#94A3B8',
+                              color: isApproved ? 'var(--color-success)' : leave.status === 'ANO_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               4. ANO Sanction {isApproved ? '✓' : ''}
@@ -2522,14 +2522,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               <button
                                 onClick={() => setLeaveRemarkModal({ leave, action: 'RETURN' })}
                                 className="btn-secondary btn-sm"
-                                style={{ borderColor: '#D97706', color: '#D97706' }}
+                                style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                               >
                                 Return
                               </button>
                               <button
                                 onClick={() => setLeaveRemarkModal({ leave, action: 'REJECT' })}
                                 className="btn-secondary btn-sm"
-                                style={{ borderColor: '#DC2626', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                               >
                                 <XCircle size={13} />
                                 <span>Reject</span>
@@ -2597,36 +2597,36 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{attendanceSessions.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Conducted this term</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Average Turnout</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>
                       {attendanceSummaryList.length > 0
                         ? Math.round(attendanceSummaryList.reduce((acc, c) => acc + (c.stats?.percentage || 0), 0) / attendanceSummaryList.length)
                         : 0}%
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Squad parade turnout rate</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Exam Eligible</span>
-                      <Shield size={20} style={{ color: '#2563EB' }} />
+                      <Shield size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {attendanceSummaryList.length > 0
                         ? `${attendanceSummaryList.filter((c) => (c.stats?.percentage || 0) >= 75).length} / ${attendanceSummaryList.length}`
                         : '0 / 0'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Met &ge; 75% parade criterion</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #DC2626' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-error)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Low Attendance Warning</span>
-                      <AlertTriangle size={20} style={{ color: '#DC2626' }} />
+                      <AlertTriangle size={20} style={{ color: 'var(--color-error)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#DC2626' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-error)' }}>
                       {attendanceSummaryList.filter((c) => (c.stats?.percentage || 0) < 75 && c.stats?.total > 0).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Cadets under mandatory threshold</div>
@@ -2668,7 +2668,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             {session.title}
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>
-                            Present: <strong style={{ color: '#047857' }}>{session.presentCount || 0}</strong> · Absent: <strong style={{ color: '#DC2626' }}>{session.absentCount || 0}</strong>
+                            Present: <strong style={{ color: 'var(--color-success)' }}>{session.presentCount || 0}</strong> · Absent: <strong style={{ color: 'var(--color-error)' }}>{session.absentCount || 0}</strong>
                           </div>
                         </div>
                       ))}
@@ -2724,8 +2724,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <span
                                   className="badge-institutional"
                                   style={{
-                                    backgroundColor: record.status === 'PRESENT' ? '#D1FAE5' : record.status === 'ABSENT' ? '#FEE2E2' : '#FEF3C7',
-                                    color: record.status === 'PRESENT' ? '#047857' : record.status === 'ABSENT' ? '#DC2626' : '#D97706',
+                                    backgroundColor: record.status === 'PRESENT' ? 'var(--color-success-soft)' : record.status === 'ABSENT' ? 'var(--color-error-soft)' : 'var(--color-warning-soft)',
+                                    color: record.status === 'PRESENT' ? 'var(--color-success)' : record.status === 'ABSENT' ? 'var(--color-error)' : 'var(--color-primary)',
                                   }}
                                 >
                                   {record.status}
@@ -2752,9 +2752,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.5rem',
                                       fontSize: '0.75rem',
-                                      backgroundColor: record.status === 'ABSENT' ? '#DC2626' : 'var(--white-pure)',
-                                      color: record.status === 'ABSENT' ? 'var(--white-pure)' : '#DC2626',
-                                      borderColor: '#DC2626',
+                                      backgroundColor: record.status === 'ABSENT' ? 'var(--color-error)' : 'var(--white-pure)',
+                                      color: record.status === 'ABSENT' ? 'var(--white-pure)' : 'var(--color-error)',
+                                      borderColor: 'var(--color-error)',
                                     }}
                                   >
                                     <X size={11} style={{ display: 'inline', marginRight: '2px' }} /> Absent
@@ -2765,9 +2765,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.5rem',
                                       fontSize: '0.75rem',
-                                      backgroundColor: record.status === 'EXCUSED' ? '#D97706' : 'var(--white-pure)',
-                                      color: record.status === 'EXCUSED' ? 'var(--white-pure)' : '#D97706',
-                                      borderColor: '#D97706',
+                                      backgroundColor: record.status === 'EXCUSED' ? 'var(--color-primary)' : 'var(--white-pure)',
+                                      color: record.status === 'EXCUSED' ? 'var(--white-pure)' : 'var(--color-primary)',
+                                      borderColor: 'var(--color-primary)',
                                     }}
                                   >
                                     Excused
@@ -2823,7 +2823,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 {cadet.branch} ({cadet.year})
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>{cadet.stats?.total || 0}</td>
-                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#047857' }}>
+                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--color-success)' }}>
                                 {cadet.stats?.present || 0}
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>
@@ -2833,7 +2833,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                       style={{
                                         width: `${cadet.stats?.percentage || 0}%`,
                                         height: '100%',
-                                        backgroundColor: (cadet.stats?.percentage || 0) >= 75 ? '#047857' : (cadet.stats?.percentage || 0) >= 60 ? '#D97706' : '#DC2626',
+                                        backgroundColor: (cadet.stats?.percentage || 0) >= 75 ? 'var(--color-success)' : (cadet.stats?.percentage || 0) >= 60 ? 'var(--color-primary)' : 'var(--color-error)',
                                       }}
                                     />
                                   </div>
@@ -2844,11 +2844,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>
                                 {(cadet.stats?.percentage || 0) >= 75 ? (
-                                  <span className="badge-institutional" style={{ backgroundColor: '#D1FAE5', color: '#047857' }}>
+                                  <span className="badge-institutional" style={{ backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                                     ELIGIBLE
                                   </span>
                                 ) : (
-                                  <span className="badge-institutional" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                                  <span className="badge-institutional" style={{ backgroundColor: 'var(--color-error-soft)', color: 'var(--color-error)' }}>
                                     BELOW CRITERIA
                                   </span>
                                 )}
@@ -2884,30 +2884,30 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{platoonCadets.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Active enrolled cadets</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Applications</span>
-                      <AlertTriangle size={20} style={{ color: '#D97706' }} />
+                      <AlertTriangle size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>{pendingReviews.length}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{pendingReviews.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Awaiting platoon review</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Leave Pending</span>
-                      <FileText size={20} style={{ color: '#2563EB' }} />
+                      <FileText size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {leaveApplications.filter(l => ['PLATOON_SENIOR_REVIEW', 'SUBMITTED', 'SENIOR_REVIEW', 'PENDING'].includes(l.status)).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Platoon leave requests</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Auth Level</span>
-                      <Shield size={20} style={{ color: '#047857' }} />
+                      <Shield size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#047857' }}>TIER 2</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>TIER 2</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Platoon command authority</div>
                   </div>
                 </div>
@@ -2934,7 +2934,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div>
                     <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>MY PLATOON CADETS</h2>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                      <span className="badge-institutional" style={{ background: '#EFF6FF', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
+                      <span className="badge-institutional" style={{ background: 'var(--color-info-soft)', color: 'var(--navy-primary)', fontWeight: 700, fontSize: '0.9rem' }}>
                         Total Cadets: {platoonCadets.length}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
@@ -2968,7 +2968,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                           <h4 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: 0 }}>{c.fullName}</h4>
-                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                          <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                             {c.status || 'ACTIVE'}
                           </span>
                         </div>
@@ -3019,7 +3019,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                 {leaveApplications.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-                    <CheckCircle size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+                    <CheckCircle size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
                     <h4>No leave applications from your platoon</h4>
                     <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>No platoon leave applications are awaiting review.</p>
                   </div>
@@ -3039,9 +3039,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           className="institutional-card"
                           style={{
                             borderLeft: `4px solid ${
-                              isApproved ? '#047857' :
-                              isRejected ? '#DC2626' :
-                              isReturned ? '#D97706' : '#2563EB'
+                              isApproved ? 'var(--color-success)' :
+                              isRejected ? 'var(--color-error)' :
+                              isReturned ? 'var(--color-primary)' : 'var(--color-accent)'
                             }`,
                           }}
                         >
@@ -3057,8 +3057,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <span
                               className="badge-institutional"
                               style={{
-                                backgroundColor: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : isReturned ? '#FEF3C7' : '#DBEAFE',
-                                color: isApproved ? '#047857' : isRejected ? '#DC2626' : isReturned ? '#92400E' : '#1E40AF',
+                                backgroundColor: isApproved ? 'var(--color-success-soft)' : isRejected ? 'var(--color-error-soft)' : isReturned ? 'var(--color-warning-soft)' : 'var(--color-info-soft)',
+                                color: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isReturned ? 'var(--color-primary)' : 'var(--color-accent)',
                                 fontWeight: 700,
                               }}
                             >
@@ -3071,26 +3071,26 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           </div>
 
                           {/* Multi-tier Stage Progression Bar */}
-                          <div style={{ background: '#F8FAFC', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #E2E8F0', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                          <div style={{ background: 'var(--color-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>Workflow Stage:</span>
-                            <span style={{ color: '#047857', fontWeight: 600 }}>1. Cadet Applied ✓</span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-success)', fontWeight: 600 }}>1. Cadet Applied ✓</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' : '#B45309',
+                              color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' : 'var(--color-primary)',
                               fontWeight: 600,
                             }}>
                               2. Senior Endorsement {['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' : leave.status === 'PLATOON_SENIOR_REVIEW' ? '#B45309' : '#94A3B8',
+                              color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' : leave.status === 'PLATOON_SENIOR_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               3. Platoon Senior Review {['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                             </span>
-                            <span style={{ color: '#94A3B8' }}>➔</span>
+                            <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                             <span style={{
-                              color: isApproved ? '#047857' : isAnoPending ? '#B45309' : '#94A3B8',
+                              color: isApproved ? 'var(--color-success)' : isAnoPending ? 'var(--color-primary)' : 'var(--color-disabled)',
                               fontWeight: 600,
                             }}>
                               4. ANO Sanction {isApproved ? '✓' : ''}
@@ -3122,14 +3122,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               <button
                                 onClick={() => setLeaveRemarkModal({ leave, action: 'RETURN' })}
                                 className="btn-secondary btn-sm"
-                                style={{ borderColor: '#D97706', color: '#D97706' }}
+                                style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
                               >
                                 Return
                               </button>
                               <button
                                 onClick={() => setLeaveRemarkModal({ leave, action: 'REJECT' })}
                                 className="btn-secondary btn-sm"
-                                style={{ borderColor: '#DC2626', color: '#DC2626', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                                style={{ borderColor: 'var(--color-error)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                               >
                                 <XCircle size={13} />
                                 <span>Reject</span>
@@ -3198,36 +3198,36 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{attendanceSessions.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Conducted this term</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Average Turnout</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>
                       {attendanceSummaryList.length > 0
                         ? Math.round(attendanceSummaryList.reduce((acc, c) => acc + (c.stats?.percentage || 0), 0) / attendanceSummaryList.length)
                         : 0}%
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Platoon parade turnout rate</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Exam Eligible</span>
-                      <Shield size={20} style={{ color: '#2563EB' }} />
+                      <Shield size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
                       {attendanceSummaryList.length > 0
                         ? `${attendanceSummaryList.filter((c) => (c.stats?.percentage || 0) >= 75).length} / ${attendanceSummaryList.length}`
                         : '0 / 0'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Met &ge; 75% parade criterion</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #DC2626' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-error)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Low Attendance Warning</span>
-                      <AlertTriangle size={20} style={{ color: '#DC2626' }} />
+                      <AlertTriangle size={20} style={{ color: 'var(--color-error)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#DC2626' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-error)' }}>
                       {attendanceSummaryList.filter((c) => (c.stats?.percentage || 0) < 75 && c.stats?.total > 0).length}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Cadets under mandatory threshold</div>
@@ -3269,7 +3269,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             {session.title}
                           </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>
-                            Present: <strong style={{ color: '#047857' }}>{session.presentCount || 0}</strong> · Absent: <strong style={{ color: '#DC2626' }}>{session.absentCount || 0}</strong>
+                            Present: <strong style={{ color: 'var(--color-success)' }}>{session.presentCount || 0}</strong> · Absent: <strong style={{ color: 'var(--color-error)' }}>{session.absentCount || 0}</strong>
                           </div>
                         </div>
                       ))}
@@ -3325,8 +3325,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <span
                                   className="badge-institutional"
                                   style={{
-                                    backgroundColor: record.status === 'PRESENT' ? '#D1FAE5' : record.status === 'ABSENT' ? '#FEE2E2' : '#FEF3C7',
-                                    color: record.status === 'PRESENT' ? '#047857' : record.status === 'ABSENT' ? '#DC2626' : '#D97706',
+                                    backgroundColor: record.status === 'PRESENT' ? 'var(--color-success-soft)' : record.status === 'ABSENT' ? 'var(--color-error-soft)' : 'var(--color-warning-soft)',
+                                    color: record.status === 'PRESENT' ? 'var(--color-success)' : record.status === 'ABSENT' ? 'var(--color-error)' : 'var(--color-primary)',
                                   }}
                                 >
                                   {record.status}
@@ -3353,9 +3353,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.5rem',
                                       fontSize: '0.75rem',
-                                      backgroundColor: record.status === 'ABSENT' ? '#DC2626' : 'var(--white-pure)',
-                                      color: record.status === 'ABSENT' ? 'var(--white-pure)' : '#DC2626',
-                                      borderColor: '#DC2626',
+                                      backgroundColor: record.status === 'ABSENT' ? 'var(--color-error)' : 'var(--white-pure)',
+                                      color: record.status === 'ABSENT' ? 'var(--white-pure)' : 'var(--color-error)',
+                                      borderColor: 'var(--color-error)',
                                     }}
                                   >
                                     <X size={11} style={{ display: 'inline', marginRight: '2px' }} /> Absent
@@ -3366,9 +3366,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     style={{
                                       padding: '0.25rem 0.5rem',
                                       fontSize: '0.75rem',
-                                      backgroundColor: record.status === 'EXCUSED' ? '#D97706' : 'var(--white-pure)',
-                                      color: record.status === 'EXCUSED' ? 'var(--white-pure)' : '#D97706',
-                                      borderColor: '#D97706',
+                                      backgroundColor: record.status === 'EXCUSED' ? 'var(--color-primary)' : 'var(--white-pure)',
+                                      color: record.status === 'EXCUSED' ? 'var(--white-pure)' : 'var(--color-primary)',
+                                      borderColor: 'var(--color-primary)',
                                     }}
                                   >
                                     Excused
@@ -3424,7 +3424,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 {cadet.branch} ({cadet.year})
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>{cadet.stats?.total || 0}</td>
-                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: '#047857' }}>
+                              <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--color-success)' }}>
                                 {cadet.stats?.present || 0}
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>
@@ -3434,7 +3434,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                       style={{
                                         width: `${cadet.stats?.percentage || 0}%`,
                                         height: '100%',
-                                        backgroundColor: (cadet.stats?.percentage || 0) >= 75 ? '#047857' : (cadet.stats?.percentage || 0) >= 60 ? '#D97706' : '#DC2626',
+                                        backgroundColor: (cadet.stats?.percentage || 0) >= 75 ? 'var(--color-success)' : (cadet.stats?.percentage || 0) >= 60 ? 'var(--color-primary)' : 'var(--color-error)',
                                       }}
                                     />
                                   </div>
@@ -3445,11 +3445,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               </td>
                               <td style={{ padding: '0.75rem 1rem' }}>
                                 {(cadet.stats?.percentage || 0) >= 75 ? (
-                                  <span className="badge-institutional" style={{ backgroundColor: '#D1FAE5', color: '#047857' }}>
+                                  <span className="badge-institutional" style={{ backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                                     ELIGIBLE
                                   </span>
                                 ) : (
-                                  <span className="badge-institutional" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                                  <span className="badge-institutional" style={{ backgroundColor: 'var(--color-error-soft)', color: 'var(--color-error)' }}>
                                     BELOW CRITERIA
                                   </span>
                                 )}
@@ -3491,28 +3491,28 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{myLeaves.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Total applications</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Approved</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#047857' }}>{myLeaves.filter(l => l.status === 'APPROVED').length}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-success)' }}>{myLeaves.filter(l => l.status === 'APPROVED').length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Sanctioned leaves</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Pending</span>
-                      <Clock size={20} style={{ color: '#D97706' }} />
+                      <Clock size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#D97706' }}>{myLeaves.filter(l => l.status === 'PENDING').length}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{myLeaves.filter(l => l.status === 'PENDING').length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Awaiting sanction</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Unit Notices</span>
-                      <Bell size={20} style={{ color: '#2563EB' }} />
+                      <Bell size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 800, color: '#2563EB' }}>{cadetNotices.length}</div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>{cadetNotices.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Active orders & notices</div>
                   </div>
                 </div>
@@ -3534,9 +3534,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 </div>
 
                 {/* Account Status Card */}
-                <div className="institutional-card" style={{ backgroundColor: user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? '#F0FDF4' : 'var(--navy-badge-bg)', border: `1px solid ${user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? '#86EFAC' : 'var(--navy-badge-border)'}` }}>
+                <div className="institutional-card" style={{ backgroundColor: user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? 'var(--color-success-soft)' : 'var(--navy-badge-bg)', border: `1px solid ${user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? 'var(--color-success)' : 'var(--navy-badge-border)'}` }}>
                   <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <Shield size={20} style={{ color: user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? '#047857' : 'var(--navy-primary)', marginTop: '0.1rem', flexShrink: 0 }} />
+                    <Shield size={20} style={{ color: user?.status === 'APPROVED' || user?.status === 'ACTIVE' ? 'var(--color-success)' : 'var(--navy-primary)', marginTop: '0.1rem', flexShrink: 0 }} />
                     <div>
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>ACCOUNT STATUS: {user?.status}</div>
                       <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.6' }}>
@@ -3591,7 +3591,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           className="institutional-card"
                           style={{
                             borderLeft: `4px solid ${
-                              isApproved ? '#047857' : isRejected ? '#DC2626' : isCancelled ? '#64748B' : '#D97706'
+                              isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isCancelled ? 'var(--color-text-secondary)' : 'var(--color-primary)'
                             }`,
                           }}
                         >
@@ -3611,9 +3611,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                               <span
                                 className="badge-institutional"
                                 style={{
-                                  backgroundColor: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : isCancelled ? '#F1F5F9' : '#FEF3C7',
-                                  color: isApproved ? '#047857' : isRejected ? '#DC2626' : isCancelled ? '#475569' : '#92400E',
-                                  borderColor: isApproved ? '#047857' : isRejected ? '#DC2626' : isCancelled ? '#CBD5E1' : '#F59E0B',
+                                  backgroundColor: isApproved ? 'var(--color-success-soft)' : isRejected ? 'var(--color-error-soft)' : isCancelled ? 'var(--color-surface)' : 'var(--color-warning-soft)',
+                                  color: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isCancelled ? 'var(--color-text-secondary)' : 'var(--color-primary)',
+                                  borderColor: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isCancelled ? 'var(--color-border)' : 'var(--color-gold)',
                                 }}
                               >
                                 {leave.status === 'SUBMITTED' ? 'UNDER SENIOR REVIEW' :
@@ -3646,7 +3646,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                     }
                                   }}
                                   className="btn-secondary btn-sm"
-                                  style={{ color: '#DC2626', borderColor: '#FCA5A5', fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
+                                  style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)', fontSize: '0.72rem', padding: '0.2rem 0.5rem' }}
                                 >
                                   Withdraw
                                 </button>
@@ -3689,14 +3689,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {cadetNotices.map((notice: any) => (
-                      <div key={notice.id} className="institutional-card" style={{ borderLeft: `4px solid ${notice.isUrgent ? '#DC2626' : 'var(--navy-primary)'}` }}>
+                      <div key={notice.id} className="institutional-card" style={{ borderLeft: `4px solid ${notice.isUrgent ? 'var(--color-error)' : 'var(--navy-primary)'}` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                           <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--navy-primary)' }}>
-                            {notice.isUrgent && <AlertTriangle size={14} style={{ display: 'inline', marginRight: '6px', color: '#DC2626' }} />}
+                            {notice.isUrgent && <AlertTriangle size={14} style={{ display: 'inline', marginRight: '6px', color: 'var(--color-error)' }} />}
                             {notice.title}
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
-                            {notice.isUrgent && <span className="badge-institutional" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>URGENT</span>}
+                            {notice.isUrgent && <span className="badge-institutional" style={{ backgroundColor: 'var(--color-error-soft)', color: 'var(--color-error)' }}>URGENT</span>}
                             <span className="badge-institutional">{notice.category}</span>
                           </div>
                         </div>
@@ -3736,7 +3736,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Overall Attendance</span>
                       <Shield size={20} style={{ color: 'var(--navy-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: myAttendanceData.stats.percentage >= 75 ? '#047857' : '#DC2626' }}>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: myAttendanceData.stats.percentage >= 75 ? 'var(--color-success)' : 'var(--color-error)' }}>
                       {myAttendanceData.stats.percentage}%
                     </div>
                     <div style={{ marginTop: '0.5rem', height: '6px', backgroundColor: 'var(--white-surface)', borderRadius: '3px', overflow: 'hidden', border: '1px solid var(--white-border)' }}>
@@ -3744,29 +3744,29 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         style={{
                           width: `${myAttendanceData.stats.percentage}%`,
                           height: '100%',
-                          backgroundColor: myAttendanceData.stats.percentage >= 75 ? '#047857' : '#DC2626',
+                          backgroundColor: myAttendanceData.stats.percentage >= 75 ? 'var(--color-success)' : 'var(--color-error)',
                         }}
                       />
                     </div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Parades Attended</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#047857' }}>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--color-success)' }}>
                       {myAttendanceData.stats.present} / {myAttendanceData.stats.total}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Full physical presence verified</div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #DC2626' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-error)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Absences Recorded</span>
-                      <XCircle size={20} style={{ color: '#DC2626' }} />
+                      <XCircle size={20} style={{ color: 'var(--color-error)' }} />
                     </div>
-                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#DC2626' }}>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--color-error)' }}>
                       {myAttendanceData.stats.absent}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
@@ -3774,12 +3774,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     </div>
                   </div>
 
-                  <div className="institutional-card" style={{ borderLeft: `4px solid ${myAttendanceData.stats.percentage >= 75 ? '#047857' : '#DC2626'}` }}>
+                  <div className="institutional-card" style={{ borderLeft: `4px solid ${myAttendanceData.stats.percentage >= 75 ? 'var(--color-success)' : 'var(--color-error)'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Exam Clearance</span>
-                      <Award size={20} style={{ color: myAttendanceData.stats.percentage >= 75 ? '#047857' : '#DC2626' }} />
+                      <Award size={20} style={{ color: myAttendanceData.stats.percentage >= 75 ? 'var(--color-success)' : 'var(--color-error)' }} />
                     </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: myAttendanceData.stats.percentage >= 75 ? '#047857' : '#DC2626', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: myAttendanceData.stats.percentage >= 75 ? 'var(--color-success)' : 'var(--color-error)', marginTop: '0.25rem' }}>
                       {myAttendanceData.stats.percentage >= 75 ? 'ELIGIBLE (≥75%)' : 'BELOW 75%'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
@@ -3849,8 +3849,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                 <span
                                   className="badge-institutional"
                                   style={{
-                                    backgroundColor: record.status === 'PRESENT' ? '#D1FAE5' : record.status === 'ABSENT' ? '#FEE2E2' : '#FEF3C7',
-                                    color: record.status === 'PRESENT' ? '#047857' : record.status === 'ABSENT' ? '#DC2626' : '#D97706',
+                                    backgroundColor: record.status === 'PRESENT' ? 'var(--color-success-soft)' : record.status === 'ABSENT' ? 'var(--color-error-soft)' : 'var(--color-warning-soft)',
+                                    color: record.status === 'PRESENT' ? 'var(--color-success)' : record.status === 'ABSENT' ? 'var(--color-error)' : 'var(--color-primary)',
                                     fontWeight: 700,
                                   }}
                                 >
@@ -3907,32 +3907,32 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{cadetCertificates.length}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Awarded in personal vault</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #047857' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Highest Grade</span>
-                      <CheckCircle size={20} style={{ color: '#047857' }} />
+                      <CheckCircle size={20} style={{ color: 'var(--color-success)' }} />
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#047857', marginTop: '0.35rem' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '0.35rem' }}>
                       {cadetCertificates.find((c) => c.grade === 'A') ? "GRADE 'A' (DISTINCTION)" : cadetCertificates.length > 0 ? "GRADE 'B'" : "NO RECORDS"}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Examination qualification grade</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #2563EB' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Validity Status</span>
-                      <ShieldCheck size={20} style={{ color: '#2563EB' }} />
+                      <ShieldCheck size={20} style={{ color: 'var(--color-accent)' }} />
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563EB', marginTop: '0.35rem' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-accent)', marginTop: '0.35rem' }}>
                       {cadetCertificates.length > 0 && cadetCertificates.every((c) => c.status === 'VALID') ? 'OFFICIALLY VALID' : 'N/A'}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Directorial Directorate Record</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid #D97706' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Security Hash</span>
-                      <Shield size={20} style={{ color: '#D97706' }} />
+                      <Shield size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#D97706', marginTop: '0.35rem' }}>SHA-256 DIGEST</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.35rem' }}>SHA-256 DIGEST</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Cryptographically signed</div>
                   </div>
                 </div>
@@ -3985,8 +3985,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <span
                               className="badge-institutional"
                               style={{
-                                backgroundColor: cert.grade === 'A' ? '#D1FAE5' : '#FEF3C7',
-                                color: cert.grade === 'A' ? '#047857' : '#D97706',
+                                backgroundColor: cert.grade === 'A' ? 'var(--color-success-soft)' : 'var(--color-warning-soft)',
+                                color: cert.grade === 'A' ? 'var(--color-success)' : 'var(--color-primary)',
                                 fontWeight: 800,
                                 fontSize: '0.8rem',
                                 padding: '0.35rem 0.65rem',
@@ -3997,8 +3997,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             <span
                               className="badge-institutional"
                               style={{
-                                backgroundColor: cert.status === 'VALID' ? '#EFF6FF' : '#FEE2E2',
-                                color: cert.status === 'VALID' ? '#2563EB' : '#DC2626',
+                                backgroundColor: cert.status === 'VALID' ? 'var(--color-info-soft)' : 'var(--color-error-soft)',
+                                color: cert.status === 'VALID' ? 'var(--color-accent)' : 'var(--color-error)',
                                 fontWeight: 700,
                               }}
                             >
@@ -4042,7 +4042,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         {/* Cryptographic Hash Bar */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', borderTop: '1px solid var(--white-border)', paddingTop: '0.85rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--navy-text-muted)' }}>
-                            <ShieldCheck size={14} style={{ color: '#047857' }} />
+                            <ShieldCheck size={14} style={{ color: 'var(--color-success)' }} />
                             <span>SHA-256 Digest:</span>
                             <code style={{ backgroundColor: 'var(--white-surface)', padding: '0.15rem 0.4rem', borderRadius: '3px', border: '1px solid var(--white-border)' }}>
                               {cert.verificationHash}
@@ -4089,7 +4089,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -4250,7 +4250,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -4379,7 +4379,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -4458,7 +4458,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       checked={noticeForm.isUrgent}
                       onChange={(e) => setNoticeForm({ ...noticeForm, isUrgent: e.target.checked })}
                     />
-                    <strong style={{ color: '#DC2626' }}>Mark as URGENT Directive</strong>
+                    <strong style={{ color: 'var(--color-error)' }}>Mark as URGENT Directive</strong>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer' }}>
                     <input
@@ -4503,7 +4503,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -4574,7 +4574,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -4585,7 +4585,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           <div
             style={{
               backgroundColor: 'var(--white-pure)',
-              border: `2px solid ${leaveRemarkModal.action === 'APPROVE' ? '#047857' : leaveRemarkModal.action === 'REJECT' ? '#DC2626' : 'var(--navy-primary)'}`,
+              border: `2px solid ${leaveRemarkModal.action === 'APPROVE' ? 'var(--color-success)' : leaveRemarkModal.action === 'REJECT' ? 'var(--color-error)' : 'var(--navy-primary)'}`,
               borderRadius: '6px',
               width: '100%', maxWidth: '480px',
               boxShadow: 'var(--shadow-xl)',
@@ -4594,7 +4594,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{
-              backgroundColor: leaveRemarkModal.action === 'APPROVE' ? '#047857' : leaveRemarkModal.action === 'REJECT' ? '#DC2626' : 'var(--navy-primary)',
+              backgroundColor: leaveRemarkModal.action === 'APPROVE' ? 'var(--color-success)' : leaveRemarkModal.action === 'REJECT' ? 'var(--color-error)' : 'var(--navy-primary)',
               color: 'var(--white-pure)',
               padding: '1rem 1.25rem',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between'
@@ -4625,7 +4625,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   type="button"
                   onClick={handleLeaveAction}
                   className="btn-primary btn-sm"
-                  style={{ backgroundColor: leaveRemarkModal.action === 'REJECT' ? '#DC2626' : leaveRemarkModal.action === 'HOLD' ? '#D97706' : undefined, borderColor: leaveRemarkModal.action === 'REJECT' ? '#DC2626' : leaveRemarkModal.action === 'HOLD' ? '#D97706' : undefined }}
+                  style={{ backgroundColor: leaveRemarkModal.action === 'REJECT' ? 'var(--color-error)' : leaveRemarkModal.action === 'HOLD' ? 'var(--color-primary)' : undefined, borderColor: leaveRemarkModal.action === 'REJECT' ? 'var(--color-error)' : leaveRemarkModal.action === 'HOLD' ? 'var(--color-primary)' : undefined }}
                 >
                   CONFIRM {leaveRemarkModal.action}
                 </button>
@@ -4639,7 +4639,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -4661,7 +4661,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             <div style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--white-pure)', margin: 0 }}>Start Live Attendance Session</h3>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.74rem', color: '#94A3B8' }}>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.74rem', color: 'var(--color-disabled)' }}>
                   Senior device opens camera. Cadets step forward for automatic facial recognition.
                 </p>
               </div>
@@ -4751,7 +4751,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <span
                   style={{
                     backgroundColor: 'var(--navy-primary)',
-                    color: '#FFFFFF',
+                    color: 'var(--color-background)',
                     padding: '0.15rem 0.6rem',
                     borderRadius: '12px',
                     fontWeight: 700,
@@ -4810,7 +4810,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.88)',
+            backgroundColor: 'rgba(7, 26, 51, 0.88)',
             backdropFilter: 'blur(6px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -4821,7 +4821,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               borderRadius: '6px',
               width: '100%', maxWidth: '820px',
               boxShadow: 'var(--shadow-xl)',
@@ -4857,15 +4857,15 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               id="printable-ncc-certificate"
               style={{
                 padding: '2.5rem 3rem',
-                backgroundColor: '#FFFFFF',
-                color: '#061325',
-                border: '12px double #0B2545',
+                backgroundColor: 'var(--color-background)',
+                color: 'var(--color-primary)',
+                border: '12px double var(--color-secondary)',
                 margin: '1rem',
                 position: 'relative',
               }}
             >
               {/* Inner Decorative Border */}
-              <div style={{ border: '2px solid #13315C', padding: '2rem 2.25rem', position: 'relative' }}>
+              <div style={{ border: '2px solid var(--color-secondary)', padding: '2rem 2.25rem', position: 'relative' }}>
                 {/* Header Dual Crests */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <img
@@ -4874,13 +4874,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     style={{ width: '68px', height: '80px', objectFit: 'contain' }}
                   />
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.15em', color: '#061325', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.15em', color: 'var(--color-primary)', textTransform: 'uppercase' }}>
                       NATIONAL CADET CORPS (NCC)
                     </div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: '#0B2545', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900, fontFamily: 'var(--font-display)', color: 'var(--color-secondary)', marginTop: '0.25rem' }}>
                       2 MAHARASHTRA BATTALION NCC, PUNE
                     </div>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                       ARMY INSTITUTE OF TECHNOLOGY, DIGHI CAMP, PUNE - 411015
                     </div>
                   </div>
@@ -4892,23 +4892,23 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 </div>
 
                 {/* Ornate Divider */}
-                <div style={{ height: '3px', backgroundColor: '#0B2545', margin: '1rem auto 1.5rem', width: '80%' }} />
+                <div style={{ height: '3px', backgroundColor: 'var(--color-secondary)', margin: '1rem auto 1.5rem', width: '80%' }} />
 
                 {/* Certificate Main Title */}
                 <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.2em', color: '#64748B', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.2em', color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
                     CERTIFICATE OF MERIT & QUALIFICATION
                   </div>
-                  <h1 style={{ fontSize: '1.7rem', color: '#061325', fontFamily: 'var(--font-display)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <h1 style={{ fontSize: '1.7rem', color: 'var(--color-primary)', fontFamily: 'var(--font-display)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     {selectedCertificate.title}
                   </h1>
-                  <div style={{ fontSize: '0.82rem', color: '#64748B', fontFamily: 'monospace', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', fontFamily: 'monospace', marginTop: '0.25rem' }}>
                     SERIAL NO: <strong>{selectedCertificate.certificateNo}</strong>
                   </div>
                 </div>
 
                 {/* Certificate Text Body */}
-                <div style={{ fontSize: '0.95rem', lineHeight: '2', textAlign: 'justify', marginBottom: '2rem', color: '#1E293B' }}>
+                <div style={{ fontSize: '0.95rem', lineHeight: '2', textAlign: 'justify', marginBottom: '2rem', color: 'var(--color-text)' }}>
                   This is to certify that Cadet <strong>{selectedCertificate.cadet?.fullName || 'CDT Rohan Verma'}</strong>,
                   Regimental Number <strong>{selectedCertificate.cadet?.regimentalNumber || 'MH24SDA100303'}</strong>,
                   College Roll Number <strong>{selectedCertificate.cadet?.collegeRollNumber || '24103'}</strong>,
@@ -4922,29 +4922,29 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div
                     style={{
                       display: 'inline-block',
-                      backgroundColor: '#F8FAFC',
-                      border: '2px solid #0B2545',
+                      backgroundColor: 'var(--color-surface)',
+                      border: '2px solid var(--color-secondary)',
                       padding: '0.65rem 2.5rem',
                       borderRadius: '4px',
                     }}
                   >
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748B', textTransform: 'uppercase', marginRight: '0.5rem' }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', marginRight: '0.5rem' }}>
                       ASSESSMENT GRADE:
                     </span>
-                    <span style={{ fontSize: '1.3rem', fontWeight: 900, color: '#0B2545' }}>
+                    <span style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--color-secondary)' }}>
                       GRADE '{selectedCertificate.grade}' (DISTINCTION)
                     </span>
                   </div>
                 </div>
 
                 {selectedCertificate.campName && (
-                  <div style={{ textAlign: 'center', fontSize: '0.88rem', color: '#334155', marginBottom: '1.5rem' }}>
+                  <div style={{ textAlign: 'center', fontSize: '0.88rem', color: 'var(--color-text-secondary)', marginBottom: '1.5rem' }}>
                     Camp Credential: <strong>{selectedCertificate.campName}</strong>
                   </div>
                 )}
 
                 {selectedCertificate.remarks && (
-                  <div style={{ textAlign: 'center', fontSize: '0.85rem', color: '#475569', fontStyle: 'italic', marginBottom: '2rem' }}>
+                  <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontStyle: 'italic', marginBottom: '2rem' }}>
                     "{selectedCertificate.remarks}"
                   </div>
                 )}
@@ -4953,13 +4953,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '3rem', paddingTop: '1.5rem' }}>
                   {/* Left Signature */}
                   <div style={{ textAlign: 'center', minWidth: '180px' }}>
-                    <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: '#0B2545', marginBottom: '0.25rem' }}>
+                    <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: 'var(--color-secondary)', marginBottom: '0.25rem' }}>
                       R.K. Sharma
                     </div>
-                    <div style={{ height: '1px', backgroundColor: '#0B2545', width: '100%', marginBottom: '0.35rem' }} />
-                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#061325' }}>Lt. Col. R.K. Sharma</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Associate NCC Officer (ANO)</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748B' }}>AIT NCC Detachment</div>
+                    <div style={{ height: '1px', backgroundColor: 'var(--color-secondary)', width: '100%', marginBottom: '0.35rem' }} />
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-primary)' }}>Lt. Col. R.K. Sharma</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>Associate NCC Officer (ANO)</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>AIT NCC Detachment</div>
                   </div>
 
                   {/* Center Official Seal Stamp */}
@@ -4968,13 +4968,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       style={{
                         width: '85px',
                         height: '85px',
-                        border: '3px double #0B2545',
+                        border: '3px double var(--color-secondary)',
                         borderRadius: '50%',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#0B2545',
+                        color: 'var(--color-secondary)',
                         fontSize: '0.62rem',
                         fontWeight: 800,
                         textAlign: 'center',
@@ -4990,25 +4990,25 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                   {/* Right Signature */}
                   <div style={{ textAlign: 'center', minWidth: '180px' }}>
-                    <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: '#0B2545', marginBottom: '0.25rem' }}>
+                    <div style={{ fontFamily: 'cursive', fontSize: '1.1rem', color: 'var(--color-secondary)', marginBottom: '0.25rem' }}>
                       A.K. Deshmukh
                     </div>
-                    <div style={{ height: '1px', backgroundColor: '#0B2545', width: '100%', marginBottom: '0.35rem' }} />
-                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#061325' }}>Col. A.K. Deshmukh</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Commanding Officer</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748B' }}>2 Maharashtra Bn NCC, Pune</div>
+                    <div style={{ height: '1px', backgroundColor: 'var(--color-secondary)', width: '100%', marginBottom: '0.35rem' }} />
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--color-primary)' }}>Col. A.K. Deshmukh</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--color-text-secondary)' }}>Commanding Officer</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>2 Maharashtra Bn NCC, Pune</div>
                   </div>
                 </div>
 
                 {/* Cryptographic Verification Footer */}
-                <div style={{ marginTop: '2rem', paddingTop: '0.75rem', borderTop: '1px dashed #CBD5E1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: '#64748B', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ marginTop: '2rem', paddingTop: '0.75rem', borderTop: '1px dashed var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-secondary)', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
                     Date of Issue: <strong>{new Date(selectedCertificate.issueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</strong>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <ShieldCheck size={13} style={{ color: '#047857' }} />
+                    <ShieldCheck size={13} style={{ color: 'var(--color-success)' }} />
                     <span>Cryptographic Digest:</span>
-                    <code style={{ fontSize: '0.68rem', backgroundColor: '#F1F5F9', padding: '0.1rem 0.35rem', borderRadius: '3px' }}>
+                    <code style={{ fontSize: '0.68rem', backgroundColor: 'var(--color-surface)', padding: '0.1rem 0.35rem', borderRadius: '3px' }}>
                       {selectedCertificate.verificationHash}
                     </code>
                   </div>
@@ -5024,7 +5024,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5144,7 +5144,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <div
           style={{
             position: 'fixed', inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.88)',
+            backgroundColor: 'rgba(7, 26, 51, 0.88)',
             backdropFilter: 'blur(6px)',
             zIndex: 10000,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -5200,8 +5200,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               {verifyResult && (
                 <div style={{ marginTop: '0.5rem' }}>
                   {verifyResult.success && verifyResult.valid ? (
-                    <div style={{ backgroundColor: '#F0FDF4', border: '2px solid #86EFAC', borderRadius: '6px', padding: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#047857', fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+                    <div style={{ backgroundColor: 'var(--color-success-soft)', border: '2px solid var(--color-success)', borderRadius: '6px', padding: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', fontWeight: 800, fontSize: '0.95rem', marginBottom: '0.5rem' }}>
                         <CheckCircle size={18} /> <span>VERIFIED GENUINE INSTITUTIONAL RECORD</span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.82rem', lineHeight: '1.5' }}>
@@ -5215,17 +5215,17 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                           <strong>Certifying Officer:</strong> {verifyResult.certificate.issuedBy}
                         </div>
                       </div>
-                      <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: '#047857', borderTop: '1px solid #BBF7D0', paddingTop: '0.5rem', fontFamily: 'monospace' }}>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.72rem', color: 'var(--color-success)', borderTop: '1px solid var(--color-success-border)', paddingTop: '0.5rem', fontFamily: 'monospace' }}>
                         DIGITAL SEAL: {verifyResult.digitalSeal} · {verifyResult.verificationAuthority}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ backgroundColor: '#FEF2F2', border: '2px solid #FCA5A5', borderRadius: '6px', padding: '1rem', textAlign: 'center' }}>
-                      <XCircle size={28} style={{ color: '#DC2626', margin: '0 auto 0.5rem' }} />
-                      <div style={{ color: '#DC2626', fontWeight: 800, fontSize: '0.95rem' }}>
+                    <div style={{ backgroundColor: 'var(--color-error-soft)', border: '2px solid var(--color-error-border)', borderRadius: '6px', padding: '1rem', textAlign: 'center' }}>
+                      <XCircle size={28} style={{ color: 'var(--color-error)', margin: '0 auto 0.5rem' }} />
+                      <div style={{ color: 'var(--color-error)', fontWeight: 800, fontSize: '0.95rem' }}>
                         UNVERIFIED / RECORD NOT FOUND
                       </div>
-                      <p style={{ color: '#7F1D1D', fontSize: '0.82rem', marginTop: '0.25rem' }}>
+                      <p style={{ color: 'var(--color-error)', fontSize: '0.82rem', marginTop: '0.25rem' }}>
                         {verifyResult.message || 'No official NCC Directorate record matches the provided query.'}
                       </p>
                     </div>
@@ -5259,7 +5259,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             left: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(6, 19, 37, 0.85)',
+            backgroundColor: 'rgba(7, 26, 51, 0.85)',
             zIndex: 1250,
             display: 'flex',
             alignItems: 'center',
@@ -5345,7 +5345,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--white-border)', borderRadius: '4px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: '#FFFFFF', textAlign: 'left' }}>
+                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
                           <th style={{ padding: '0.4rem 0.6rem' }}>IDENTIFIER</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>STATUS</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>REMARKS</th>
@@ -5353,14 +5353,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       </thead>
                       <tbody>
                         {attendanceImportPreview.map((r, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <tr key={i} style={{ borderBottom: '1px solid var(--color-surface)' }}>
                             <td style={{ padding: '0.4rem 0.6rem', fontFamily: 'monospace', fontWeight: 600 }}>{r.regimentalNumber}</td>
                             <td style={{ padding: '0.4rem 0.6rem' }}>
                               <span
                                 className="badge-institutional"
                                 style={{
-                                  backgroundColor: r.status === 'PRESENT' ? '#D1FAE5' : r.status === 'EXCUSED' ? '#E0F2FE' : '#FEE2E2',
-                                  color: r.status === 'PRESENT' ? '#047857' : r.status === 'EXCUSED' ? '#0369A1' : '#DC2626',
+                                  backgroundColor: r.status === 'PRESENT' ? 'var(--color-success-soft)' : r.status === 'EXCUSED' ? 'var(--color-info-soft)' : 'var(--color-error-soft)',
+                                  color: r.status === 'PRESENT' ? 'var(--color-success)' : r.status === 'EXCUSED' ? 'var(--color-accent)' : 'var(--color-error)',
                                   fontSize: '0.7rem',
                                   padding: '0.15rem 0.4rem',
                                 }}
@@ -5413,7 +5413,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             left: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(6, 19, 37, 0.85)',
+            backgroundColor: 'rgba(7, 26, 51, 0.85)',
             zIndex: 1250,
             display: 'flex',
             alignItems: 'center',
@@ -5476,7 +5476,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--white-border)', borderRadius: '4px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: '#FFFFFF', textAlign: 'left' }}>
+                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
                           <th style={{ padding: '0.4rem 0.6rem' }}>NAME</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>REGIMENTAL NO</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>ROLL NO</th>
@@ -5486,7 +5486,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       </thead>
                       <tbody>
                         {cadetImportPreview.map((c, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <tr key={i} style={{ borderBottom: '1px solid var(--color-surface)' }}>
                             <td style={{ padding: '0.4rem 0.6rem', fontWeight: 700 }}>{c.fullName}</td>
                             <td style={{ padding: '0.4rem 0.6rem', fontFamily: 'monospace' }}>{c.regimentalNumber}</td>
                             <td style={{ padding: '0.4rem 0.6rem' }}>{c.collegeRollNumber}</td>
@@ -5535,7 +5535,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             left: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(6, 19, 37, 0.85)',
+            backgroundColor: 'rgba(7, 26, 51, 0.85)',
             zIndex: 1300,
             display: 'flex',
             alignItems: 'center',
@@ -5555,7 +5555,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               flexDirection: 'column',
               padding: 0,
               overflow: 'hidden',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -5567,7 +5567,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 alignItems: 'center',
                 padding: '1rem 1.5rem',
                 backgroundColor: 'var(--navy-primary)',
-                color: '#FFFFFF',
+                color: 'var(--color-background)',
                 flexShrink: 0,
               }}
             >
@@ -5579,7 +5579,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               </div>
               <button
                 onClick={() => setSelectedCadetForProfile(null)}
-                style={{ background: 'transparent', border: 'none', color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--color-background)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
               >
                 <X size={20} />
               </button>

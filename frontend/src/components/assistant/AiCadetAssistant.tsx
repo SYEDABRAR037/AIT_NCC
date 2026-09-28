@@ -164,7 +164,7 @@ export const AiCadetAssistant: React.FC = () => {
             key={index}
             style={{
               fontWeight: 700,
-              color: isUser ? '#FFFFFF' : '#0A192F',
+              color: isUser ? 'var(--color-background)' : 'var(--color-primary)',
             }}
           >
             {part.slice(2, -2)}
@@ -176,12 +176,12 @@ export const AiCadetAssistant: React.FC = () => {
           <code
             key={index}
             style={{
-              background: isUser ? 'rgba(255,255,255,0.2)' : '#F1F5F9',
+              background: isUser ? 'rgba(255,255,255,0.2)' : 'var(--color-surface)',
               padding: '1px 5px',
               borderRadius: '4px',
               fontFamily: 'monospace',
               fontSize: '0.85em',
-              color: isUser ? '#E0E7FF' : '#1E3A8A',
+              color: isUser ? 'var(--color-info-soft)' : 'var(--color-accent)',
             }}
           >
             {part.slice(1, -1)}
@@ -220,7 +220,7 @@ export const AiCadetAssistant: React.FC = () => {
             key={idx}
             style={{
               height: '1px',
-              background: isUser ? 'rgba(255,255,255,0.2)' : '#E2E8F0',
+              background: isUser ? 'rgba(255,255,255,0.2)' : 'var(--color-border)',
               margin: '8px 0',
             }}
           />
@@ -236,12 +236,12 @@ export const AiCadetAssistant: React.FC = () => {
             style={{
               margin: '10px 0 6px',
               padding: '6px 10px',
-              background: isUser ? 'rgba(255,255,255,0.12)' : 'linear-gradient(90deg, #F1F5F9 0%, #FFFFFF 100%)',
-              borderLeft: '3px solid #D4AF37',
+              background: isUser ? 'rgba(255,255,255,0.12)' : 'linear-gradient(90deg, var(--color-surface) 0%, var(--color-background) 100%)',
+              borderLeft: '3px solid var(--color-gold)',
               borderRadius: '0 6px 6px 0',
               fontWeight: 800,
               fontSize: '0.92rem',
-              color: isUser ? '#FFFFFF' : '#0A192F',
+              color: isUser ? 'var(--color-background)' : 'var(--color-primary)',
               letterSpacing: '0.01em',
             }}
           >
@@ -265,7 +265,7 @@ export const AiCadetAssistant: React.FC = () => {
               margin: '8px 0 4px',
               fontWeight: 700,
               fontSize: '0.85rem',
-              color: isUser ? '#93C5FD' : '#1E3A8A',
+              color: isUser ? 'var(--color-info-border)' : 'var(--color-accent)',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -276,7 +276,7 @@ export const AiCadetAssistant: React.FC = () => {
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                background: '#D4AF37',
+                background: 'var(--color-gold)',
                 flexShrink: 0,
               }}
             />
@@ -303,7 +303,7 @@ export const AiCadetAssistant: React.FC = () => {
           >
             <span
               style={{
-                color: isUser ? '#93C5FD' : '#D4AF37',
+                color: isUser ? 'var(--color-info-border)' : 'var(--color-gold)',
                 fontWeight: 800,
                 fontSize: '0.85rem',
                 lineHeight: '1.4',
@@ -341,7 +341,7 @@ export const AiCadetAssistant: React.FC = () => {
                 height: '18px',
                 borderRadius: '50%',
                 background: isUser ? 'rgba(255,255,255,0.2)' : 'rgba(30, 58, 138, 0.1)',
-                color: isUser ? '#FFFFFF' : '#1E3A8A',
+                color: isUser ? 'var(--color-background)' : 'var(--color-accent)',
                 fontSize: '0.68rem',
                 fontWeight: 700,
                 display: 'flex',
@@ -366,12 +366,12 @@ export const AiCadetAssistant: React.FC = () => {
           <div
             key={idx}
             style={{
-              background: isUser ? 'rgba(255,255,255,0.08)' : '#F8FAFC',
-              borderLeft: '3px solid #3B82F6',
+              background: isUser ? 'rgba(255,255,255,0.08)' : 'var(--color-surface)',
+              borderLeft: '3px solid var(--color-accent)',
               padding: '6px 10px',
               margin: '6px 0',
               fontSize: '0.8rem',
-              color: isUser ? '#E2E8F0' : '#334155',
+              color: isUser ? 'var(--color-border)' : 'var(--color-text-secondary)',
               borderRadius: '0 4px 4px 0',
               fontStyle: 'italic',
             }}
@@ -389,7 +389,7 @@ export const AiCadetAssistant: React.FC = () => {
             margin: '2px 0',
             fontSize: '0.85rem',
             lineHeight: '1.55',
-            color: isUser ? '#FFFFFF' : '#1E293B',
+            color: isUser ? 'var(--color-background)' : 'var(--color-text)',
           }}
         >
           {renderInlineMarkdown(line, isUser)}
@@ -426,20 +426,20 @@ export const AiCadetAssistant: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               position: 'relative',
-              background: 'linear-gradient(135deg, #0A192F 0%, #1E3A8A 100%)',
-              color: '#FFFFFF',
-              border: '2px solid #D4AF37',
-              boxShadow: '0 6px 20px rgba(10, 25, 47, 0.45), 0 0 12px rgba(212, 175, 55, 0.3)',
+              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%)',
+              color: 'var(--color-background)',
+              border: '2px solid var(--color-gold)',
+              boxShadow: '0 6px 20px rgba(7, 26, 51, 0.45), 0 0 12px rgba(244, 180, 0, 0.3)',
               cursor: 'pointer',
               transition: 'all 0.25s ease',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-2px) scale(1.08)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(10, 25, 47, 0.55), 0 0 16px rgba(212, 175, 55, 0.45)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(7, 26, 51, 0.55), 0 0 16px rgba(244, 180, 0, 0.45)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(10, 25, 47, 0.45), 0 0 12px rgba(212, 175, 55, 0.3)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(7, 26, 51, 0.45), 0 0 12px rgba(244, 180, 0, 0.3)';
             }}
             aria-label="Command Saathi AI Assistant"
           >
@@ -451,9 +451,9 @@ export const AiCadetAssistant: React.FC = () => {
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
-                background: '#10B981',
-                border: '2px solid #0A192F',
-                boxShadow: '0 0 6px #10B981',
+                background: 'var(--color-success)',
+                border: '2px solid var(--color-primary)',
+                boxShadow: '0 0 6px var(--color-success)',
               }}
             />
             <img
@@ -481,10 +481,10 @@ export const AiCadetAssistant: React.FC = () => {
             maxWidth: 'calc(100vw - 28px)',
             height: '630px',
             maxHeight: 'calc(100vh - 36px)',
-            background: '#FFFFFF',
+            background: 'var(--color-background)',
             borderRadius: '16px',
-            boxShadow: '0 20px 50px rgba(6, 19, 37, 0.35)',
-            border: '2px solid var(--navy-primary, #0A192F)',
+            boxShadow: '0 20px 50px rgba(7, 26, 51, 0.35)',
+            border: '2px solid var(--navy-primary, var(--color-primary))',
             zIndex: 9999,
             display: 'flex',
             flexDirection: 'column',
@@ -501,13 +501,13 @@ export const AiCadetAssistant: React.FC = () => {
           {/* Header - Cleaned up per user request */}
           <div
             style={{
-              background: 'linear-gradient(135deg, #061325 0%, #0A192F 100%)',
-              color: '#FFFFFF',
+              background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary) 100%)',
+              color: 'var(--color-background)',
               padding: '14px 18px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              borderBottom: '3px solid #D4AF37',
+              borderBottom: '3px solid var(--color-gold)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -516,21 +516,21 @@ export const AiCadetAssistant: React.FC = () => {
                   width: '38px',
                   height: '38px',
                   borderRadius: '50%',
-                  background: 'rgba(212, 175, 55, 0.15)',
-                  border: '1.5px solid #D4AF37',
+                  background: 'rgba(244, 180, 0, 0.15)',
+                  border: '1.5px solid var(--color-gold)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#D4AF37',
+                  color: 'var(--color-gold)',
                 }}
               >
                 <Shield size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, letterSpacing: '0.02em', color: '#FFFFFF' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, letterSpacing: '0.02em', color: 'var(--color-background)' }}>
                   Command Saathi
                 </h3>
-                <div style={{ fontSize: '0.75rem', color: '#93C5FD' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-info-border)' }}>
                   AIT NCC Cadet Assistant
                 </div>
               </div>
@@ -543,7 +543,7 @@ export const AiCadetAssistant: React.FC = () => {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#93C5FD',
+                  color: 'var(--color-info-border)',
                   cursor: 'pointer',
                   padding: '6px',
                   borderRadius: '6px',
@@ -561,7 +561,7 @@ export const AiCadetAssistant: React.FC = () => {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#FFFFFF',
+                  color: 'var(--color-background)',
                   cursor: 'pointer',
                   padding: '6px',
                   borderRadius: '6px',
@@ -579,8 +579,8 @@ export const AiCadetAssistant: React.FC = () => {
             className="saathi-quick-prompts"
             style={{
               padding: '8px 12px',
-              background: '#F8FAFC',
-              borderBottom: '1px solid #E2E8F0',
+              background: 'var(--color-surface)',
+              borderBottom: '1px solid var(--color-border)',
               overflowX: 'auto',
               whiteSpace: 'nowrap',
               display: 'flex',
@@ -595,12 +595,12 @@ export const AiCadetAssistant: React.FC = () => {
                 onClick={() => handleSendMessage(p)}
                 disabled={loading}
                 style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #CBD5E1',
+                  background: 'var(--color-background)',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '20px',
                   padding: '4px 10px',
                   fontSize: '0.72rem',
-                  color: '#0A192F',
+                  color: 'var(--color-primary)',
                   fontWeight: 600,
                   cursor: 'pointer',
                   flexShrink: 0,
@@ -608,10 +608,10 @@ export const AiCadetAssistant: React.FC = () => {
                   alignItems: 'center',
                   gap: '4px',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1E3A8A')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#CBD5E1')}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--color-accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--color-border)')}
               >
-                <Sparkles size={11} style={{ color: '#D4AF37' }} />
+                <Sparkles size={11} style={{ color: 'var(--color-gold)' }} />
                 <span>{p.length > 35 ? p.substring(0, 32) + '...' : p}</span>
               </button>
             ))}
@@ -626,7 +626,7 @@ export const AiCadetAssistant: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
-              background: '#F1F5F9',
+              background: 'var(--color-surface)',
             }}
           >
             {messages.map((m) => (
@@ -644,10 +644,10 @@ export const AiCadetAssistant: React.FC = () => {
                     maxWidth: '92%',
                     padding: '12px 14px',
                     borderRadius: m.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                    background: m.role === 'user' ? '#0A192F' : '#FFFFFF',
-                    color: m.role === 'user' ? '#FFFFFF' : '#0F172A',
+                    background: m.role === 'user' ? 'var(--color-primary)' : 'var(--color-background)',
+                    color: m.role === 'user' ? 'var(--color-background)' : 'var(--color-primary)',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-                    border: m.role === 'user' ? 'none' : '1px solid #E2E8F0',
+                    border: m.role === 'user' ? 'none' : '1px solid var(--color-border)',
                     fontSize: '0.88rem',
                     lineHeight: '1.55',
                     wordBreak: 'break-word',
@@ -660,16 +660,16 @@ export const AiCadetAssistant: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        borderBottom: '1px solid #F1F5F9',
+                        borderBottom: '1px solid var(--color-surface)',
                         paddingBottom: '4px',
                         marginBottom: '6px',
                         fontSize: '0.72rem',
                         fontWeight: 700,
-                        color: '#1E3A8A',
+                        color: 'var(--color-accent)',
                       }}
                     >
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Shield size={12} style={{ color: '#D4AF37' }} />
+                        <Shield size={12} style={{ color: 'var(--color-gold)' }} />
                         Assistant
                       </span>
                       <button
@@ -678,7 +678,7 @@ export const AiCadetAssistant: React.FC = () => {
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          color: '#64748B',
+                          color: 'var(--color-text-secondary)',
                           cursor: 'pointer',
                           padding: '2px',
                           display: 'flex',
@@ -687,7 +687,7 @@ export const AiCadetAssistant: React.FC = () => {
                           fontSize: '0.7rem',
                         }}
                       >
-                        {copiedId === m.id ? <Check size={12} style={{ color: '#10B981' }} /> : <Copy size={12} />}
+                        {copiedId === m.id ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : <Copy size={12} />}
                       </button>
                     </div>
                   )}
@@ -701,7 +701,7 @@ export const AiCadetAssistant: React.FC = () => {
                   <div
                     style={{
                       fontSize: '0.65rem',
-                      color: m.role === 'user' ? '#93C5FD' : '#94A3B8',
+                      color: m.role === 'user' ? 'var(--color-info-border)' : 'var(--color-disabled)',
                       textAlign: 'right',
                       marginTop: '4px',
                     }}
@@ -719,19 +719,19 @@ export const AiCadetAssistant: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  background: '#FFFFFF',
+                  background: 'var(--color-background)',
                   padding: '10px 14px',
                   borderRadius: '12px',
                   alignSelf: 'flex-start',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
                   fontSize: '0.82rem',
-                  color: '#1E3A8A',
+                  color: 'var(--color-accent)',
                   fontWeight: 600,
-                  border: '1px solid #BFDBFE',
+                  border: '1px solid var(--color-info-border)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Search size={14} className="animate-spin" style={{ color: '#D4AF37' }} />
+                  <Search size={14} className="animate-spin" style={{ color: 'var(--color-gold)' }} />
                   <span>Researching defense sources...</span>
                 </div>
               </div>
@@ -743,8 +743,8 @@ export const AiCadetAssistant: React.FC = () => {
           <div
             style={{
               padding: '12px',
-              background: '#FFFFFF',
-              borderTop: '1px solid #E2E8F0',
+              background: 'var(--color-background)',
+              borderTop: '1px solid var(--color-border)',
             }}
           >
             <form
@@ -764,20 +764,20 @@ export const AiCadetAssistant: React.FC = () => {
                   flex: 1,
                   padding: '10px 14px',
                   borderRadius: '8px',
-                  border: '1px solid #CBD5E1',
+                  border: '1px solid var(--color-border)',
                   fontSize: '0.88rem',
                   outline: 'none',
-                  color: '#0A192F',
+                  color: 'var(--color-primary)',
                 }}
-                onFocus={(e) => (e.target.style.borderColor = '#0A192F')}
-                onBlur={(e) => (e.target.style.borderColor = '#CBD5E1')}
+                onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
+                onBlur={(e) => (e.target.style.borderColor = 'var(--color-border)')}
               />
               <button
                 type="submit"
                 disabled={loading || !inputMessage.trim()}
                 style={{
-                  background: inputMessage.trim() ? '#0A192F' : '#E2E8F0',
-                  color: inputMessage.trim() ? '#FFFFFF' : '#94A3B8',
+                  background: inputMessage.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+                  color: inputMessage.trim() ? 'var(--color-background)' : 'var(--color-disabled)',
                   border: 'none',
                   borderRadius: '8px',
                   padding: '0 16px',

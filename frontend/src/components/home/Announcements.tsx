@@ -57,13 +57,13 @@ export const Announcements: React.FC = () => {
                 key={notice.id}
                 className="institutional-card"
                 style={{
-                  borderLeft: notice.isUrgent ? '4px solid #0A192F' : '4px solid var(--navy-border)',
+                  borderLeft: notice.isUrgent ? '4px solid var(--color-primary)' : '4px solid var(--navy-border)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {notice.isUrgent && (
-                      <span className="badge-dark" style={{ background: '#0A192F' }}>
+                      <span className="badge-dark" style={{ background: 'var(--color-primary)' }}>
                         <AlertCircle size={12} />
                         <span>URGENT CIRCULAR</span>
                       </span>

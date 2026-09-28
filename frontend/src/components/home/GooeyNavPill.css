@@ -16,7 +16,7 @@
   display: inline-flex;
   align-items: center;
   /* Subtle light contrasting surface as specified in design reference */
-  background: rgba(230, 237, 245, 0.94);
+  background: rgba(245, 248, 252, 0.96);
   border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: 9999px;
   padding: 4px 6px;
@@ -54,7 +54,7 @@
   white-space: nowrap;
   transition: color 0.2s ease, background-color 0.2s ease;
   outline: none;
-  color: #06152B;
+  color: var(--color-primary);
 }
 
 /* Navigation typography: clean, readable, dark navy */
@@ -62,7 +62,7 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #06152B;
+  color: var(--color-primary);
   letter-spacing: 0.015em;
   transition: color 0.2s ease, font-weight 0.2s ease;
 }
@@ -73,16 +73,16 @@
 }
 
 .ncc-nav-pill-link:not(.active):hover .ncc-nav-pill-text {
-  color: #000000;
+  color: var(--color-primary);
 }
 
 .ncc-nav-pill-link:focus-visible {
-  box-shadow: 0 0 0 2px #06152B;
+  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
-/* Active navigation item: bold dark navy text */
+/* Active navigation item: royal blue with white text */
 .ncc-nav-pill-link.active .ncc-nav-pill-text {
-  color: #06152B;
+  color: var(--color-background);
   font-weight: 700;
 }
 
@@ -92,9 +92,9 @@
   left: 0;
   top: 4px;
   border-radius: 9999px;
-  background: #FFFFFF;
+  background: var(--color-accent);
   box-shadow:
-    0 2px 8px rgba(6, 21, 43, 0.16),
+    0 2px 8px rgba(7, 26, 51, 0.16),
     0 1px 3px rgba(0, 0, 0, 0.08);
   pointer-events: none;
   z-index: 1;
@@ -120,7 +120,7 @@
 .ncc-gooey-bubble {
   position: absolute;
   border-radius: 50%;
-  background: #FFFFFF;
+  background: var(--color-background);
   opacity: 0;
   pointer-events: none;
   transform: translate(0, 0) scale(0.6);

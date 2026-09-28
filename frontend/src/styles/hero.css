@@ -10,8 +10,8 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  background-color: #06152B;
-  color: #FFFFFF;
+  background-color: var(--color-primary);
+  color: var(--color-background);
 }
 
 .ref-hero-bg-wrapper {
@@ -36,10 +36,10 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    rgba(6, 21, 43, 0.92) 0%,
-    rgba(6, 21, 43, 0.82) 42%,
-    rgba(6, 21, 43, 0.45) 75%,
-    rgba(6, 21, 43, 0.25) 100%
+    rgba(7, 26, 51, 0.92) 0%,
+    rgba(7, 26, 51, 0.82) 42%,
+    rgba(7, 26, 51, 0.45) 75%,
+    rgba(7, 26, 51, 0.25) 100%
   );
   z-index: 2;
 }
@@ -65,14 +65,14 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #93C5FD;
+  color: var(--color-info-border);
   margin-bottom: 1.25rem;
 }
 
 .ref-hero-title {
   font-size: 3.5rem;
   font-weight: 800;
-  color: #FFFFFF;
+  color: var(--color-background);
   line-height: 1.12;
   letter-spacing: -0.01em;
   margin-bottom: 1.25rem;
@@ -84,7 +84,7 @@
   font-size: 1.15rem;
   font-weight: 400;
   line-height: 1.6;
-  color: #E2E8F0;
+  color: var(--color-border);
   margin-bottom: 2.25rem;
   opacity: 0.95;
   font-style: normal;
@@ -99,9 +99,9 @@
 
 /* Primary Button: Solid White with Navy Text & Arrow */
 .ref-hero-btn-primary {
-  background: #FFFFFF;
-  color: #06152B;
-  border: 1px solid #FFFFFF;
+  background: var(--color-background);
+  color: var(--color-primary);
+  border: 1px solid var(--color-background);
   border-radius: 50px;
   padding: 12px 28px;
   font-size: 0.95rem;
@@ -115,15 +115,15 @@
 }
 
 .ref-hero-btn-primary:hover {
-  background: #F1F5F9;
+  background: var(--color-surface);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 
 /* Secondary Button: Navy with Border & Play Icon */
 .ref-hero-btn-secondary {
-  background: rgba(6, 21, 43, 0.65);
-  color: #FFFFFF;
+  background: rgba(7, 26, 51, 0.65);
+  color: var(--color-background);
   border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 50px;
   padding: 12px 26px;
@@ -139,7 +139,7 @@
 
 .ref-hero-btn-secondary:hover {
   background: rgba(255, 255, 255, 0.15);
-  border-color: #FFFFFF;
+  border-color: var(--color-background);
   transform: translateY(-2px);
 }
 
@@ -147,7 +147,7 @@
 .ref-video-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(6, 19, 37, 0.85);
+  background: rgba(7, 26, 51, 0.85);
   backdrop-filter: blur(8px);
   z-index: 9999;
   display: flex;
@@ -158,7 +158,7 @@
 }
 
 .ref-video-modal-container {
-  background: #0A192F;
+  background: var(--color-primary);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   width: 100%;
@@ -172,28 +172,28 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  background: #06152B;
+  background: var(--color-primary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: #FFFFFF;
+  color: var(--color-background);
 }
 
 .ref-video-modal-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: #93C5FD;
+  color: var(--color-info-border);
 }
 
 .ref-video-modal-close {
   background: none;
   border: none;
-  color: #CBD5E1;
+  color: var(--color-border);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
 }
 
 .ref-video-modal-close:hover {
-  color: #FFFFFF;
+  color: var(--color-background);
 }
 
 .ref-video-player-wrapper {

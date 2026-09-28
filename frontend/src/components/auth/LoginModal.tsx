@@ -66,7 +66,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 11, 23, 0.75)',
+        backgroundColor: 'rgba(7, 26, 51, 0.75)',
         backdropFilter: 'blur(4px)',
         zIndex: 10000,
         display: 'flex',
@@ -122,9 +122,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           {errorMsg && (
             <div
               style={{
-                backgroundColor: accountStatus === 'UNDER_REVIEW' ? '#FEF3C7' : '#FEE2E2',
-                border: accountStatus === 'UNDER_REVIEW' ? '1px solid #F59E0B' : '1px solid #EF4444',
-                color: accountStatus === 'UNDER_REVIEW' ? '#92400E' : '#B91C1C',
+                backgroundColor: accountStatus === 'UNDER_REVIEW' ? 'var(--color-warning-soft)' : 'var(--color-error-soft)',
+                border: accountStatus === 'UNDER_REVIEW' ? '1px solid var(--color-gold)' : '1px solid var(--color-error)',
+                color: accountStatus === 'UNDER_REVIEW' ? 'var(--color-primary)' : 'var(--color-error)',
                 padding: '0.85rem 1rem',
                 borderRadius: '4px',
                 fontSize: '0.85rem',

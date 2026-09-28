@@ -157,7 +157,7 @@ export const StrengthAndNotices: React.FC = () => {
                 </div>
               ) : notices.length === 0 ? (
                 <div className="ref-notices-empty">
-                  <FileText size={32} style={{ color: '#94A3B8', marginBottom: '0.5rem' }} />
+                  <FileText size={32} style={{ color: 'var(--color-disabled)', marginBottom: '0.5rem' }} />
                   <p>No notices published yet.</p>
                 </div>
               ) : (
@@ -207,7 +207,7 @@ export const StrengthAndNotices: React.FC = () => {
                   )}
                 </div>
                 <h3 className="ref-modal-title">{selectedNotice.title}</h3>
-                <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
                   Published on {formatNoticeDate(selectedNotice.createdAt)}
                 </div>
               </div>
@@ -220,7 +220,7 @@ export const StrengthAndNotices: React.FC = () => {
               </button>
             </div>
             <div className="ref-modal-body">
-              <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', lineHeight: '1.7', color: '#334155' }}>
+              <p style={{ whiteSpace: 'pre-line', fontSize: '0.92rem', lineHeight: '1.7', color: 'var(--color-text-secondary)' }}>
                 {selectedNotice.content}
               </p>
               <div className="ref-modal-actions" style={{ marginTop: '1.5rem' }}>
@@ -242,7 +242,7 @@ export const StrengthAndNotices: React.FC = () => {
           <div className="ref-modal-box" style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
             <div className="ref-modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Bell size={20} style={{ color: '#2563EB' }} />
+                <Bell size={20} style={{ color: 'var(--color-accent)' }} />
                 <h3 className="ref-modal-title">All Institutional Notices</h3>
               </div>
               <button
@@ -255,7 +255,7 @@ export const StrengthAndNotices: React.FC = () => {
             </div>
             <div className="ref-modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {notices.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#64748B', padding: '2rem' }}>No notices published yet.</p>
+                <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem' }}>No notices published yet.</p>
               ) : (
                 notices.map((n) => (
                   <div

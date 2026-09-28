@@ -300,7 +300,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 11, 23, 0.8)',
+        backgroundColor: 'rgba(7, 26, 51, 0.8)',
         backdropFilter: 'blur(5px)',
         zIndex: 10001,
         display: 'flex',
@@ -333,11 +333,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '3px solid var(--gold-accent, #C59A27)',
+            borderBottom: '3px solid var(--gold-accent, var(--color-gold))',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <KeyRound size={20} color="var(--gold-accent, #C59A27)" />
+            <KeyRound size={20} color="var(--gold-accent, var(--color-gold))" />
             <h3 style={{ color: 'var(--white-pure)', fontSize: '1.05rem', margin: 0, letterSpacing: '0.04em' }}>
               {step === 'IDENTIFY' && 'ACCOUNT RECOVERY'}
               {step === 'OTP' && 'VERIFY OTP'}
@@ -360,9 +360,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {errorMsg && (
             <div
               style={{
-                backgroundColor: '#FEE2E2',
-                border: '1px solid #EF4444',
-                color: '#B91C1C',
+                backgroundColor: 'var(--color-error-soft)',
+                border: '1px solid var(--color-error)',
+                color: 'var(--color-error)',
                 padding: '0.85rem 1rem',
                 borderRadius: '4px',
                 fontSize: '0.85rem',
@@ -386,9 +386,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {successNotice && (
             <div
               style={{
-                backgroundColor: '#ECFDF5',
-                border: '1px solid #10B981',
-                color: '#065F46',
+                backgroundColor: 'var(--color-success-soft)',
+                border: '1px solid var(--color-success)',
+                color: 'var(--color-success)',
                 padding: '0.85rem 1rem',
                 borderRadius: '4px',
                 fontSize: '0.85rem',
@@ -430,7 +430,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       outline: 'none',
                     }}
                   />
-                  <Mail size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                  <Mail size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
                 </div>
               </div>
 
@@ -455,7 +455,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       outline: 'none',
                     }}
                   />
-                  <Shield size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                  <Shield size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
                 </div>
               </div>
 
@@ -574,8 +574,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   width: '64px',
                   height: '64px',
                   borderRadius: '50%',
-                  backgroundColor: '#ECFDF5',
-                  color: '#059669',
+                  backgroundColor: 'var(--color-success-soft)',
+                  color: 'var(--color-success)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -587,7 +587,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
               <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--navy-primary)', fontSize: '1.2rem' }}>
                 Password Reset Successfully!
               </h4>
-              <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: '#64748B', lineHeight: '1.5' }}>
+              <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
                 Your institutional credentials have been securely updated in the production database. You may now log in using your new password.
               </p>
               <button

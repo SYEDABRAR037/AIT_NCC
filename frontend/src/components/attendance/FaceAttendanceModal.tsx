@@ -589,29 +589,29 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
     switch (scannerTone) {
       case 'success':
         return {
-          border: '4px solid #10B981',
-          boxShadow: '0 0 35px rgba(16, 185, 129, 0.7), inset 0 0 20px rgba(16, 185, 129, 0.3)',
+          border: '4px solid var(--color-success)',
+          boxShadow: '0 0 35px rgba(22, 128, 60, 0.7), inset 0 0 20px rgba(22, 128, 60, 0.3)',
         };
       case 'detecting':
       case 'verifying':
         return {
-          border: '4px solid #38BDF8',
-          boxShadow: '0 0 30px rgba(56, 189, 248, 0.6), inset 0 0 15px rgba(56, 189, 248, 0.3)',
+          border: '4px solid var(--color-accent)',
+          boxShadow: '0 0 30px rgba(21, 94, 239, 0.6), inset 0 0 15px rgba(21, 94, 239, 0.3)',
         };
       case 'warning':
         return {
-          border: '4px solid #F59E0B',
+          border: '4px solid var(--color-gold)',
           boxShadow: '0 0 30px rgba(245, 158, 11, 0.6), inset 0 0 15px rgba(245, 158, 11, 0.2)',
         };
       case 'error':
         return {
-          border: '4px solid #EF4444',
-          boxShadow: '0 0 30px rgba(239, 68, 68, 0.7), inset 0 0 15px rgba(239, 68, 68, 0.2)',
+          border: '4px solid var(--color-error)',
+          boxShadow: '0 0 30px rgba(217, 45, 32, 0.7), inset 0 0 15px rgba(217, 45, 32, 0.2)',
         };
       case 'idle':
       default:
         return {
-          border: '4px solid #1E3A8A',
+          border: '4px solid var(--color-accent)',
           boxShadow: '0 0 25px rgba(30, 58, 138, 0.5), inset 0 0 10px rgba(30, 58, 138, 0.2)',
         };
     }
@@ -622,7 +622,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 11, 23, 0.96)',
+        backgroundColor: 'rgba(7, 26, 51, 0.96)',
         backdropFilter: 'blur(10px)',
         zIndex: 1300,
         display: 'flex',
@@ -639,7 +639,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
           width: '100%',
           maxWidth: sessionClosed ? 'min(94vw, 1450px)' : '560px',
           maxHeight: '92vh',
-          backgroundColor: '#061325',
+          backgroundColor: 'var(--color-primary)',
           border: '2px solid var(--navy-border)',
           borderRadius: '12px',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.85)',
@@ -666,15 +666,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 width: '10px',
                 height: '10px',
                 borderRadius: '50%',
-                backgroundColor: sessionClosed ? '#EF4444' : '#10B981',
-                boxShadow: sessionClosed ? '0 0 8px #EF4444' : '0 0 8px #10B981',
+                backgroundColor: sessionClosed ? 'var(--color-error)' : 'var(--color-success)',
+                boxShadow: sessionClosed ? '0 0 8px var(--color-error)' : '0 0 8px var(--color-success)',
               }}
             />
             <div>
-              <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#FFFFFF', letterSpacing: '0.03em' }}>
+              <h3 style={{ margin: 0, fontSize: '0.98rem', color: 'var(--color-background)', letterSpacing: '0.03em' }}>
                 LIVE FACE ATTENDANCE · {session.activity ? session.activity.toUpperCase() : 'UNIT PARADE MUSTER'}
               </h3>
-              <p style={{ margin: 0, fontSize: '0.72rem', color: '#94A3B8' }}>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--color-disabled)' }}>
                 Authorized Senior Device Camera · High-Speed Biometric Muster
               </p>
             </div>
@@ -686,8 +686,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 type="button"
                 onClick={() => setEndConfirmOpen(true)}
                 style={{
-                  backgroundColor: '#DC2626',
-                  color: '#FFFFFF',
+                  backgroundColor: 'var(--color-error)',
+                  color: 'var(--color-background)',
                   border: 'none',
                   borderRadius: '4px',
                   padding: '0.35rem 0.75rem',
@@ -706,7 +706,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               style={{
                 background: 'none',
                 border: 'none',
-                color: '#94A3B8',
+                color: 'var(--color-disabled)',
                 cursor: 'pointer',
                 padding: '0.2rem',
               }}
@@ -730,7 +730,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
           {/* TOP STATS STRIP: EXPECTED / PRESENT / REMAINING — Real-time, DB-authoritative */}
           <div
             style={{
-              backgroundColor: '#030B17',
+              backgroundColor: 'var(--color-primary)',
               padding: '0.6rem 1.25rem',
               borderBottom: '1px solid var(--navy-border)',
               display: 'grid',
@@ -755,20 +755,20 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 width: '6px',
                 height: '6px',
                 borderRadius: '50%',
-                backgroundColor: '#10B981',
-                boxShadow: '0 0 6px #10B981',
+                backgroundColor: 'var(--color-success)',
+                boxShadow: '0 0 6px var(--color-success)',
                 animation: 'livePulse 1.4s ease-in-out infinite',
               }} />
-              <span style={{ color: '#10B981', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em' }}>LIVE</span>
+              <span style={{ color: 'var(--color-success)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.05em' }}>LIVE</span>
             </div>
           )}
 
           {/* EXPECTED */}
           <div style={{ padding: '0.15rem 0' }}>
-            <span style={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               EXPECTED
             </span>
-            <strong style={{ fontSize: '1.45rem', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+            <strong style={{ fontSize: '1.45rem', color: 'var(--color-background)', fontVariantNumeric: 'tabular-nums' }}>
               {expectedCount}
             </strong>
           </div>
@@ -780,14 +780,14 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
             padding: '0.15rem 0',
             borderRadius: '6px',
             transition: 'background-color 0.4s ease',
-            backgroundColor: presentFlash ? 'rgba(16,185,129,0.18)' : 'transparent',
+            backgroundColor: presentFlash ? 'rgba(22,128,60,0.18)' : 'transparent',
           }}>
-            <span style={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               PRESENT
             </span>
             <strong style={{
               fontSize: '1.45rem',
-              color: presentFlash ? '#34D399' : '#10B981',
+              color: presentFlash ? 'var(--color-success)' : 'var(--color-success)',
               fontVariantNumeric: 'tabular-nums',
               transition: 'color 0.4s ease',
             }}>
@@ -797,12 +797,12 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
 
           {/* REMAINING */}
           <div style={{ padding: '0.15rem 0' }}>
-            <span style={{ color: '#64748B', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.65rem', fontWeight: 700, display: 'block', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               REMAINING
             </span>
             <strong style={{
               fontSize: '1.45rem',
-              color: remainingCount === 0 ? '#22C55E' : remainingCount <= 5 ? '#F59E0B' : '#E2E8F0',
+              color: remainingCount === 0 ? 'var(--color-success)' : remainingCount <= 5 ? 'var(--color-gold)' : 'var(--color-border)',
               fontVariantNumeric: 'tabular-nums',
             }}>
               {remainingCount}
@@ -826,7 +826,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              backgroundColor: '#061325',
+              backgroundColor: 'var(--color-primary)',
             }}
           >
             {/* Mode Switcher: Biometric Scanner vs Manual Fallback */}
@@ -837,8 +837,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 style={{
                   flex: 1,
                   maxWidth: '220px',
-                  backgroundColor: !manualListOpen ? 'var(--navy-primary)' : 'rgba(15, 23, 42, 0.6)',
-                  color: !manualListOpen ? '#FFFFFF' : '#94A3B8',
+                  backgroundColor: !manualListOpen ? 'var(--navy-primary)' : 'rgba(7, 26, 51, 0.6)',
+                  color: !manualListOpen ? 'var(--color-background)' : 'var(--color-disabled)',
                   border: `1px solid ${!manualListOpen ? 'var(--navy-border)' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: '6px',
                   padding: '0.45rem 0.75rem',
@@ -859,9 +859,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 style={{
                   flex: 1,
                   maxWidth: '260px',
-                  backgroundColor: manualListOpen ? '#2563EB' : 'rgba(15, 23, 42, 0.6)',
-                  color: manualListOpen ? '#FFFFFF' : '#94A3B8',
-                  border: `1px solid ${manualListOpen ? '#60A5FA' : 'rgba(255,255,255,0.1)'}`,
+                  backgroundColor: manualListOpen ? 'var(--color-accent)' : 'rgba(7, 26, 51, 0.6)',
+                  color: manualListOpen ? 'var(--color-background)' : 'var(--color-disabled)',
+                  border: `1px solid ${manualListOpen ? 'var(--color-accent)' : 'rgba(255,255,255,0.1)'}`,
                   borderRadius: '6px',
                   padding: '0.45rem 0.75rem',
                   fontSize: '0.78rem',
@@ -881,15 +881,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               <div
                 style={{
                   width: '100%',
-                  backgroundColor: '#065F46',
-                  color: '#A7F3D0',
+                  backgroundColor: 'var(--color-success)',
+                  color: 'var(--color-success-border)',
                   padding: '0.5rem 1rem',
                   borderRadius: '6px',
                   fontSize: '0.82rem',
                   fontWeight: 700,
                   textAlign: 'center',
                   marginBottom: '1rem',
-                  border: '1px solid #10B981',
+                  border: '1px solid var(--color-success)',
                 }}
               >
                 {manualSuccessMsg}
@@ -906,11 +906,11 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                     placeholder="Search cadet name, regimental no, roll no..."
                     style={{
                       width: '100%',
-                      backgroundColor: '#030B17',
+                      backgroundColor: 'var(--color-primary)',
                       border: '1px solid var(--navy-border)',
                       borderRadius: '6px',
                       padding: '0.6rem 0.85rem',
-                      color: '#FFFFFF',
+                      color: 'var(--color-background)',
                       fontSize: '0.85rem',
                       outline: 'none',
                     }}
@@ -926,7 +926,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                         transform: 'translateY(-50%)',
                         background: 'none',
                         border: 'none',
-                        color: '#94A3B8',
+                        color: 'var(--color-disabled)',
                         cursor: 'pointer',
                       }}
                     >
@@ -965,8 +965,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                         <div
                           key={cadet.id}
                           style={{
-                            backgroundColor: '#0B1B32',
-                            border: `1px solid ${isMarked ? '#10B981' : 'rgba(255,255,255,0.08)'}`,
+                            backgroundColor: 'var(--color-primary)',
+                            border: `1px solid ${isMarked ? 'var(--color-success)' : 'rgba(255,255,255,0.08)'}`,
                             borderRadius: '6px',
                             padding: '0.75rem 1rem',
                             display: 'flex',
@@ -976,10 +976,10 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                           }}
                         >
                           <div>
-                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF' }}>
+                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-background)' }}>
                               {cadet.fullName}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#94A3B8', marginTop: '0.15rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-disabled)', marginTop: '0.15rem' }}>
                               {cadet.regimentalNumber} &bull; {cadet.platoonName || 'Platoon'}
                             </div>
                           </div>
@@ -991,13 +991,13 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '0.3rem',
-                                  color: '#34D399',
+                                  color: 'var(--color-success)',
                                   fontSize: '0.78rem',
                                   fontWeight: 700,
                                   backgroundColor: 'rgba(6, 95, 70, 0.4)',
                                   padding: '0.3rem 0.6rem',
                                   borderRadius: '4px',
-                                  border: '1px solid #10B981',
+                                  border: '1px solid var(--color-success)',
                                 }}
                               >
                                 ✓ PRESENT
@@ -1008,8 +1008,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                 disabled={isSubmitting}
                                 onClick={() => handleManualMarkPresent(cadet)}
                                 style={{
-                                  backgroundColor: '#10B981',
-                                  color: '#064E3B',
+                                  backgroundColor: 'var(--color-success)',
+                                  color: 'var(--color-success)',
                                   fontWeight: 800,
                                   fontSize: '0.76rem',
                                   border: 'none',
@@ -1039,7 +1039,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                     })}
 
                   {preloadedCadets.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94A3B8', fontSize: '0.85rem' }}>
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-disabled)', fontSize: '0.85rem' }}>
                       No eligible cadets found for this platoon session.
                     </div>
                   )}
@@ -1068,9 +1068,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 }}
               >
                 {cameraError ? (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', color: '#FFFFFF' }}>
-                    <AlertTriangle size={32} color="#EF4444" style={{ marginBottom: '0.5rem' }} />
-                    <p style={{ fontSize: '0.78rem', color: '#94A3B8', margin: '0 0 0.75rem' }}>
+                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-background)' }}>
+                    <AlertTriangle size={32} color="var(--color-error)" style={{ marginBottom: '0.5rem' }} />
+                    <p style={{ fontSize: '0.78rem', color: 'var(--color-disabled)', margin: '0 0 0.75rem' }}>
                       {cameraError}
                     </p>
                     <button
@@ -1105,7 +1105,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                           position: 'absolute',
                           inset: 0,
                           borderRadius: '50%',
-                          border: '2px solid rgba(56, 189, 248, 0.4)',
+                          border: '2px solid rgba(21, 94, 239, 0.4)',
                           animation: 'pulse 1.5s infinite',
                           pointerEvents: 'none',
                         }}
@@ -1124,9 +1124,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   position: 'absolute',
                   bottom: '8px',
                   right: '8px',
-                  backgroundColor: 'rgba(3, 11, 23, 0.85)',
+                  backgroundColor: 'rgba(7, 26, 51, 0.85)',
                   border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: '#FFFFFF',
+                  color: 'var(--color-background)',
                   borderRadius: '50%',
                   width: '38px',
                   height: '38px',
@@ -1150,20 +1150,20 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   letterSpacing: '0.04em',
                   color:
                     scannerTone === 'success'
-                      ? '#10B981'
+                      ? 'var(--color-success)'
                       : scannerTone === 'detecting' || scannerTone === 'verifying'
-                      ? '#38BDF8'
+                      ? 'var(--color-accent)'
                       : scannerTone === 'warning'
-                      ? '#F59E0B'
+                      ? 'var(--color-gold)'
                       : scannerTone === 'error'
-                      ? '#EF4444'
-                      : '#FFFFFF',
+                      ? 'var(--color-error)'
+                      : 'var(--color-background)',
                   marginBottom: '0.2rem',
                 }}
               >
                 {statusTitle}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-disabled)' }}>
                 {statusSubtitle}
               </div>
             </div>
@@ -1177,16 +1177,16 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   width: '100%',
                   backgroundColor:
                     scannerTone === 'success'
-                      ? 'rgba(16, 185, 129, 0.12)'
+                      ? 'rgba(22, 128, 60, 0.12)'
                       : scannerTone === 'warning'
                       ? 'rgba(245, 158, 11, 0.12)'
-                      : 'rgba(239, 68, 68, 0.12)',
+                      : 'rgba(217, 45, 32, 0.12)',
                   border: `2px solid ${
                     scannerTone === 'success'
-                      ? '#10B981'
+                      ? 'var(--color-success)'
                       : scannerTone === 'warning'
-                      ? '#F59E0B'
-                      : '#EF4444'
+                      ? 'var(--color-gold)'
+                      : 'var(--color-error)'
                   }`,
                   borderRadius: '8px',
                   padding: '0.85rem 1rem',
@@ -1197,11 +1197,11 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
                   {scannerTone === 'success' ? (
-                    <CheckCircle size={18} color="#10B981" />
+                    <CheckCircle size={18} color="var(--color-success)" />
                   ) : scannerTone === 'warning' ? (
-                    <Clock size={18} color="#F59E0B" />
+                    <Clock size={18} color="var(--color-gold)" />
                   ) : (
-                    <XCircle size={18} color="#EF4444" />
+                    <XCircle size={18} color="var(--color-error)" />
                   )}
                   <strong
                     style={{
@@ -1209,21 +1209,21 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                       letterSpacing: '0.03em',
                       color:
                         scannerTone === 'success'
-                          ? '#10B981'
+                          ? 'var(--color-success)'
                           : scannerTone === 'warning'
-                          ? '#F59E0B'
-                          : '#EF4444',
+                          ? 'var(--color-gold)'
+                          : 'var(--color-error)',
                     }}
                   >
                     {activeCadetResult.statusText}
                   </strong>
                 </div>
 
-                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#FFFFFF' }}>
+                <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--color-background)' }}>
                   {activeCadetResult.fullName}
                 </div>
 
-                <div style={{ fontSize: '0.78rem', color: '#CBD5E1', fontFamily: 'monospace', marginTop: '0.15rem' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-border)', fontFamily: 'monospace', marginTop: '0.15rem' }}>
                   {activeCadetResult.regimentalNumber}
                 </div>
 
@@ -1233,15 +1233,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                     justifyContent: 'center',
                     gap: '1.25rem',
                     fontSize: '0.74rem',
-                    color: '#94A3B8',
+                    color: 'var(--color-disabled)',
                     marginTop: '0.4rem',
                     paddingTop: '0.4rem',
                     borderTop: '1px solid rgba(255,255,255,0.08)',
                   }}
                 >
-                  <span>RECORDED: <strong style={{ color: '#FFFFFF' }}>{activeCadetResult.time}</strong></span>
+                  <span>RECORDED: <strong style={{ color: 'var(--color-background)' }}>{activeCadetResult.time}</strong></span>
                   {activeCadetResult.confidence && (
-                    <span>CONFIDENCE: <strong style={{ color: '#10B981' }}>{activeCadetResult.confidence}%</strong></span>
+                    <span>CONFIDENCE: <strong style={{ color: 'var(--color-success)' }}>{activeCadetResult.confidence}%</strong></span>
                   )}
                 </div>
 
@@ -1257,10 +1257,10 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                       fontSize: '0.72rem',
                     }}
                   >
-                    <span style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34D399', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <span style={{ backgroundColor: 'rgba(22, 128, 60, 0.15)', color: 'var(--color-success)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(22, 128, 60, 0.3)' }}>
                       📱 SMS: {activeCadetResult.smsStatus === 'QUEUED' ? 'Queued / Dispatched' : activeCadetResult.smsStatus}
                     </span>
-                    <span style={{ backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#34D399', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    <span style={{ backgroundColor: 'rgba(22, 128, 60, 0.15)', color: 'var(--color-success)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(22, 128, 60, 0.3)' }}>
                       💬 WhatsApp: {activeCadetResult.whatsappStatus === 'QUEUED' ? 'Queued / Dispatched' : activeCadetResult.whatsappStatus}
                     </span>
                   </div>
@@ -1272,7 +1272,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
             <div
               style={{
                 width: '100%',
-                backgroundColor: '#030B17',
+                backgroundColor: 'var(--color-primary)',
                 border: '1px solid var(--navy-border)',
                 borderRadius: '8px',
                 padding: '0.75rem 1rem',
@@ -1285,13 +1285,13 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   alignItems: 'center',
                   marginBottom: '0.5rem',
                   fontSize: '0.72rem',
-                  color: '#94A3B8',
+                  color: 'var(--color-disabled)',
                   fontWeight: 700,
                   letterSpacing: '0.05em',
                 }}
               >
                 <span>RECENTLY VERIFIED CADETS ({recentVerified.length})</span>
-                <span style={{ color: '#10B981', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <span style={{ color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                   <ShieldCheck size={13} />
                   <span>LIVE ROSTER</span>
                 </span>
@@ -1299,7 +1299,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
 
               <div style={{ maxHeight: '120px', overflowY: 'auto' }}>
                 {recentVerified.length === 0 ? (
-                  <div style={{ fontSize: '0.75rem', color: '#64748B', fontStyle: 'italic', padding: '0.4rem 0' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontStyle: 'italic', padding: '0.4rem 0' }}>
                     Waiting for cadets. Step in front of the circular camera.
                   </div>
                 ) : (
@@ -1315,8 +1315,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                         fontSize: '0.78rem',
                       }}
                     >
-                      <span style={{ color: '#E2E8F0', fontWeight: 600 }}>✓ {c.name}</span>
-                      <span style={{ color: '#94A3B8', fontFamily: 'monospace', fontSize: '0.72rem' }}>
+                      <span style={{ color: 'var(--color-border)', fontWeight: 600 }}>✓ {c.name}</span>
+                      <span style={{ color: 'var(--color-disabled)', fontFamily: 'monospace', fontSize: '0.72rem' }}>
                         {c.time}
                       </span>
                     </div>
@@ -1330,7 +1330,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               style={{
                 marginTop: '1rem',
                 fontSize: '0.7rem',
-                color: '#64748B',
+                color: 'var(--color-text-secondary)',
                 textAlign: 'center',
               }}
             >
@@ -1344,7 +1344,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
           <div
             style={{
               padding: '1.75rem',
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               color: 'var(--navy-primary)',
               overflowY: 'auto',
               maxHeight: 'calc(92vh - 65px)',
@@ -1357,8 +1357,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  backgroundColor: '#FEE2E2',
-                  color: '#DC2626',
+                  backgroundColor: 'var(--color-error-soft)',
+                  color: 'var(--color-error)',
                   padding: '0.35rem 0.85rem',
                   borderRadius: '20px',
                   fontWeight: 700,
@@ -1388,7 +1388,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
             >
               <div
                 style={{
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: 'var(--color-surface)',
                   border: '1px solid var(--white-border)',
                   borderRadius: '8px',
                   padding: '0.85rem',
@@ -1402,36 +1402,36 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
               </div>
               <div
                 style={{
-                  backgroundColor: '#F0FDF4',
-                  border: '1px solid #BBF7D0',
+                  backgroundColor: 'var(--color-success-soft)',
+                  border: '1px solid var(--color-success-border)',
                   borderRadius: '8px',
                   padding: '0.85rem',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '0.72rem', color: '#166534', fontWeight: 700, letterSpacing: '0.04em' }}>PRESENT</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#15803D' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-success)', fontWeight: 700, letterSpacing: '0.04em' }}>PRESENT</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-success)' }}>
                   {closedSummary?.summary?.present ?? presentCount}
                 </div>
               </div>
               <div
                 style={{
-                  backgroundColor: '#FEF2F2',
-                  border: '1px solid #FECACA',
+                  backgroundColor: 'var(--color-error-soft)',
+                  border: '1px solid var(--color-error-border)',
                   borderRadius: '8px',
                   padding: '0.85rem',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '0.72rem', color: '#991B1B', fontWeight: 700, letterSpacing: '0.04em' }}>ABSENT</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#DC2626' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--color-error)', fontWeight: 700, letterSpacing: '0.04em' }}>ABSENT</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--color-error)' }}>
                   {closedSummary?.summary?.absent ?? (expectedCount - presentCount)}
                 </div>
               </div>
               <div
                 style={{
-                  backgroundColor: '#EFF6FF',
-                  border: '1px solid #BFDBFE',
+                  backgroundColor: 'var(--color-info-soft)',
+                  border: '1px solid var(--color-info-border)',
                   borderRadius: '8px',
                   padding: '0.85rem',
                   display: 'flex',
@@ -1440,15 +1440,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontSize: '0.75rem', color: '#1E40AF', fontWeight: 700, marginBottom: '0.2rem' }}>📱 Absent SMS Dispatched</span>
-                <strong style={{ fontSize: '1.4rem', color: '#1D4ED8' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-accent)', fontWeight: 700, marginBottom: '0.2rem' }}>📱 Absent SMS Dispatched</span>
+                <strong style={{ fontSize: '1.4rem', color: 'var(--color-accent)' }}>
                   {closedSummary?.summary?.absentNotifications?.smsQueued ?? 0}
                 </strong>
               </div>
               <div
                 style={{
-                  backgroundColor: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
+                  backgroundColor: 'var(--color-success-soft)',
+                  border: '1px solid var(--color-success-border)',
                   borderRadius: '8px',
                   padding: '0.85rem',
                   display: 'flex',
@@ -1457,8 +1457,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   justifyContent: 'center',
                 }}
               >
-                <span style={{ fontSize: '0.75rem', color: '#065F46', fontWeight: 700, marginBottom: '0.2rem' }}>💬 Absent WhatsApp Dispatched</span>
-                <strong style={{ fontSize: '1.4rem', color: '#047857' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 700, marginBottom: '0.2rem' }}>💬 Absent WhatsApp Dispatched</span>
+                <strong style={{ fontSize: '1.4rem', color: 'var(--color-success)' }}>
                   {closedSummary?.summary?.absentNotifications?.whatsappQueued ?? 0}
                 </strong>
               </div>
@@ -1482,9 +1482,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   maxHeight: '380px',
                   overflowX: 'auto',
                   overflowY: 'auto',
-                  border: '1px solid #CBD5E1',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px',
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--color-background)',
                   boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
                   WebkitOverflowScrolling: 'touch',
                 }}
@@ -1493,18 +1493,18 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                   <thead>
                     <tr
                       style={{
-                        backgroundColor: '#0A192F',
-                        color: '#FFFFFF',
+                        backgroundColor: 'var(--color-primary)',
+                        color: 'var(--color-background)',
                         position: 'sticky',
                         top: 0,
                         zIndex: 2,
                       }}
                     >
-                      <th style={{ width: '25%', minWidth: '220px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid #061325' }}>NAME</th>
-                      <th style={{ width: '20%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid #061325' }}>REGIMENTAL NO</th>
-                      <th style={{ width: '20%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid #061325' }}>CLASSIFICATION</th>
-                      <th style={{ width: '17%', minWidth: '160px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid #061325' }}>SMS DISPATCH</th>
-                      <th style={{ width: '18%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid #061325' }}>WHATSAPP DISPATCH</th>
+                      <th style={{ width: '25%', minWidth: '220px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid var(--color-primary)' }}>NAME</th>
+                      <th style={{ width: '20%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid var(--color-primary)' }}>REGIMENTAL NO</th>
+                      <th style={{ width: '20%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid var(--color-primary)' }}>CLASSIFICATION</th>
+                      <th style={{ width: '17%', minWidth: '160px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid var(--color-primary)' }}>SMS DISPATCH</th>
+                      <th style={{ width: '18%', minWidth: '180px', padding: '0.85rem 1rem', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.04em', borderBottom: '2px solid var(--color-primary)' }}>WHATSAPP DISPATCH</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1517,15 +1517,15 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                           <tr
                             key={idx}
                             style={{
-                              borderBottom: '1px solid #E2E8F0',
-                              backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
+                              borderBottom: '1px solid var(--color-border)',
+                              backgroundColor: idx % 2 === 0 ? 'var(--color-background)' : 'var(--color-surface)',
                               transition: 'background-color 0.15s ease',
                             }}
                           >
                             <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle', minWidth: '220px' }}>
-                              <div style={{ fontWeight: 700, color: '#0F172A', fontSize: '0.88rem' }}>{c.fullName}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.88rem' }}>{c.fullName}</div>
                               {c.maskedPhone && (
-                                <div style={{ fontSize: '0.75rem', color: '#64748B', fontWeight: 500, marginTop: '0.2rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500, marginTop: '0.2rem' }}>
                                   📱 {c.maskedPhone}
                                 </div>
                               )}
@@ -1535,7 +1535,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                 padding: '0.85rem 1rem',
                                 fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                                 fontWeight: 700,
-                                color: '#1E293B',
+                                color: 'var(--color-text)',
                                 fontSize: '0.85rem',
                                 verticalAlign: 'middle',
                                 minWidth: '180px',
@@ -1553,9 +1553,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                   borderRadius: '4px',
                                   fontSize: '0.75rem',
                                   fontWeight: 700,
-                                  backgroundColor: c.hasLeave ? '#E0F2FE' : '#FEE2E2',
-                                  color: c.hasLeave ? '#0369A1' : '#B91C1C',
-                                  border: `1px solid ${c.hasLeave ? '#BAE6FD' : '#FECACA'}`,
+                                  backgroundColor: c.hasLeave ? 'var(--color-info-soft)' : 'var(--color-error-soft)',
+                                  color: c.hasLeave ? 'var(--color-accent)' : 'var(--color-error)',
+                                  border: `1px solid ${c.hasLeave ? 'var(--color-info-border)' : 'var(--color-error-border)'}`,
                                   whiteSpace: 'nowrap',
                                 }}
                               >
@@ -1573,27 +1573,27 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                   fontWeight: 700,
                                   letterSpacing: '0.02em',
                                   backgroundColor: c.hasLeave
-                                    ? '#F1F5F9'
+                                    ? 'var(--color-surface)'
                                     : smsStatus === 'FAILED'
-                                    ? '#FEF2F2'
+                                    ? 'var(--color-error-soft)'
                                     : smsStatus === 'SENT' || smsStatus === 'DELIVERED'
-                                    ? '#F0FDF4'
-                                    : '#ECFDF5',
+                                    ? 'var(--color-success-soft)'
+                                    : 'var(--color-success-soft)',
                                   color: c.hasLeave
-                                    ? '#475569'
+                                    ? 'var(--color-text-secondary)'
                                     : smsStatus === 'FAILED'
-                                    ? '#DC2626'
+                                    ? 'var(--color-error)'
                                     : smsStatus === 'SENT' || smsStatus === 'DELIVERED'
-                                    ? '#15803D'
-                                    : '#047857',
+                                    ? 'var(--color-success)'
+                                    : 'var(--color-success)',
                                   border: `1px solid ${
                                     c.hasLeave
-                                      ? '#CBD5E1'
+                                      ? 'var(--color-border)'
                                       : smsStatus === 'FAILED'
-                                      ? '#FECACA'
+                                      ? 'var(--color-error-border)'
                                       : smsStatus === 'SENT' || smsStatus === 'DELIVERED'
-                                      ? '#BBF7D0'
-                                      : '#A7F3D0'
+                                      ? 'var(--color-success-border)'
+                                      : 'var(--color-success-border)'
                                   }`,
                                   whiteSpace: 'nowrap',
                                 }}
@@ -1612,27 +1612,27 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                                   fontWeight: 700,
                                   letterSpacing: '0.02em',
                                   backgroundColor: c.hasLeave
-                                    ? '#F1F5F9'
+                                    ? 'var(--color-surface)'
                                     : waStatus === 'FAILED'
-                                    ? '#FEF2F2'
+                                    ? 'var(--color-error-soft)'
                                     : waStatus === 'SENT' || waStatus === 'DELIVERED'
-                                    ? '#F0FDF4'
-                                    : '#ECFDF5',
+                                    ? 'var(--color-success-soft)'
+                                    : 'var(--color-success-soft)',
                                   color: c.hasLeave
-                                    ? '#475569'
+                                    ? 'var(--color-text-secondary)'
                                     : waStatus === 'FAILED'
-                                    ? '#DC2626'
+                                    ? 'var(--color-error)'
                                     : waStatus === 'SENT' || waStatus === 'DELIVERED'
-                                    ? '#15803D'
-                                    : '#047857',
+                                    ? 'var(--color-success)'
+                                    : 'var(--color-success)',
                                   border: `1px solid ${
                                     c.hasLeave
-                                      ? '#CBD5E1'
+                                      ? 'var(--color-border)'
                                       : waStatus === 'FAILED'
-                                      ? '#FECACA'
+                                      ? 'var(--color-error-border)'
                                       : waStatus === 'SENT' || waStatus === 'DELIVERED'
-                                      ? '#BBF7D0'
-                                      : '#A7F3D0'
+                                      ? 'var(--color-success-border)'
+                                      : 'var(--color-success-border)'
                                   }`,
                                   whiteSpace: 'nowrap',
                                 }}
@@ -1645,7 +1645,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                       })
                     ) : (
                       <tr>
-                        <td colSpan={5} style={{ padding: '2rem 1rem', textAlign: 'center', color: '#059669', fontWeight: 600, fontSize: '0.9rem' }}>
+                        <td colSpan={5} style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-success)', fontWeight: 600, fontSize: '0.9rem' }}>
                           ✓ 100% Parade Turnout. Zero unexcused absences recorded.
                         </td>
                       </tr>
@@ -1676,7 +1676,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.85)',
+            backgroundColor: 'rgba(7, 26, 51, 0.85)',
             zIndex: 1400,
             display: 'flex',
             alignItems: 'center',
@@ -1686,7 +1686,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--color-background)',
               border: '2px solid var(--navy-primary)',
               borderRadius: '8px',
               padding: '1.5rem',
@@ -1714,7 +1714,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 type="button"
                 onClick={handleConfirmEndSession}
                 className="btn-primary btn-sm"
-                style={{ backgroundColor: '#DC2626', borderColor: '#DC2626' }}
+                style={{ backgroundColor: 'var(--color-error)', borderColor: 'var(--color-error)' }}
                 disabled={endingSession}
               >
                 {endingSession ? 'Closing...' : 'CONFIRM & END'}

@@ -54,17 +54,17 @@ export const UpcomingEvents: React.FC = () => {
   const hasItems = events.length > 0 || camps.length > 0;
 
   return (
-    <section id="activities" className="section-py" style={{ backgroundColor: '#F8FAFC' }} aria-label="Upcoming Activities and Camps">
+    <section id="activities" className="section-py" style={{ backgroundColor: 'var(--color-surface)' }} aria-label="Upcoming Activities and Camps">
       <div className="container">
         <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <span className="sub-title" style={{ color: '#2563EB', fontWeight: 700 }}>
+          <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
             <Calendar size={16} />
             OPERATIONAL SCHEDULE
           </span>
-          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: '#0A192F', margin: '0.5rem 0' }}>
+          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             Activities & Training Camps
           </h2>
-          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: '#64748B' }}>
+          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>
             Official schedule of battalion drill parades, weapon firing exercises, and national flagship camps.
           </p>
         </div>
@@ -74,9 +74,9 @@ export const UpcomingEvents: React.FC = () => {
           <button
             onClick={() => setActiveTab('ALL')}
             style={{
-              background: activeTab === 'ALL' ? '#0A192F' : '#FFFFFF',
-              color: activeTab === 'ALL' ? '#FFFFFF' : '#475569',
-              border: '1px solid #E2E8F0',
+              background: activeTab === 'ALL' ? 'var(--color-primary)' : 'var(--color-background)',
+              color: activeTab === 'ALL' ? 'var(--color-background)' : 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)',
               borderRadius: '50px',
               padding: '6px 20px',
               fontSize: '0.85rem',
@@ -90,9 +90,9 @@ export const UpcomingEvents: React.FC = () => {
           <button
             onClick={() => setActiveTab('EVENTS')}
             style={{
-              background: activeTab === 'EVENTS' ? '#0A192F' : '#FFFFFF',
-              color: activeTab === 'EVENTS' ? '#FFFFFF' : '#475569',
-              border: '1px solid #E2E8F0',
+              background: activeTab === 'EVENTS' ? 'var(--color-primary)' : 'var(--color-background)',
+              color: activeTab === 'EVENTS' ? 'var(--color-background)' : 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)',
               borderRadius: '50px',
               padding: '6px 20px',
               fontSize: '0.85rem',
@@ -106,9 +106,9 @@ export const UpcomingEvents: React.FC = () => {
           <button
             onClick={() => setActiveTab('CAMPS')}
             style={{
-              background: activeTab === 'CAMPS' ? '#0A192F' : '#FFFFFF',
-              color: activeTab === 'CAMPS' ? '#FFFFFF' : '#475569',
-              border: '1px solid #E2E8F0',
+              background: activeTab === 'CAMPS' ? 'var(--color-primary)' : 'var(--color-background)',
+              color: activeTab === 'CAMPS' ? 'var(--color-background)' : 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)',
               borderRadius: '50px',
               padding: '6px 20px',
               fontSize: '0.85rem',
@@ -122,25 +122,25 @@ export const UpcomingEvents: React.FC = () => {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#64748B' }}>
+          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
             Synchronizing operational schedule with database...
           </div>
         ) : !hasItems ? (
           <div style={{
-            background: '#FFFFFF',
+            background: 'var(--color-background)',
             borderRadius: '12px',
-            border: '1px solid #E2E8F0',
+            border: '1px solid var(--color-border)',
             textAlign: 'center',
             padding: '3.5rem 2rem',
             maxWidth: '650px',
             margin: '0 auto',
-            boxShadow: '0 4px 15px rgba(6, 21, 43, 0.04)'
+            boxShadow: '0 4px 15px rgba(7, 26, 51, 0.04)'
           }}>
-            <Calendar size={40} style={{ color: '#CBD5E1', margin: '0 auto 1rem' }} />
-            <h4 style={{ color: '#0A192F', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>
+            <Calendar size={40} style={{ color: 'var(--color-border)', margin: '0 auto 1rem' }} />
+            <h4 style={{ color: 'var(--color-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>
               No upcoming public activities published yet
             </h4>
-            <p style={{ color: '#64748B', fontSize: '0.9rem', margin: 0 }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0 }}>
               Official parade and camp orders will appear here once sanctioned by the Battalion Command.
             </p>
           </div>
@@ -154,20 +154,20 @@ export const UpcomingEvents: React.FC = () => {
                   <div
                     key={`event-${ev.id}`}
                     style={{
-                      background: '#FFFFFF',
+                      background: 'var(--color-background)',
                       borderRadius: '12px',
-                      border: '1px solid #E2E8F0',
+                      border: '1px solid var(--color-border)',
                       padding: '1.5rem',
                       display: 'flex',
                       gap: '1.25rem',
-                      boxShadow: '0 4px 15px rgba(6, 21, 43, 0.04)',
+                      boxShadow: '0 4px 15px rgba(7, 26, 51, 0.04)',
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                     }}
                   >
                     <div
                       style={{
-                        background: '#06152B',
-                        color: '#FFFFFF',
+                        background: 'var(--color-primary)',
+                        color: 'var(--color-background)',
                         padding: '0.85rem 1rem',
                         borderRadius: '8px',
                         textAlign: 'center',
@@ -180,23 +180,23 @@ export const UpcomingEvents: React.FC = () => {
                       }}
                     >
                       <span style={{ fontSize: '1.6rem', fontWeight: 800, lineHeight: 1 }}>{badge.day}</span>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#93C5FD', marginTop: '2px' }}>{badge.month}</span>
-                      <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>{badge.year}</span>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-info-border)', marginTop: '2px' }}>{badge.month}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-border)' }}>{badge.year}</span>
                     </div>
 
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: '#EFF6FF', color: '#2563EB' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: 'var(--color-info-soft)', color: 'var(--color-accent)' }}>
                           Unit Event
                         </span>
                       </div>
-                      <h3 style={{ fontSize: '1.1rem', color: '#0A192F', fontWeight: 700, marginBottom: '0.4rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '0.4rem' }}>
                         {ev.title}
                       </h3>
-                      <p style={{ fontSize: '0.88rem', color: '#64748B', lineHeight: '1.6', marginBottom: '0.75rem' }}>
+                      <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', marginBottom: '0.75rem' }}>
                         {ev.description}
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#1E3A8A', fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 600 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <MapPin size={13} />
                           {ev.location}
@@ -215,20 +215,20 @@ export const UpcomingEvents: React.FC = () => {
                   <div
                     key={`camp-${cmp.id}`}
                     style={{
-                      background: '#FFFFFF',
+                      background: 'var(--color-background)',
                       borderRadius: '12px',
-                      border: '1px solid #E2E8F0',
+                      border: '1px solid var(--color-border)',
                       padding: '1.5rem',
                       display: 'flex',
                       gap: '1.25rem',
-                      boxShadow: '0 4px 15px rgba(6, 21, 43, 0.04)',
+                      boxShadow: '0 4px 15px rgba(7, 26, 51, 0.04)',
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                     }}
                   >
                     <div
                       style={{
-                        background: '#0A192F',
-                        color: '#FFFFFF',
+                        background: 'var(--color-primary)',
+                        color: 'var(--color-background)',
                         padding: '0.85rem 1rem',
                         borderRadius: '8px',
                         textAlign: 'center',
@@ -238,33 +238,33 @@ export const UpcomingEvents: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px solid #1E3A8A',
+                        border: '1px solid var(--color-accent)',
                       }}
                     >
                       <span style={{ fontSize: '1.6rem', fontWeight: 800, lineHeight: 1 }}>{startBadge.day}</span>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#D4AF37', marginTop: '2px' }}>{startBadge.month}</span>
-                      <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>{startBadge.year}</span>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-gold)', marginTop: '2px' }}>{startBadge.month}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-border)' }}>{startBadge.year}</span>
                     </div>
 
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: '#FAF5FF', color: '#9333EA' }}>
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: 'var(--color-info-soft)', color: 'var(--color-accent)' }}>
                           <Tent size={11} style={{ display: 'inline', marginRight: '3px' }} />
                           {cmp.campType}
                         </span>
                       </div>
-                      <h3 style={{ fontSize: '1.1rem', color: '#0A192F', fontWeight: 700, marginBottom: '0.4rem' }}>
+                      <h3 style={{ fontSize: '1.1rem', color: 'var(--color-primary)', fontWeight: 700, marginBottom: '0.4rem' }}>
                         {cmp.name}
                       </h3>
-                      <p style={{ fontSize: '0.88rem', color: '#64748B', lineHeight: '1.6', marginBottom: '0.75rem' }}>
+                      <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: '1.6', marginBottom: '0.75rem' }}>
                         {cmp.description || 'Annual Training Camp conducted by 2 Maharashtra Battalion NCC.'}
                       </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#1E3A8A', fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--color-accent)', fontWeight: 600 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <MapPin size={13} />
                           {cmp.location}
                         </span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#64748B' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: 'var(--color-text-secondary)' }}>
                           Capacity: {cmp.capacity} Cadets
                         </span>
                       </div>

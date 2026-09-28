@@ -46,17 +46,17 @@ export const GallerySection: React.FC = () => {
     : images.filter((img) => img.category === activeCategory);
 
   return (
-    <section id="gallery" className="section-py" style={{ backgroundColor: '#FFFFFF' }} aria-label="NCC Photo Gallery">
+    <section id="gallery" className="section-py" style={{ backgroundColor: 'var(--color-background)' }} aria-label="NCC Photo Gallery">
       <div className="container">
         <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <span className="sub-title" style={{ color: '#2563EB', fontWeight: 700 }}>
+          <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
             <ImageIcon size={16} />
             PHOTOGRAPHIC ARCHIVES
           </span>
-          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: '#0A192F', margin: '0.5rem 0' }}>
+          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             Cadet Training & Life in Action
           </h2>
-          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: '#64748B' }}>
+          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>
             Authorized photographic record of parades, firing camps, national ceremonies, and obstacle drills.
           </p>
         </div>
@@ -68,8 +68,8 @@ export const GallerySection: React.FC = () => {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               style={{
-                background: activeCategory === cat ? '#0A192F' : '#F1F5F9',
-                color: activeCategory === cat ? '#FFFFFF' : '#475569',
+                background: activeCategory === cat ? 'var(--color-primary)' : 'var(--color-surface)',
+                color: activeCategory === cat ? 'var(--color-background)' : 'var(--color-text-secondary)',
                 border: 'none',
                 borderRadius: '50px',
                 padding: '6px 18px',
@@ -96,21 +96,21 @@ export const GallerySection: React.FC = () => {
                 if (e.key === 'Enter' || e.key === ' ') setSelectedImage(img);
               }}
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--color-background)',
                 borderRadius: '12px',
                 overflow: 'hidden',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 4px 15px rgba(6, 21, 43, 0.05)',
+                border: '1px solid var(--color-border)',
+                boxShadow: '0 4px 15px rgba(7, 26, 51, 0.05)',
                 cursor: 'pointer',
                 transition: 'transform 0.2s ease, box-shadow 0.2s ease',
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-4px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(6, 21, 43, 0.1)';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(7, 26, 51, 0.1)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 15px rgba(6, 21, 43, 0.05)';
+                e.currentTarget.style.boxShadow = '0 4px 15px rgba(7, 26, 51, 0.05)';
               }}
             >
               <div style={{ height: '210px', overflow: 'hidden', position: 'relative' }}>
@@ -125,8 +125,8 @@ export const GallerySection: React.FC = () => {
                     position: 'absolute',
                     top: '0.75rem',
                     left: '0.75rem',
-                    backgroundColor: 'rgba(6, 21, 43, 0.85)',
-                    color: '#FFFFFF',
+                    backgroundColor: 'rgba(7, 26, 51, 0.85)',
+                    color: 'var(--color-background)',
                     fontSize: '0.68rem',
                     fontWeight: 700,
                     letterSpacing: '0.06em',
@@ -150,14 +150,14 @@ export const GallerySection: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#0A192F',
+                    color: 'var(--color-primary)',
                   }}
                 >
                   <Maximize2 size={14} />
                 </div>
               </div>
               <div style={{ padding: '1rem 1.15rem' }}>
-                <h4 style={{ fontSize: '0.92rem', color: '#0A192F', fontWeight: 700, margin: 0, lineHeight: 1.4 }}>
+                <h4 style={{ fontSize: '0.92rem', color: 'var(--color-primary)', fontWeight: 700, margin: 0, lineHeight: 1.4 }}>
                   {img.title}
                 </h4>
               </div>
@@ -178,7 +178,7 @@ export const GallerySection: React.FC = () => {
               position: 'relative',
               maxWidth: '850px',
               width: '100%',
-              background: '#06152B',
+              background: 'var(--color-primary)',
               borderRadius: '14px',
               overflow: 'hidden',
               boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
@@ -187,14 +187,14 @@ export const GallerySection: React.FC = () => {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
               <div>
-                <span style={{ fontSize: '0.72rem', color: '#93C5FD', fontWeight: 700, textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--color-info-border)', fontWeight: 700, textTransform: 'uppercase' }}>
                   {selectedImage.category}
                 </span>
-                <h3 style={{ color: '#FFFFFF', fontSize: '1.05rem', margin: '2px 0 0' }}>{selectedImage.title}</h3>
+                <h3 style={{ color: 'var(--color-background)', fontSize: '1.05rem', margin: '2px 0 0' }}>{selectedImage.title}</h3>
               </div>
               <button
                 onClick={() => setSelectedImage(null)}
-                style={{ background: 'none', border: 'none', color: '#CBD5E1', cursor: 'pointer', padding: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--color-border)', cursor: 'pointer', padding: '4px' }}
                 aria-label="Close image"
               >
                 <X size={20} />

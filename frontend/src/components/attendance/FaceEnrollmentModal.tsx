@@ -152,7 +152,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(3, 11, 23, 0.85)',
+        backgroundColor: 'rgba(7, 26, 51, 0.85)',
         backdropFilter: 'blur(6px)',
         zIndex: 1350,
         display: 'flex',
@@ -165,7 +165,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         style={{
           width: '100%',
           maxWidth: '520px',
-          backgroundColor: '#FFFFFF',
+          backgroundColor: 'var(--color-background)',
           border: '2px solid var(--navy-primary)',
           borderRadius: '8px',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
@@ -175,7 +175,7 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
         <div
           style={{
             backgroundColor: 'var(--navy-primary)',
-            color: '#FFFFFF',
+            color: 'var(--color-background)',
             padding: '1rem 1.25rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -186,14 +186,14 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
             <h4 style={{ margin: 0, fontSize: '1.05rem', letterSpacing: '0.03em' }}>
               BIOMETRIC FACE ENROLLMENT
             </h4>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: '#94A3B8' }}>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>
               {cadet.fullName} &bull; {cadet.regimentalNumber}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: 'var(--color-background)', cursor: 'pointer' }}
           >
             <X size={18} />
           </button>
@@ -239,12 +239,12 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           {/* STATUS PILL */}
           <div
             style={{
-              backgroundColor: success ? '#ECFDF5' : error ? '#FEF2F2' : '#F8FAFC',
-              border: `1px solid ${success ? '#10B981' : error ? '#EF4444' : 'var(--white-border)'}`,
+              backgroundColor: success ? 'var(--color-success-soft)' : error ? 'var(--color-error-soft)' : 'var(--color-surface)',
+              border: `1px solid ${success ? 'var(--color-success)' : error ? 'var(--color-error)' : 'var(--white-border)'}`,
               borderRadius: '4px',
               padding: '0.5rem 0.75rem',
               fontSize: '0.8rem',
-              color: success ? '#065F46' : error ? '#B91C1C' : 'var(--navy-text)',
+              color: success ? 'var(--color-success)' : error ? 'var(--color-error)' : 'var(--navy-text)',
               marginBottom: '1rem',
               textAlign: 'center',
             }}

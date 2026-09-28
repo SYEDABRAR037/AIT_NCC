@@ -158,7 +158,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
         className="institutional-card"
         style={{
           borderLeft: '5px solid var(--navy-primary)',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          background: 'linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -171,7 +171,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
             <h2 style={{ fontSize: '1.5rem', color: 'var(--navy-primary)', margin: 0 }}>
               Central Command Approval Center
             </h2>
-            <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E', fontWeight: 800 }}>
+            <span className="badge-institutional" style={{ background: 'var(--color-warning-soft)', color: 'var(--color-primary)', fontWeight: 800 }}>
               {totalPending} ACTIONABLE ITEMS PENDING
             </span>
           </div>
@@ -260,7 +260,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {registrations.length === 0 ? (
             <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-              <CheckCircle2 size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+              <CheckCircle2 size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
               <h4>Registration Queue Clear</h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>
                 All pending cadet registration dossiers have been evaluated.
@@ -292,16 +292,16 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                         <h3 style={{ fontSize: '1.15rem', color: 'var(--navy-primary)', margin: 0 }}>
                           {cadet.name || cadet.fullName}
                         </h3>
-                        <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                        <span className="badge-institutional" style={{ background: 'var(--color-warning-soft)', color: 'var(--color-primary)' }}>
                           {hasPlatoonReviewed ? 'PLATOON SENIOR REVIEWED' : hasSeniorReviewed ? 'SENIOR REVIEWED' : (cadet.status || 'UNDER_REVIEW')}
                         </span>
                         <span className="badge-institutional">{cadet.platoon || cadet.platoonName || 'Platoon'}</span>
                         {cadet.biometricTemplate ? (
-                          <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+                          <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                             ✓ Biometrics Ready
                           </span>
                         ) : (
-                          <span className="badge-institutional" style={{ background: '#FEF2F2', color: '#DC2626' }}>
+                          <span className="badge-institutional" style={{ background: 'var(--color-error-soft)', color: 'var(--color-error)' }}>
                             Face Not Registered
                           </span>
                         )}
@@ -338,14 +338,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                           <button
                             onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
                             className="btn-secondary btn-sm"
-                            style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                            style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                           >
                             Return
                           </button>
                           <button
                             onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
                             className="btn-secondary btn-sm"
-                            style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                            style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                           >
                             Reject
                           </button>
@@ -355,12 +355,12 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                           <span
                             style={{
                               fontSize: '0.78rem',
-                              color: '#047857',
+                              color: 'var(--color-success)',
                               fontWeight: 700,
                               padding: '0.4rem 0.75rem',
-                              background: '#ECFDF5',
+                              background: 'var(--color-success-soft)',
                               borderRadius: '4px',
-                              border: '1px solid #A7F3D0',
+                              border: '1px solid var(--color-success-border)',
                             }}
                           >
                             ✓ Senior Review Completed
@@ -382,14 +382,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
                               className="btn-secondary btn-sm"
-                              style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                              style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                             >
                               Return
                             </button>
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
                               className="btn-secondary btn-sm"
-                              style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                              style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                             >
                               Reject
                             </button>
@@ -400,12 +400,12 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                           <span
                             style={{
                               fontSize: '0.78rem',
-                              color: '#047857',
+                              color: 'var(--color-success)',
                               fontWeight: 700,
                               padding: '0.4rem 0.75rem',
-                              background: '#ECFDF5',
+                              background: 'var(--color-success-soft)',
                               borderRadius: '4px',
-                              border: '1px solid #A7F3D0',
+                              border: '1px solid var(--color-success-border)',
                             }}
                           >
                             ✓ Platoon Senior Endorsed
@@ -427,14 +427,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
                               className="btn-secondary btn-sm"
-                              style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                              style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                             >
                               Return
                             </button>
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'REJECT' })}
                               className="btn-secondary btn-sm"
-                              style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                              style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                             >
                               Reject
                             </button>
@@ -445,36 +445,36 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   </div>
 
                   {/* 4-Stage Cadet Registration Pipeline Stepper */}
-                  <div style={{ backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '6px', padding: '0.65rem 0.85rem', margin: '0.65rem 0' }}>
+                  <div style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '0.65rem 0.85rem', margin: '0.65rem 0' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--navy-primary)', letterSpacing: '0.08em', marginBottom: '0.45rem' }}>
                       CADET ONBOARDING PIPELINE:
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', textAlign: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>✓ 1. Registered</div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Online Application</div>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--color-success)' }}>✓ 1. Registered</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)' }}>Online Application</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasSeniorReviewed ? '#047857' : '#D97706' }}>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasSeniorReviewed ? 'var(--color-success)' : 'var(--color-primary)' }}>
                           {hasSeniorReviewed ? `✓ 2. Senior Review` : '● 2. Senior Review'}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)' }}>
                           {hasSeniorReviewed ? seniorReviewerName : 'Squad Endorsement'}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed ? '#047857' : (hasSeniorReviewed ? '#D97706' : '#94A3B8') }}>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed ? 'var(--color-success)' : (hasSeniorReviewed ? 'var(--color-primary)' : 'var(--color-disabled)') }}>
                           {hasPlatoonReviewed ? `✓ 3. Platoon Sr.` : (hasSeniorReviewed ? '● 3. Platoon Sr.' : '3. Platoon Sr.')}
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)' }}>
                           {hasPlatoonReviewed ? platoonReviewerName : 'Platoon Endorsement'}
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed || hasSeniorReviewed ? '#D97706' : '#94A3B8' }}>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 800, color: hasPlatoonReviewed || hasSeniorReviewed ? 'var(--color-primary)' : 'var(--color-disabled)' }}>
                           4. ANO Final Approval
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Associate NCC Officer</div>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--color-text-secondary)' }}>Associate NCC Officer</div>
                       </div>
                     </div>
                   </div>
@@ -496,7 +496,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {leaves.length === 0 ? (
             <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-              <CheckCircle2 size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+              <CheckCircle2 size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
               <h4>No Pending Leave Sanctions</h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>
                 There are currently no leave requests awaiting action at your level.
@@ -532,10 +532,10 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   className="institutional-card"
                   style={{
                     borderLeft: `4px solid ${
-                      isApproved ? '#047857' :
-                      isRejected ? '#DC2626' :
-                      isReturned ? '#D97706' :
-                      isCancelled ? '#94A3B8' : '#2563EB'
+                      isApproved ? 'var(--color-success)' :
+                      isRejected ? 'var(--color-error)' :
+                      isReturned ? 'var(--color-primary)' :
+                      isCancelled ? 'var(--color-disabled)' : 'var(--color-accent)'
                     }`,
                   }}
                 >
@@ -548,8 +548,8 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                         <span
                           className="badge-institutional"
                           style={{
-                            background: isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : isReturned ? '#FEF3C7' : '#DBEAFE',
-                            color: isApproved ? '#047857' : isRejected ? '#DC2626' : isReturned ? '#92400E' : '#1E40AF',
+                            background: isApproved ? 'var(--color-success-soft)' : isRejected ? 'var(--color-error-soft)' : isReturned ? 'var(--color-warning-soft)' : 'var(--color-info-soft)',
+                            color: isApproved ? 'var(--color-success)' : isRejected ? 'var(--color-error)' : isReturned ? 'var(--color-primary)' : 'var(--color-accent)',
                             fontWeight: 700,
                           }}
                         >
@@ -585,14 +585,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                         <button
                           onClick={() => setActionModal({ type: 'leave', item: leave, action: 'RETURN' })}
                           className="btn-secondary btn-sm"
-                          style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                          style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                         >
                           Return
                         </button>
                         <button
                           onClick={() => setActionModal({ type: 'leave', item: leave, action: 'REJECT' })}
                           className="btn-secondary btn-sm"
-                          style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                          style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                         >
                           Reject
                         </button>
@@ -601,30 +601,30 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   </div>
 
                   {/* Multi-tier Stage Progression Bar */}
-                  <div style={{ background: '#F8FAFC', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid #E2E8F0', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '0.5rem 0.75rem', borderRadius: '4px', border: '1px solid var(--color-border)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
                     <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>Workflow Stage:</span>
-                    <span style={{ color: leave.status !== 'SUBMITTED' ? '#047857' : '#1D4ED8', fontWeight: 600 }}>
+                    <span style={{ color: leave.status !== 'SUBMITTED' ? 'var(--color-success)' : 'var(--color-accent)', fontWeight: 600 }}>
                       1. Cadet Submission ✓
                     </span>
-                    <span style={{ color: '#94A3B8' }}>➔</span>
+                    <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                     <span style={{
-                      color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' :
-                             leave.status === 'SUBMITTED' || leave.status === 'SENIOR_REVIEW' ? '#B45309' : '#94A3B8',
+                      color: ['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' :
+                             leave.status === 'SUBMITTED' || leave.status === 'SENIOR_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                       fontWeight: 600,
                     }}>
                       2. Senior Endorsement {['PLATOON_SENIOR_REVIEW', 'ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                     </span>
-                    <span style={{ color: '#94A3B8' }}>➔</span>
+                    <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                     <span style={{
-                      color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '#047857' :
-                             leave.status === 'PLATOON_SENIOR_REVIEW' ? '#B45309' : '#94A3B8',
+                      color: ['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? 'var(--color-success)' :
+                             leave.status === 'PLATOON_SENIOR_REVIEW' ? 'var(--color-primary)' : 'var(--color-disabled)',
                       fontWeight: 600,
                     }}>
                       3. Platoon Senior Review {['ANO_REVIEW', 'APPROVED'].includes(leave.status) ? '✓' : ''}
                     </span>
-                    <span style={{ color: '#94A3B8' }}>➔</span>
+                    <span style={{ color: 'var(--color-disabled)' }}>➔</span>
                     <span style={{
-                      color: isApproved ? '#047857' : isAnoPending ? '#B45309' : '#94A3B8',
+                      color: isApproved ? 'var(--color-success)' : isAnoPending ? 'var(--color-primary)' : 'var(--color-disabled)',
                       fontWeight: 600,
                     }}>
                       4. ANO Final Sanction {isApproved ? '✓' : ''}
@@ -634,7 +634,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   <div style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
                     <strong>Grounds for Leave:</strong> {leave.reason}
                     {leave.remarks && (
-                      <div style={{ marginTop: '0.25rem', color: '#1E293B' }}>
+                      <div style={{ marginTop: '0.25rem', color: 'var(--color-text)' }}>
                         <strong>Latest Remarks:</strong> {leave.remarks}
                       </div>
                     )}
@@ -658,7 +658,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {requests.length === 0 ? (
             <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-              <CheckCircle2 size={36} style={{ color: '#047857', margin: '0 auto 1rem' }} />
+              <CheckCircle2 size={36} style={{ color: 'var(--color-success)', margin: '0 auto 1rem' }} />
               <h4>No Formal Requests Pending</h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.88rem' }}>
                 All cadet profile corrections, certificate verifications, and special requests are processed.
@@ -678,7 +678,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                         {req.cadet?.name || 'Cadet'}
                       </span>
                       <span className="badge-institutional">{req.requestType}</span>
-                      <span className="badge-institutional" style={{ background: '#E0E7FF', color: '#3730A3' }}>
+                      <span className="badge-institutional" style={{ background: 'var(--color-info-soft)', color: 'var(--color-accent)' }}>
                         {req.priority}
                       </span>
                     </div>
@@ -697,14 +697,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                     <button
                       onClick={() => setActionModal({ type: 'request', item: req, action: 'RETURN' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                      style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                     >
                       Request Info
                     </button>
                     <button
                       onClick={() => setActionModal({ type: 'request', item: req, action: 'REJECT' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                      style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                     >
                       Decline
                     </button>
@@ -727,7 +727,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.75)',
+            backgroundColor: 'rgba(7, 26, 51, 0.75)',
             backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
@@ -848,7 +848,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(3, 11, 23, 0.8)',
+            backgroundColor: 'rgba(7, 26, 51, 0.8)',
             backdropFilter: 'blur(5px)',
             zIndex: 10001,
             display: 'flex',
@@ -886,7 +886,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
               }}
             >
               <div>
-                <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: '#93C5FD', fontWeight: 800 }}>
+                <span style={{ fontSize: '0.72rem', letterSpacing: '0.08em', color: 'var(--color-info-border)', fontWeight: 800 }}>
                   AIT NCC ENROLLMENT DOSSIER
                 </span>
                 <h3 style={{ fontSize: '1.2rem', color: 'var(--white-pure)', margin: '0.15rem 0 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -911,9 +911,9 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                   alignItems: 'center',
                   gap: '1.25rem',
                   padding: '1rem',
-                  backgroundColor: '#F8FAFC',
+                  backgroundColor: 'var(--color-surface)',
                   borderRadius: '6px',
-                  border: '1px solid #E2E8F0',
+                  border: '1px solid var(--color-border)',
                 }}
               >
                 <div
@@ -922,7 +922,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                     height: '64px',
                     borderRadius: '50%',
                     backgroundColor: 'var(--navy-primary)',
-                    color: '#FFFFFF',
+                    color: 'var(--color-background)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -948,7 +948,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                     <h2 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', margin: 0, fontWeight: 800 }}>
                       {viewCadetDossier.fullName || viewCadetDossier.name}
                     </h2>
-                    <span className="badge-institutional" style={{ background: '#FEF3C7', color: '#92400E' }}>
+                    <span className="badge-institutional" style={{ background: 'var(--color-warning-soft)', color: 'var(--color-primary)' }}>
                       {viewCadetDossier.status}
                     </span>
                     <span className="badge-institutional">
@@ -963,7 +963,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
               {/* Personal & Academic Information Grid */}
               <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
                   CADET IDENTITY &amp; ACADEMIC RECORD
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
@@ -1004,14 +1004,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
               {/* Biometric Status Section (Phase 8 Validation) */}
               <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
                   BIOMETRIC &amp; FACIAL RECOGNITION STATUS
                 </h4>
                 {viewCadetDossier.biometricTemplate ? (
                   <div
                     style={{
-                      backgroundColor: '#ECFDF5',
-                      border: '1px solid #A7F3D0',
+                      backgroundColor: 'var(--color-success-soft)',
+                      border: '1px solid var(--color-success-border)',
                       borderRadius: '6px',
                       padding: '0.85rem 1rem',
                       display: 'flex',
@@ -1019,12 +1019,12 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                       gap: '0.75rem',
                     }}
                   >
-                    <CheckCircle2 size={22} style={{ color: '#047857', flexShrink: 0 }} />
+                    <CheckCircle2 size={22} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065F46' }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-success)' }}>
                         BIOMETRIC TEMPLATE READY
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-success)', marginTop: '0.15rem' }}>
                         128-dimensional facial embedding enrolled. Quality Score: {(viewCadetDossier.biometricTemplate.qualityScore * 100).toFixed(0)}%. Registered: {new Date(viewCadetDossier.biometricTemplate.registeredAt).toLocaleDateString()}.
                       </div>
                     </div>
@@ -1032,8 +1032,8 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                 ) : (
                   <div
                     style={{
-                      backgroundColor: '#FEF2F2',
-                      border: '1px solid #FECACA',
+                      backgroundColor: 'var(--color-error-soft)',
+                      border: '1px solid var(--color-error-border)',
                       borderRadius: '6px',
                       padding: '0.85rem 1rem',
                       display: 'flex',
@@ -1041,12 +1041,12 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                       gap: '0.75rem',
                     }}
                   >
-                    <X size={22} style={{ color: '#DC2626', flexShrink: 0 }} />
+                    <X size={22} style={{ color: 'var(--color-error)', flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#991B1B' }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-error)' }}>
                         FACE NOT REGISTERED
                       </div>
-                      <div style={{ fontSize: '0.78rem', color: '#B91C1C', marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-error)', marginTop: '0.15rem' }}>
                         Cadet has not yet completed hardware facial scan. Must capture face before participating in live biometric parade muster.
                       </div>
                     </div>
@@ -1056,13 +1056,13 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
               {/* NCC Enrollment Details / Prior Experience */}
               <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
                   PRIOR NCC EXPERIENCE &amp; CERTIFICATIONS
                 </h4>
                 <div
                   style={{
-                    backgroundColor: '#F8FAFC',
-                    border: '1px solid #E2E8F0',
+                    backgroundColor: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '6px',
                     padding: '0.85rem 1rem',
                     fontSize: '0.85rem',
@@ -1075,7 +1075,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
 
               {/* Review History / Audit Trail (Phase 5) */}
               <div>
-                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid #E2E8F0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+                <h4 style={{ fontSize: '0.85rem', color: 'var(--navy-primary)', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
                   MULTI-TIER REVIEW AUDIT TRAIL
                 </h4>
                 {viewCadetDossier.applicationReviews && viewCadetDossier.applicationReviews.length > 0 ? (
@@ -1084,8 +1084,8 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                       <div
                         key={rev.id || idx}
                         style={{
-                          backgroundColor: '#FFFFFF',
-                          border: '1px solid #E2E8F0',
+                          backgroundColor: 'var(--color-background)',
+                          border: '1px solid var(--color-border)',
                           borderRadius: '4px',
                           padding: '0.65rem 0.85rem',
                           display: 'flex',
@@ -1100,7 +1100,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                           <strong>{rev.action}</strong> by <strong>{rev.reviewer?.fullName || 'Officer'}</strong> ({rev.reviewer?.role || 'COMMAND'})
                           {rev.remarks && <div style={{ color: 'var(--navy-text-muted)', fontSize: '0.78rem', marginTop: '0.2rem' }}>Remarks: "{rev.remarks}"</div>}
                         </div>
-                        <span style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
                           {new Date(rev.createdAt).toLocaleString()}
                         </span>
                       </div>
@@ -1117,8 +1117,8 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
             {/* Modal Footer Actions */}
             <div
               style={{
-                backgroundColor: '#F8FAFC',
-                borderTop: '1px solid #E2E8F0',
+                backgroundColor: 'var(--color-surface)',
+                borderTop: '1px solid var(--color-border)',
                 padding: '1rem 1.5rem',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -1153,14 +1153,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                     <button
                       onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'RETURN' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                      style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                     >
                       Return Dossier
                     </button>
                     <button
                       onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'REJECT' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                      style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                     >
                       Reject
                     </button>
@@ -1182,14 +1182,14 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                     <button
                       onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'RETURN' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#D97706', borderColor: '#FCD34D' }}
+                      style={{ color: 'var(--color-primary)', borderColor: 'var(--color-gold)' }}
                     >
                       Return Dossier
                     </button>
                     <button
                       onClick={() => setActionModal({ type: 'registration', item: viewCadetDossier, action: 'REJECT' })}
                       className="btn-secondary btn-sm"
-                      style={{ color: '#DC2626', borderColor: '#FCA5A5' }}
+                      style={{ color: 'var(--color-error)', borderColor: 'var(--color-error-border)' }}
                     >
                       Reject
                     </button>

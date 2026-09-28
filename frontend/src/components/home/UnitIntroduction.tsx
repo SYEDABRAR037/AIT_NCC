@@ -72,26 +72,26 @@ export const UnitIntroduction: React.FC = () => {
                 />
                 <div>
                   <h4 style={{ color: 'var(--white-pure)', fontSize: '1.1rem' }}>UNIT RECOGNITION</h4>
-                  <span style={{ color: '#93C5FD', fontSize: '0.85rem' }}>AIT DIGHI DETACHMENT</span>
+                  <span style={{ color: 'var(--color-info-border)', fontSize: '0.85rem' }}>AIT DIGHI DETACHMENT</span>
                 </div>
               </div>
 
-              <p style={{ color: '#CBD5E1', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--color-border)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
                 "In these grounds, engineering precision meets regimented battlefield discipline.
                 Our cadets don the uniform with solemn pride and carry the torch of selfless military service."
               </p>
 
               <div style={{ borderTop: '1px solid var(--navy-border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                 <div>
-                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8' }}>BATTALION</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>BATTALION</span>
                   <span style={{ fontWeight: 700, color: 'var(--white-pure)' }}>2 MAH BN NCC</span>
                 </div>
                 <div>
-                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8' }}>GROUP HQ</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>GROUP HQ</span>
                   <span style={{ fontWeight: 700, color: 'var(--white-pure)' }}>PUNE GROUP</span>
                 </div>
                 <div>
-                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#94A3B8' }}>WING</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-disabled)' }}>WING</span>
                   <span style={{ fontWeight: 700, color: 'var(--white-pure)' }}>ARMY WING</span>
                 </div>
               </div>

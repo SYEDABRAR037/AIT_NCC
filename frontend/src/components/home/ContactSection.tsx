@@ -156,7 +156,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             <h3 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', marginBottom: '0.75rem' }}>
               Institutional Inquiry Protocol
             </h3>
-            <p style={{ marginBottom: '1.25rem', fontSize: '0.92rem', lineHeight: '1.6', color: '#475569' }}>
+            <p style={{ marginBottom: '1.25rem', fontSize: '0.92rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
               For queries related to cadet verification, B/C Certificate exams, camp nominations, or
               defence admissions, please submit through official institutional channels.
             </p>
@@ -165,22 +165,22 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             {successResult && (
               <div
                 style={{
-                  backgroundColor: '#F0FDF4',
-                  border: '2px solid #10B981',
+                  backgroundColor: 'var(--color-success-soft)',
+                  border: '2px solid var(--color-success)',
                   borderRadius: '6px',
                   padding: '1.25rem',
                   marginBottom: '1.25rem',
                   animation: 'fadeIn 0.3s ease',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#065F46', marginBottom: '0.5rem' }}>
-                  <CheckCircle2 size={20} style={{ color: '#10B981' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'var(--color-success)', marginBottom: '0.5rem' }}>
+                  <CheckCircle2 size={20} style={{ color: 'var(--color-success)' }} />
                   <strong style={{ fontSize: '0.95rem' }}>Official inquiry submitted successfully.</strong>
                 </div>
-                <div style={{ fontSize: '0.88rem', color: '#047857', marginBottom: '0.75rem' }}>
+                <div style={{ fontSize: '0.88rem', color: 'var(--color-success)', marginBottom: '0.75rem' }}>
                   Inquiry ID: <strong style={{ letterSpacing: '0.05em', color: 'var(--navy-primary)' }}>{successResult.inquiryId}</strong>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#334155', lineHeight: '1.5', margin: 0 }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: '1.5', margin: 0 }}>
                   Your official inquiry has been permanently logged in the Command Center ledger. You can view the live thread, officer replies, and follow up inside your Cadet Panel.
                 </p>
                 <button
@@ -198,15 +198,15 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             {errorMsg && (
               <div
                 style={{
-                  backgroundColor: '#FEF2F2',
-                  border: '1px solid #EF4444',
+                  backgroundColor: 'var(--color-error-soft)',
+                  border: '1px solid var(--color-error)',
                   borderRadius: '4px',
                   padding: '0.75rem 1rem',
                   marginBottom: '1rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.6rem',
-                  color: '#991B1B',
+                  color: 'var(--color-error)',
                   fontSize: '0.85rem',
                 }}
               >
@@ -219,8 +219,8 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             {!user && (
               <div
                 style={{
-                  backgroundColor: '#EFF6FF',
-                  border: '1px solid #93C5FD',
+                  backgroundColor: 'var(--color-info-soft)',
+                  border: '1px solid var(--color-info-border)',
                   borderRadius: '4px',
                   padding: '0.75rem 1rem',
                   marginBottom: '1rem',
@@ -233,7 +233,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Lock size={16} style={{ color: 'var(--navy-primary)' }} />
-                  <span style={{ fontSize: '0.82rem', color: '#1E3A8A' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--color-accent)' }}>
                     Authenticated session required to file official inquiries.
                   </span>
                 </div>
@@ -279,7 +279,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
                     outline: 'none',
-                    backgroundColor: user ? '#F8FAFC' : '#FFFFFF',
+                    backgroundColor: user ? 'var(--color-surface)' : 'var(--color-background)',
                     cursor: user ? 'not-allowed' : 'text',
                   }}
                 />
@@ -302,7 +302,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                     borderRadius: '4px',
                     border: '1px solid var(--white-border)',
                     outline: 'none',
-                    backgroundColor: user ? '#F8FAFC' : '#FFFFFF',
+                    backgroundColor: user ? 'var(--color-surface)' : 'var(--color-background)',
                     cursor: user ? 'not-allowed' : 'text',
                   }}
                 />

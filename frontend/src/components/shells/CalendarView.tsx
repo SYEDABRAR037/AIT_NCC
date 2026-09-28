@@ -167,41 +167,41 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
         return {
           label: 'PARADE',
           icon: <Shield size={13} />,
-          background: '#ECFDF5',
-          color: '#065F46',
-          border: '1px solid #A7F3D0',
+          background: 'var(--color-success-soft)',
+          color: 'var(--color-success)',
+          border: '1px solid var(--color-success-border)',
         };
       case 'TRAINING':
         return {
           label: 'TRAINING',
           icon: <Users size={13} />,
-          background: '#EFF6FF',
-          color: '#1E40AF',
-          border: '1px solid #BFDBFE',
+          background: 'var(--color-info-soft)',
+          color: 'var(--color-accent)',
+          border: '1px solid var(--color-info-border)',
         };
       case 'CAMP':
         return {
           label: 'CAMP',
           icon: <Flag size={13} />,
-          background: '#FEF3C7',
-          color: '#92400E',
-          border: '1px solid #FCD34D',
+          background: 'var(--color-warning-soft)',
+          color: 'var(--color-primary)',
+          border: '1px solid var(--color-gold)',
         };
       case 'DUTY':
         return {
           label: 'GUARD / DUTY',
           icon: <Award size={13} />,
-          background: '#F0F9FF',
-          color: '#0369A1',
-          border: '1px solid #BAE6FD',
+          background: 'var(--color-info-soft)',
+          color: 'var(--color-accent)',
+          border: '1px solid var(--color-info-border)',
         };
       default:
         return {
           label: 'ACTIVITY',
           icon: <CalendarIcon size={13} />,
-          background: '#FAF5FF',
-          color: '#6B21A8',
-          border: '1px solid #E9D5FF',
+          background: 'var(--color-info-soft)',
+          color: 'var(--color-accent)',
+          border: '1px solid var(--color-info-border)',
         };
     }
   };
@@ -209,11 +209,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
   const getStatusBadgeStyle = (status: string) => {
     switch (status) {
       case 'UPCOMING':
-        return { background: '#FEF3C7', color: '#92400E', border: '1px solid #FCD34D' };
+        return { background: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-gold)' };
       case 'ONGOING':
-        return { background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0' };
+        return { background: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success-border)' };
       default:
-        return { background: '#F1F5F9', color: '#475569', border: '1px solid #CBD5E1' };
+        return { background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' };
     }
   };
 
@@ -251,7 +251,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
         className="institutional-card"
         style={{
           borderLeft: '5px solid var(--navy-primary)',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          background: 'linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%)',
           padding: '1.75rem',
         }}
       >
@@ -433,7 +433,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
         <div
           className="institutional-card"
           style={{
-            borderLeft: '4px solid #DC2626',
+            borderLeft: '4px solid var(--color-error)',
             padding: '1.25rem',
             display: 'flex',
             justifyContent: 'space-between',
@@ -443,9 +443,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertCircle size={22} style={{ color: '#DC2626' }} />
+            <AlertCircle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
-              <h4 style={{ color: '#DC2626', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
+              <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
                 Operational Synchronization Alert
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
@@ -563,7 +563,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
                     key={`empty-${idx}`}
                     style={{
                       minHeight: '100px',
-                      background: '#F8FAFC',
+                      background: 'var(--color-surface)',
                       borderRadius: '4px',
                       opacity: 0.5,
                     }}
@@ -585,7 +585,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
                   key={`day-${day}`}
                   style={{
                     minHeight: '100px',
-                    background: isToday ? '#F0F9FF' : 'var(--white-pure)',
+                    background: isToday ? 'var(--color-info-soft)' : 'var(--white-pure)',
                     border: isToday ? '1.5px solid var(--navy-primary)' : '1px solid var(--white-border)',
                     borderRadius: '4px',
                     padding: '0.45rem',
@@ -815,7 +815,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(3, 11, 23, 0.7)',
+            background: 'rgba(7, 26, 51, 0.7)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
@@ -875,9 +875,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
                   margin: '1rem 1.5rem 0',
                   padding: '0.75rem',
                   borderRadius: '4px',
-                  background: '#FEE2E2',
-                  border: '1px solid #F87171',
-                  color: '#991B1B',
+                  background: 'var(--color-error-soft)',
+                  border: '1px solid var(--color-error-border)',
+                  color: 'var(--color-error)',
                   fontSize: '0.85rem',
                 }}
               >
@@ -891,9 +891,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
                   margin: '1rem 1.5rem 0',
                   padding: '0.75rem',
                   borderRadius: '4px',
-                  background: '#ECFDF5',
-                  border: '1px solid #34D399',
-                  color: '#065F46',
+                  background: 'var(--color-success-soft)',
+                  border: '1px solid var(--color-success)',
+                  color: 'var(--color-success)',
                   fontSize: '0.85rem',
                 }}
               >

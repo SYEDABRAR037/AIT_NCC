@@ -100,7 +100,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
           flexWrap: 'wrap',
           gap: '1.25rem',
           borderLeft: '5px solid var(--navy-primary)',
-          background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%)',
+          background: 'linear-gradient(135deg, var(--color-background) 0%, var(--color-surface) 100%)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
@@ -116,7 +116,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               justifyContent: 'center',
               fontSize: '1.75rem',
               fontWeight: 800,
-              border: '3px solid #CBD5E1',
+              border: '3px solid var(--color-border)',
               overflow: 'hidden',
             }}
           >
@@ -135,7 +135,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               <h2 style={{ fontSize: '1.5rem', color: 'var(--navy-primary)', margin: 0 }}>
                 {user?.fullName}
               </h2>
-              <span className="badge-institutional" style={{ background: '#ECFDF5', color: '#047857' }}>
+              <span className="badge-institutional" style={{ background: 'var(--color-success-soft)', color: 'var(--color-success)' }}>
                 {user?.status || 'ACTIVE'}
               </span>
               <span className="badge-institutional">CADET</span>
@@ -264,21 +264,21 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
             style={{
               padding: '1rem',
               borderRadius: '8px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0369A1', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-accent)', marginBottom: '0.35rem' }}>
               <CalendarCheck size={16} />
               <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>ATTENDANCE</span>
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isEligible ? '#047857' : '#DC2626' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isEligible ? 'var(--color-success)' : 'var(--color-error)' }}>
               {percentage}%
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
               {attendanceStats?.present || 0} Present / {attendanceStats?.total || 0} Parades
             </div>
-            <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', fontWeight: 700, color: isEligible ? '#059669' : '#D97706' }}>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', fontWeight: 700, color: isEligible ? 'var(--color-success)' : 'var(--color-primary)' }}>
               {isEligible ? '✓ Certificate Exam Eligible' : '⚠️ Below 75% Threshold'}
             </div>
           </div>
@@ -288,18 +288,18 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
             style={{
               padding: '1rem',
               borderRadius: '8px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#EA580C', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-gold)', marginBottom: '0.35rem' }}>
               <Award size={16} />
               <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>CERTIFICATES</span>
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0A192F' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
               {certificates.length}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
               Verified Vault Records
             </div>
           </div>
@@ -309,18 +309,18 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
             style={{
               padding: '1rem',
               borderRadius: '8px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#7C3AED', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-accent)', marginBottom: '0.35rem' }}>
               <Tent size={16} />
               <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>CAMPS</span>
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0A192F' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
               {camps.length}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
               CATC / NIC / RDC / Pre-RDC
             </div>
           </div>
@@ -330,18 +330,18 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
             style={{
               padding: '1rem',
               borderRadius: '8px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #E2E8F0',
+              backgroundColor: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#047857', marginBottom: '0.35rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--color-success)', marginBottom: '0.35rem' }}>
               <Briefcase size={16} />
               <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>DUTIES</span>
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0A192F' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)' }}>
               {duties.length}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
               Cadre & Guard Allocations
             </div>
           </div>
@@ -353,7 +353,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
             Recent Leave Sanctions on Record:
           </h5>
           {leaves.length === 0 ? (
-            <p style={{ fontSize: '0.82rem', color: '#64748B' }}>No leave applications filed on record.</p>
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>No leave applications filed on record.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {leaves.slice(0, 3).map((l: any) => (
@@ -364,20 +364,20 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '0.5rem 0.75rem',
-                    background: '#F8FAFC',
+                    background: 'var(--color-surface)',
                     borderRadius: '4px',
                     fontSize: '0.82rem',
                   }}
                 >
                   <div>
                     <strong>{l.leaveType} Leave</strong> &mdash; {new Date(l.startDate).toLocaleDateString()} to {new Date(l.endDate).toLocaleDateString()}
-                    <div style={{ color: '#64748B', fontSize: '0.75rem' }}>Reason: {l.reason}</div>
+                    <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem' }}>Reason: {l.reason}</div>
                   </div>
                   <span
                     className="badge-institutional"
                     style={{
-                      background: l.status === 'APPROVED' ? '#ECFDF5' : l.status === 'REJECTED' ? '#FEF2F2' : '#FEF3C7',
-                      color: l.status === 'APPROVED' ? '#047857' : l.status === 'REJECTED' ? '#DC2626' : '#92400E',
+                      background: l.status === 'APPROVED' ? 'var(--color-success-soft)' : l.status === 'REJECTED' ? 'var(--color-error-soft)' : 'var(--color-warning-soft)',
+                      color: l.status === 'APPROVED' ? 'var(--color-success)' : l.status === 'REJECTED' ? 'var(--color-error)' : 'var(--color-primary)',
                     }}
                   >
                     {l.status}

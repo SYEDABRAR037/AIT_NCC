@@ -1,7 +1,7 @@
 /* ==========================================================================
    PRIMARY REFERENCE HOMEPAGE STYLES
    Exact recreation of the reference screenshot aesthetic:
-   - Deep Navy Blue (#06152B / #0A192F) + Pure White (#FFFFFF)
+   - Deep Navy Blue (var(--color-primary) / var(--color-primary)) + Pure White (var(--color-background))
    - Clean, rounded cards with subtle borders & shadows
    - Two-column Our Strength + Latest Notices layout
    - Six feature cards directly below hero
@@ -31,23 +31,23 @@
 }
 
 .ref-feature-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 1.75rem 1.15rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(6, 21, 43, 0.06);
+  box-shadow: 0 4px 15px rgba(7, 26, 51, 0.06);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .ref-feature-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 12px 28px rgba(6, 21, 43, 0.12);
-  border-color: #CBD5E1;
+  box-shadow: 0 12px 28px rgba(7, 26, 51, 0.12);
+  border-color: var(--color-border);
 }
 
 .ref-feature-icon-wrapper {
@@ -68,14 +68,14 @@
 .ref-feature-card-title {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #0A192F;
+  color: var(--color-primary);
   margin-bottom: 0.5rem;
   line-height: 1.25;
 }
 
 .ref-feature-card-desc {
   font-size: 0.78rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
   line-height: 1.5;
   margin: 0;
 }
@@ -108,7 +108,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: 0 10px 30px rgba(6, 21, 43, 0.15);
+  box-shadow: 0 10px 30px rgba(7, 26, 51, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -127,9 +127,9 @@
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(6, 21, 43, 0.85) 0%,
-    rgba(6, 21, 43, 0.7) 40%,
-    rgba(6, 21, 43, 0.92) 100%
+    rgba(7, 26, 51, 0.85) 0%,
+    rgba(7, 26, 51, 0.7) 40%,
+    rgba(7, 26, 51, 0.92) 100%
   );
   z-index: 2;
 }
@@ -142,7 +142,7 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 2.25rem 2rem;
-  color: #FFFFFF;
+  color: var(--color-background);
 }
 
 .ref-strength-header {
@@ -152,14 +152,14 @@
 .ref-strength-title {
   font-size: 1.85rem;
   font-weight: 800;
-  color: #FFFFFF;
+  color: var(--color-background);
   margin-bottom: 0.35rem;
   font-family: 'Inter', sans-serif;
 }
 
 .ref-strength-sub {
   font-size: 0.95rem;
-  color: #CBD5E1;
+  color: var(--color-border);
   margin: 0;
 }
 
@@ -167,7 +167,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(6, 21, 43, 0.45);
+  background: rgba(7, 26, 51, 0.45);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
@@ -183,21 +183,21 @@
 }
 
 .ref-metric-icon {
-  color: #93C5FD;
+  color: var(--color-info-border);
   margin-bottom: 0.4rem;
 }
 
 .ref-metric-num {
   font-size: 1.45rem;
   font-weight: 800;
-  color: #FFFFFF;
+  color: var(--color-background);
   line-height: 1.1;
   font-family: 'Inter', sans-serif;
 }
 
 .ref-metric-lbl {
   font-size: 0.72rem;
-  color: #CBD5E1;
+  color: var(--color-border);
   margin-top: 0.25rem;
   white-space: nowrap;
 }
@@ -210,13 +210,13 @@
 
 /* Right Card: Latest Notices */
 .ref-notices-card {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
   padding: 1.75rem 2rem;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 6px 25px rgba(6, 21, 43, 0.05);
+  box-shadow: 0 6px 25px rgba(7, 26, 51, 0.05);
 }
 
 .ref-notices-card-header {
@@ -224,7 +224,7 @@
   align-items: center;
   justify-content: space-between;
   padding-bottom: 1.15rem;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--color-surface);
   margin-bottom: 0.75rem;
 }
 
@@ -235,20 +235,20 @@
 }
 
 .ref-notices-bell-icon {
-  color: #2563EB;
+  color: var(--color-accent);
 }
 
 .ref-notices-card-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #0A192F;
+  color: var(--color-primary);
   margin: 0;
 }
 
 .ref-notices-view-all {
   background: none;
   border: none;
-  color: #2563EB;
+  color: var(--color-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -274,7 +274,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 0;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--color-surface);
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
@@ -284,7 +284,7 @@
 }
 
 .ref-notice-row:hover .ref-notice-title {
-  color: #1E3A8A;
+  color: var(--color-accent);
 }
 
 .ref-notice-row-left {
@@ -306,24 +306,24 @@
 }
 
 .ref-badge-general {
-  background-color: #2563EB;
-  color: #FFFFFF;
+  background-color: var(--color-accent);
+  color: var(--color-background);
 }
 
 .ref-badge-event {
-  background-color: #16A34A;
-  color: #FFFFFF;
+  background-color: var(--color-success);
+  color: var(--color-background);
 }
 
 .ref-badge-notice {
-  background-color: #EA580C;
-  color: #FFFFFF;
+  background-color: var(--color-gold);
+  color: var(--color-primary);
 }
 
 .ref-notice-title {
   font-size: 0.88rem;
   font-weight: 500;
-  color: #1E293B;
+  color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -332,7 +332,7 @@
 
 .ref-notice-date {
   font-size: 0.78rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
   white-space: nowrap;
   font-weight: 500;
 }
@@ -341,7 +341,7 @@
 .ref-notices-loading {
   padding: 3rem 1rem;
   text-align: center;
-  color: #64748B;
+  color: var(--color-text-secondary);
   font-size: 0.9rem;
   display: flex;
   flex-direction: column;
@@ -355,12 +355,12 @@
    ========================================================================== */
 .ref-quote-banner-section {
   position: relative;
-  background-color: #EBF2F9;
+  background-color: var(--color-info-soft);
   background-image: url('/assets/mountain_banner.jpg');
   background-size: cover;
   background-position: center bottom;
-  border-top: 1px solid #DCE6F1;
-  border-bottom: 1px solid #DCE6F1;
+  border-top: 1px solid var(--color-info-soft);
+  border-bottom: 1px solid var(--color-info-soft);
   padding: 3.5rem 1.5rem;
   margin-bottom: 4rem;
   overflow: hidden;
@@ -387,7 +387,7 @@
   left: 0;
   font-size: 3.5rem;
   font-family: Georgia, serif;
-  color: #2563EB;
+  color: var(--color-accent);
   line-height: 1;
 }
 
@@ -396,7 +396,7 @@
   font-size: 1.15rem;
   font-style: italic;
   font-weight: 500;
-  color: #1E293B;
+  color: var(--color-text);
   line-height: 1.6;
   margin-bottom: 0.75rem;
 }
@@ -404,7 +404,7 @@
 .ref-quote-author {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #64748B;
+  color: var(--color-text-secondary);
 }
 
 .ref-quote-right {
@@ -426,7 +426,7 @@
 .ref-onward-title {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0A192F;
+  color: var(--color-primary);
   margin: 0 0 0.4rem 0;
   font-family: 'Inter', sans-serif;
   letter-spacing: 0.02em;
@@ -448,7 +448,7 @@
 
 .ref-tricolor-white {
   flex: 1;
-  background-color: #FFFFFF;
+  background-color: var(--color-background);
 }
 
 .ref-tricolor-green {
@@ -460,8 +460,8 @@
    4. PRIMARY REFERENCE FOOTER (Deep Navy Blue)
    ========================================================================== */
 .ref-site-footer {
-  background-color: #06152B;
-  color: #FFFFFF;
+  background-color: var(--color-primary);
+  color: var(--color-background);
   padding: 4rem 1.5rem 2.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -494,20 +494,20 @@
 .ref-footer-title {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #FFFFFF;
+  color: var(--color-background);
   margin: 0;
   line-height: 1.1;
 }
 
 .ref-footer-subtitle {
   font-size: 0.75rem;
-  color: #E2E8F0;
+  color: var(--color-border);
   margin: 0;
 }
 
 .ref-footer-unit {
   font-size: 0.68rem;
-  color: #93C5FD;
+  color: var(--color-info-border);
   margin: 0;
   font-weight: 600;
 }
@@ -515,7 +515,7 @@
 .ref-footer-desc {
   font-size: 0.82rem;
   line-height: 1.6;
-  color: #94A3B8;
+  color: var(--color-disabled);
   max-width: 340px;
   margin: 0;
 }
@@ -523,7 +523,7 @@
 .ref-footer-col-heading {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #FFFFFF;
+  color: var(--color-background);
   margin-bottom: 1.25rem;
 }
 
@@ -538,13 +538,13 @@
 
 .ref-footer-links-list a {
   font-size: 0.85rem;
-  color: #CBD5E1;
+  color: var(--color-border);
   text-decoration: none;
   transition: color 0.15s ease;
 }
 
 .ref-footer-links-list a:hover {
-  color: #FFFFFF;
+  color: var(--color-background);
 }
 
 .ref-footer-social-col {
@@ -568,20 +568,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #CBD5E1;
+  color: var(--color-border);
   text-decoration: none;
   transition: all 0.2s ease;
 }
 
 .ref-social-icon-btn:hover {
-  background: #FFFFFF;
-  color: #06152B;
+  background: var(--color-background);
+  color: var(--color-primary);
   transform: translateY(-2px);
 }
 
 .ref-footer-copy-text {
   font-size: 0.8rem;
-  color: #94A3B8;
+  color: var(--color-disabled);
   margin-bottom: 0.5rem;
 }
 
@@ -590,13 +590,13 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.75rem;
-  color: #64748B;
+  color: var(--color-text-secondary);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
 
 .ref-motto-dot {
-  color: #93C5FD;
+  color: var(--color-info-border);
 }
 
 /* ==========================================================================
@@ -605,7 +605,7 @@
 .ref-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(6, 19, 37, 0.75);
+  background: rgba(7, 26, 51, 0.75);
   backdrop-filter: blur(6px);
   z-index: 10000;
   display: flex;
@@ -616,11 +616,11 @@
 }
 
 .ref-modal-box {
-  background: #FFFFFF;
+  background: var(--color-background);
   border-radius: 16px;
   width: 100%;
   max-width: 580px;
-  box-shadow: 0 25px 60px rgba(6, 21, 43, 0.35);
+  box-shadow: 0 25px 60px rgba(7, 26, 51, 0.35);
   overflow: hidden;
   animation: refScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -630,15 +630,15 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 1.5rem 1.75rem 1rem;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--color-surface);
 }
 
 .ref-modal-badge {
   display: inline-block;
   font-size: 0.7rem;
   font-weight: 700;
-  color: #2563EB;
-  background: #EFF6FF;
+  color: var(--color-accent);
+  background: var(--color-info-soft);
   padding: 2px 8px;
   border-radius: 4px;
   margin-bottom: 0.35rem;
@@ -647,22 +647,22 @@
 .ref-modal-title {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0A192F;
+  color: var(--color-primary);
   margin: 0;
 }
 
 .ref-modal-close-btn {
   background: none;
   border: none;
-  color: #64748B;
+  color: var(--color-text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 6px;
 }
 
 .ref-modal-close-btn:hover {
-  background: #F1F5F9;
-  color: #0A192F;
+  background: var(--color-surface);
+  color: var(--color-primary);
 }
 
 .ref-modal-body {
@@ -672,7 +672,7 @@
 .ref-modal-desc {
   font-size: 0.95rem;
   line-height: 1.7;
-  color: #334155;
+  color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
 }
 
@@ -683,8 +683,8 @@
 }
 
 .ref-modal-action-btn {
-  background: #0A192F;
-  color: #FFFFFF;
+  background: var(--color-primary);
+  color: var(--color-background);
   border: none;
   border-radius: 8px;
   padding: 10px 20px;
@@ -698,13 +698,13 @@
 }
 
 .ref-modal-action-btn:hover {
-  background: #1E3A8A;
+  background: var(--color-accent);
 }
 
 .ref-modal-cancel-btn {
-  background: #F1F5F9;
-  color: #334155;
-  border: 1px solid #E2E8F0;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   padding: 10px 18px;
   font-size: 0.88rem;
@@ -713,7 +713,7 @@
 }
 
 .ref-modal-cancel-btn:hover {
-  background: #E2E8F0;
+  background: var(--color-border);
 }
 
 @keyframes refFadeIn {

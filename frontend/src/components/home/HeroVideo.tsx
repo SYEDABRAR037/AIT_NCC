@@ -58,7 +58,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
                 onClick={() => setVideoModalOpen(true)}
               >
                 <span>Watch Video</span>
-                <Play size={15} fill="#FFFFFF" />
+                <Play size={15} fill="var(--color-background)" />
               </button>
             </div>
           </div>
