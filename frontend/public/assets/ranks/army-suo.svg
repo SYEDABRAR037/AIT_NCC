@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="100mm"
+   height="250mm"
+   viewBox="0 0 100 250"
+   version="1.1"
+   id="svg8"
+   enable-background="new"
+   inkscape:version="0.92.1 r15371"
+   sodipodi:docname="NCC Army SUO.svg">
+  <defs
+     id="defs2">
+    <filter
+       inkscape:menu-tooltip="Bright metallic effect for any color"
+       inkscape:menu="Bevels"
+       inkscape:label="Bright Metal"
+       style="color-interpolation-filters:sRGB;"
+       id="filter8538"
+       x="-0.6204"
+       width="2.2408"
+       y="-0.6204"
+       height="2.2408">
+      <feComposite
+         in2="SourceGraphic"
+         in="result6"
+         operator="xor"
+         result="result10"
+         id="feComposite8520" />
+      <feGaussianBlur
+         result="result2"
+         stdDeviation="6.4625"
+         id="feGaussianBlur8522" />
+      <feComposite
+         in2="SourceGraphic"
+         operator="atop"
+         in="result10"
+         result="result91"
+         id="feComposite8524" />
+      <feComposite
+         result="result4"
+         in="result2"
+         operator="xor"
+         in2="result91"
+         id="feComposite8526" />
+      <feGaussianBlur
+         in="result4"
+         result="result3"
+         stdDeviation="4"
+         id="feGaussianBlur8528" />
+      <feSpecularLighting
+         result="result5"
+         specularExponent="5"
+         specularConstant="1.1"
+         surfaceScale="18"
+         id="feSpecularLighting8532">
+        <feDistantLight
+           azimuth="235"
+           elevation="55"
+           id="feDistantLight8530" />
+      </feSpecularLighting>
+      <feComposite
+         in="result3"
+         k3="1.1"
+         k2="0.5"
+         operator="arithmetic"
+         result="result7"
+         in2="result5"
+         k1="0.5"
+         id="feComposite8534" />
+      <feComposite
+         in="result7"
+         operator="atop"
+         in2="SourceGraphic"
+         result="result8"
+         id="feComposite8536" />
+    </filter>
+    <filter
+       inkscape:collect="always"
+       style="color-interpolation-filters:sRGB"
+       id="filter8570"
+       x="-0.0081081081"
+       width="1.0162162"
+       y="-0.0081081081"
+       height="1.0162162">
+      <feBlend
+         inkscape:collect="always"
+         mode="soft-light"
+         in2="BackgroundImage"
+         id="feBlend8574" />
+    </filter>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.35"
+     inkscape:cx="-58.597475"
+     inkscape:cy="628.26084"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1366"
+     inkscape:window-height="736"
+     inkscape:window-x="0"
+     inkscape:window-y="16"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-47)">
+    <path
+       style="opacity:1;fill:#d40000;fill-opacity:1;stroke-width:0.32926437"
+       d="m 50,47.25831 v -0.258308 l 50,50.258096 V 147.25808 197.25807 297 L 0,297.5289 V 197.25807 147.25808 97.258098 Z"
+       id="rect4485"
+       inkscape:connector-curvature="0"
+       sodipodi:nodetypes="ccccccccccc" />
+    <circle
+       style="opacity:1;fill:#ffe680;fill-opacity:1;stroke-width:0.34668761;filter:url(#filter8570)"
+       id="path4488"
+       cx="50"
+       cy="94.75856"
+       r="12.5" />
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:8.65045929px;line-height:1.25;font-family:'Lohit Malayalam';-inkscape-font-specification:'Lohit Malayalam';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.21626148"
+       x="37.354622"
+       y="104.60838"
+       id="text8427"
+       transform="scale(1.069987,0.93459079)"><tspan
+         sodipodi:role="line"
+         id="tspan8425"
+         x="37.354622"
+         y="104.60838"
+         style="stroke-width:0.21626148">NCC</tspan></text>
+    <rect
+       style="opacity:1;fill:#000000;fill-opacity:1;stroke-width:0.26458332"
+       id="rect8429"
+       width="100"
+       height="20"
+       x="0"
+       y="258.74838" />
+    <rect
+       style="opacity:1;fill:#000000;fill-opacity:1;stroke-width:0.26458332"
+       id="rect8429-3"
+       width="100"
+       height="20"
+       x="0"
+       y="232.399" />
+  </g>
+</svg>

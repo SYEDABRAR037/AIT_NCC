@@ -52,7 +52,7 @@
   background: linear-gradient(145deg, var(--color-primary), var(--color-secondary));
   color: var(--color-background);
 }
-.rank-marker {
+.rank-insignia {
   display: flex;
   width: 150px;
   height: 180px;
@@ -60,16 +60,18 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.7rem;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 48% 48% 42% 42%;
-  background: rgba(255, 255, 255, 0.06);
-  color: #FFFFFF;
+  border-radius: 14px;
+  background: #FFFFFF;
+  color: var(--color-primary);
 }
-.rank-marker-ring { display: grid; width: 52px; height: 52px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.42); border-radius: 50%; color: #F4B400; }
-.rank-marker-code { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.1em; }
-.rank-marker-line { width: 54px; height: 3px; border-radius: 3px; background: rgba(255, 255, 255, 0.78); }
-.rank-marker-line.short { width: 38px; opacity: 0.66; }
+.rank-insignia img { display: block; width: 100%; height: 128px; object-fit: contain; }
+.rank-insignia figcaption { color: #526071; font-size: 0.58rem; line-height: 1.25; text-align: center; }
+.rank-insignia figcaption a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.rank-no-insignia { display: grid; flex: 1; align-content: center; justify-items: center; gap: 0.5rem; color: #526071; font-size: 0.75rem; text-align: center; }
 .rank-detail-tier { color: #F4B400; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
 .rank-detail-copy h4 { margin: 0.35rem 0 0.6rem; color: #FFFFFF; font-size: clamp(1.3rem, 3vw, 1.8rem); }
 .rank-detail-copy p { max-width: 400px; color: rgba(255, 255, 255, 0.8); font-size: 0.93rem; }
@@ -81,8 +83,9 @@
   .rank-explorer-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rank-explorer-option { min-height: 48px; font-size: 0.78rem; }
   .rank-detail-panel { min-height: 230px; gap: 1rem; padding: 1.1rem; }
-  .rank-marker { width: 104px; height: 132px; flex-basis: 104px; }
-  .rank-marker-ring { width: 42px; height: 42px; }
+  .rank-insignia { width: 112px; height: 142px; flex-basis: 112px; padding: 0.5rem; }
+  .rank-insignia img { height: 100px; }
+  .rank-insignia figcaption { font-size: 0.5rem; }
 }
 
 @media (max-width: 420px) {
