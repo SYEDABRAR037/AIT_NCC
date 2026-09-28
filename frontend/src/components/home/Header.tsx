@@ -36,11 +36,12 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [shellsDropdownOpen]);
 
-  // The 6 public navigation links
+  // The public navigation links
   const navLinks: NavPillItem[] = [
     { name: 'Home', href: '#' },
     { name: 'Notices', href: '#notices' },
     { name: 'About', href: '#about' },
+    { name: 'Seniors', href: '#seniors' },
     { name: 'Activities', href: '#activities' },
     { name: 'Gallery', href: '#gallery' },
     { name: 'Contact', href: '#contact' },
@@ -87,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
         return;
       }
 
-      const sections = ['notices', 'about', 'activities', 'gallery', 'contact']
+      const sections = ['notices', 'about', 'seniors', 'activities', 'gallery', 'contact']
         .map((id) => ({ id, element: document.getElementById(id) }))
         .filter((entry): entry is { id: string; element: HTMLElement } => Boolean(entry.element))
         .filter(({ element }) => element.getBoundingClientRect().top <= 140);

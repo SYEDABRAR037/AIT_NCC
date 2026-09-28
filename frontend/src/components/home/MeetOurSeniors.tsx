@@ -33,7 +33,7 @@ const SeniorProfileCard: React.FC<{ senior: (typeof seniors)[number] }> = ({ sen
 };
 
 export const MeetOurSeniors: React.FC = () => (
-  <section className="meet-our-seniors section-py" aria-labelledby="meet-our-seniors-title">
+  <section id="seniors" className="meet-our-seniors section-py" aria-labelledby="meet-our-seniors-title">
     <div className="container">
       <header className="meet-our-seniors-heading">
         <span className="meet-our-seniors-kicker">CADET LEADERSHIP</span>
