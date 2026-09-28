@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Shield, Mail, KeyRound, AlertCircle, CheckCircle2, RotateCw, ArrowLeft } from 'lucide-react';
+import { X, Shield, Mail, KeyRound, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { safeApiFetch } from '../../utils/api';
+import { OTPVerification } from '../common/OTPVerification';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -21,7 +22,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [regimentalNumber, setRegimentalNumber] = useState('');
   const [recoveryId, setRecoveryId] = useState('');
   const [maskedEmail, setMaskedEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -32,6 +32,26 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+
+  const maskEmailAddress = (address: string) => {
+    const [localPart, domain] = address.split('@');
+    if (!localPart || !domain) return 'your registered email address';
+    return `${localPart[0]}${'*'.repeat(Math.max(3, localPart.length - 1))}@${domain}`;
+  };
+
+  const otpErrorMessage = (message: unknown, fallback: string) => {
+    const text = typeof message === 'string' ? message : '';
+    if (/too many|attempt limit|maximum.*attempt/i.test(text)) {
+      return 'Too many attempts. Please request a new verification code.';
+    }
+    if (/expired/i.test(text)) return 'This verification code has expired. Please request a new one.';
+    if (/invalid.*(otp|verification)|(?:otp|verification code).*invalid/i.test(text)) {
+      return 'Invalid verification code. Please try again.';
+    }
+    const cooldown = text.match(/please wait\s+(\d+)\s+seconds?/i);
+    if (cooldown) return `Please wait ${cooldown[1]} seconds before requesting another code.`;
+    return fallback;
+  };
 
   // Reset when modal opens/closes
   useEffect(() => {
@@ -44,7 +64,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       setRegimentalNumber('');
       setRecoveryId('');
       setMaskedEmail('');
-      setOtp('');
       setResetToken('');
       setNewPassword('');
       setConfirmPassword('');
@@ -77,12 +96,6 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
   if (!isOpen) return null;
 
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
   // 1. Request OTP (Phase 8, 9)
   const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +123,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
       if (isSuccessful) {
         const id = data?.recoveryId || data?.verificationId || '';
-        const masked = data?.maskedEmail || email.trim();
+        const masked = data?.maskedEmail || maskEmailAddress(email.trim());
         const seconds = Number(data?.expiresInSeconds) || 60;
         setRecoveryId(id);
         setMaskedEmail(masked);
@@ -136,8 +149,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   // 2. Resend OTP (Phase 17)
-  const handleResendOtp = async () => {
-    if (resendCooldown > 0 || loading) return;
+  const handleResendOtp = async (): Promise<boolean> => {
+    if (resendCooldown > 0 || loading) return false;
     setErrorMsg(null);
     setSuccessNotice(null);
     setLoading(true);
@@ -165,33 +178,25 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setMaskedEmail(masked);
         setTimerSeconds(seconds);
         setResendCooldown(45);
-        setOtp('');
         setSuccessNotice('A fresh verification code has been dispatched.');
+        return true;
       } else {
-        setErrorMsg(data?.message || 'Failed to resend OTP. Please try again.');
+        setErrorMsg(otpErrorMessage(data?.message, 'Unable to resend the verification code. Please try again.'));
+        return false;
       }
     } catch (err: any) {
       const msg = err?.message || '';
-      if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
-        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
-      } else {
-        setErrorMsg(msg || 'Failed to resend OTP.');
-      }
+      setErrorMsg(otpErrorMessage(msg, 'Unable to resend the verification code. Please try again.'));
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   // 3. Verify OTP (Phase 14, 15, 16)
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyOtp = async (otpValue: string) => {
     setErrorMsg(null);
     setSuccessNotice(null);
-
-    if (otp.trim().length !== 6) {
-      setErrorMsg('Please enter the full 6-digit verification code.');
-      return;
-    }
 
     if (timerSeconds <= 0) {
       setErrorMsg('The verification OTP has expired. Please request a new one.');
@@ -205,7 +210,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         method: 'POST',
         body: JSON.stringify({
           recoveryId,
-          otp: otp.trim(),
+          otp: otpValue.trim(),
         }),
       });
 
@@ -222,15 +227,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setLoading(false);
         setStep('NEW_PASSWORD');
       } else {
-        setErrorMsg(data?.message || 'Invalid OTP. Please check the code and try again.');
+        setErrorMsg(otpErrorMessage(data?.message, 'Unable to verify the code. Please try again.'));
       }
     } catch (err: any) {
       const msg = err?.message || '';
-      if (msg.includes('returned HTML') || msg.includes('Failed to parse')) {
-        setErrorMsg('Account recovery service is temporarily unavailable. Please try again.');
-      } else {
-        setErrorMsg(msg || 'OTP verification failed. Please try again.');
-      }
+      setErrorMsg(otpErrorMessage(msg, 'Unable to verify the code. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -492,91 +493,17 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
           {/* STEP 2: OTP Verification */}
           {step === 'OTP' && (
-            <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: '0.85rem', borderRadius: '4px' }}>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#334155', lineHeight: '1.45' }}>
-                  We have sent a 6-digit verification OTP to your registered email address:
-                </p>
-                <strong style={{ display: 'block', fontSize: '0.95rem', color: 'var(--navy-primary)', marginTop: '0.35rem', fontFamily: 'monospace' }}>
-                  {maskedEmail}
-                </strong>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)' }}>
-                    ENTER 6-DIGIT OTP *
-                  </label>
-                  <span
-                    style={{
-                      fontSize: '0.82rem',
-                      fontWeight: 700,
-                      color: timerSeconds <= 20 ? '#DC2626' : '#D97706',
-                      fontFamily: 'monospace',
-                    }}
-                  >
-                    OTP valid for: {formatTimer(timerSeconds)}
-                  </span>
-                </div>
-
-                <input
-                  type="text"
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="_ _ _ _ _ _"
-                  style={{
-                    width: '100%',
-                    padding: '0.85rem',
-                    borderRadius: '4px',
-                    border: '2px solid var(--navy-primary)',
-                    fontSize: '1.4rem',
-                    textAlign: 'center',
-                    letterSpacing: '0.35em',
-                    fontWeight: 800,
-                    color: 'var(--navy-primary)',
-                    outline: 'none',
-                    backgroundColor: '#FFFFFF',
-                  }}
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || otp.length !== 6 || timerSeconds <= 0}
-                className="btn-primary"
-                style={{ width: '100%', padding: '0.75rem', fontWeight: 700 }}
-              >
-                {loading ? 'VERIFYING CODE...' : 'VERIFY OTP'}
-              </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.5rem', borderTop: '1px solid var(--white-border)' }}>
-                <span style={{ fontSize: '0.8rem', color: '#64748B' }}>Didn't receive the OTP?</span>
-                <button
-                  type="button"
-                  disabled={resendCooldown > 0 || loading}
-                  onClick={handleResendOtp}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: resendCooldown > 0 ? '#94A3B8' : 'var(--navy-hover)',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
-                  }}
-                >
-                  <RotateCw size={13} className={loading ? 'animate-spin' : ''} />
-                  <span>
-                    {resendCooldown > 0 ? `RESEND OTP (${resendCooldown}s)` : 'RESEND OTP'}
-                  </span>
-                </button>
-              </div>
-            </form>
+            <OTPVerification
+              destination={maskedEmail}
+              expiresInSeconds={timerSeconds}
+              verifyDisabled={timerSeconds <= 0}
+              onVerify={handleVerifyOtp}
+              onResend={handleResendOtp}
+              onBack={() => setStep('IDENTIFY')}
+              loading={loading}
+              error={errorMsg}
+              cooldown={resendCooldown}
+            />
           )}
 
           {/* STEP 3: Reset Password */}
