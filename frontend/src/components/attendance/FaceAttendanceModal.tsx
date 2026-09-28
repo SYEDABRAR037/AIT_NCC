@@ -1491,6 +1491,7 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                 <table style={{ width: '100%', minWidth: '980px', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
                   <thead>
                     <tr
+                      className="table-header-navy"
                       style={{
                         backgroundColor: 'var(--color-primary)',
                         color: 'var(--color-background)',

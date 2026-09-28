@@ -1534,10 +1534,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 </div>
 
                 {/* Personnel Table */}
-                <div style={{ backgroundColor: 'var(--white-pure)', borderRadius: '4px', border: '1px solid var(--white-border)', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
+                <div className="cadet-directory-scroll" role="region" aria-label="Cadet directory table" tabIndex={0}>
+                  <table className="cadet-directory-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
                     <thead>
-                      <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
+                      <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
                         <th style={{ padding: '0.75rem 1rem' }}>Cadet / Officer</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Regimental No</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Wing / Platoon</th>
@@ -1898,7 +1898,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <div style={{ backgroundColor: 'var(--white-pure)', borderRadius: '4px', border: '1px solid var(--white-border)', overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
-                      <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
+                      <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
                         <th style={{ padding: '0.75rem 1rem' }}>Timestamp</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Operator</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Action Code</th>
@@ -2229,7 +2229,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
-                          <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
+                          <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
                             <th style={{ padding: '0.75rem 1rem' }}>Certificate Serial No.</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Cadet Name & Regimental</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Type & Title</th>
@@ -2732,7 +2732,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
-                          <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
+                          <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
                             <th style={{ padding: '0.75rem 1rem' }}>Cadet Name</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Regimental No.</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Roll No.</th>
@@ -3387,7 +3387,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
-                          <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
+                          <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
                             <th style={{ padding: '0.75rem 1rem' }}>Cadet Name</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Regimental No.</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Roll No.</th>
@@ -3904,7 +3904,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
-                          <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
+                          <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)', textAlign: 'left' }}>
                             <th style={{ padding: '0.75rem 1rem' }}>Date & Timing</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Training Activity</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Location</th>
@@ -5431,7 +5431,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--white-border)', borderRadius: '4px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
+                        <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
                           <th style={{ padding: '0.4rem 0.6rem' }}>IDENTIFIER</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>STATUS</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>REMARKS</th>
@@ -5562,7 +5562,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid var(--white-border)', borderRadius: '4px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
+                        <tr className="table-header-navy" style={{ backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', textAlign: 'left' }}>
                           <th style={{ padding: '0.4rem 0.6rem' }}>NAME</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>REGIMENTAL NO</th>
                           <th style={{ padding: '0.4rem 0.6rem' }}>ROLL NO</th>
