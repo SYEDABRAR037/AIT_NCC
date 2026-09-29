@@ -20,7 +20,7 @@ import { MeetOurSeniors } from './components/home/MeetOurSeniors';
 import { LoginModal } from './components/auth/LoginModal';
 import { RegisterModal } from './components/auth/RegisterModal';
 import { RoleShellView } from './components/shells/RoleShellView';
-import { AiCadetAssistant } from './components/assistant/AiCadetAssistant';
+import { HelpButton } from './components/common/HelpButton';
 
 const AppContent: React.FC = () => {
   const { user, login } = useAuth();
@@ -137,8 +137,7 @@ const AppContent: React.FC = () => {
         onClose={() => setRegisterModalOpen(false)}
       />
 
-      {/* 24/7 Verified AI Cadet Assistant (Command Saathi) */}
-      <AiCadetAssistant />
+      <HelpButton />
     </div>
   );
 };
