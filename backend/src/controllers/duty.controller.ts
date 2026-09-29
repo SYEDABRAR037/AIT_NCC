@@ -284,6 +284,10 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
           userId: cadet.id,
           title: `New Duty Assignment: ${String(dutyType).replace(/_/g, ' ')}`,
           message: `You are assigned to ${targetTitle} on ${new Date(targetDate).toLocaleDateString()} at ${location}. Reporting: ${reportingTime || '0630 hrs'}.`,
+          type: 'DUTY_ASSIGNED',
+          referenceType: 'DUTY',
+          referenceId: d.id,
+          eventKey: `duty-assigned:${d.id}`,
         },
       });
 

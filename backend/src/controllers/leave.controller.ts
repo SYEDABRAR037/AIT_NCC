@@ -74,6 +74,10 @@ export const submitLeave = async (req: AuthRequest, res: Response): Promise<void
           title: 'New Leave Review Required',
           message: `Cadet ${req.user.fullName} (${req.user.regimentalNumber}) submitted a ${leave.leaveType} leave request.`,
           isUrgent: false,
+          type: 'LEAVE_SUBMITTED',
+          referenceType: 'LEAVE',
+          referenceId: leave.id,
+          eventKey: `leave-submitted:${leave.id}:${mentorAssigned.seniorId}`,
         },
       });
     }
@@ -414,7 +418,8 @@ export const processLeaveAction = async (req: AuthRequest, res: Response): Promi
         leave.endDate,
         nextStatus,
         req.user.fullName || 'Command Authority',
-        remarks || undefined
+        remarks || undefined,
+        leave.id
       ).catch((err) => console.error('Notification dispatch error:', err));
     }
 

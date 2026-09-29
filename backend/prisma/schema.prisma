@@ -48,6 +48,7 @@ model User {
   role               Role          @default(CADET)
   status             AccountStatus @default(UNDER_REVIEW)
   rank               String        @default("CDT")
+  digitalIdToken     String?       @unique @default(uuid())
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -76,6 +77,10 @@ model User {
   passwordResets      PasswordReset[]
   rankHistory         RankHistory[] @relation("CadetRankHistory")
   rankChanges         RankHistory[] @relation("RankChangedBy")
+  notifications       Notification[]
+  notificationPreferences NotificationPreferences?
+  pushSubscriptions   WebPushSubscription[]
+  notificationReads  NotificationRead[]
 
   @@index([role])
   @@index([status])
@@ -445,14 +450,67 @@ model RankHistory {
 }
 
 model Notification {
-  id         String   @id @default(uuid())
-  userId     String?
-  targetRole Role?
-  title      String
-  message    String
-  isRead     Boolean  @default(false)
-  isUrgent   Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id                    String   @id @default(uuid())
+  userId                String?
+  targetRole            Role?
+  title                 String
+  message               String
+  type                  String   @default("SYSTEM")
+  priority              String   @default("NORMAL")
+  referenceType         String?
+  referenceId           String?
+  eventKey              String?  @unique
+  isRead                Boolean  @default(false)
+  isUrgent              Boolean  @default(false)
+  emailStatus           String   @default("PENDING")
+  pushStatus            String   @default("PENDING")
+  emailAttempts         Int      @default(0)
+  pushAttempts          Int      @default(0)
+  nextDeliveryAt        DateTime @default(now())
+  processingLeaseAt     DateTime?
+  deliveryLastError     String?
+  securityMandatory     Boolean  @default(false)
+  fanoutAt              DateTime?
+  createdAt             DateTime @default(now())
+  user                  User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reads                 NotificationRead[]
+
+  @@index([userId, createdAt])
+  @@index([emailStatus, pushStatus, nextDeliveryAt])
+  @@index([targetRole, createdAt])
+}
+
+model NotificationPreferences {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  emailEnabled Boolean  @default(true)
+  pushEnabled  Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WebPushSubscription {
+  id                    String   @id @default(uuid())
+  userId                String
+  endpointHash          String   @unique
+  encryptedSubscription String
+  createdAt             DateTime @default(now())
+  lastUsedAt            DateTime?
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  notificationId String
+  userId         String
+  readAt         DateTime     @default(now())
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId, readAt])
 }
 
 model TrainingSession {

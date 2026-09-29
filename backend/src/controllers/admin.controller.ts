@@ -720,6 +720,10 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
           userId: String(cadetId),
           title: `Camp Nomination Update: ${camp.name}`,
           message: `Your nomination status is now ${status}. Remarks: ${remarks || 'None'}`,
+          type: 'CAMP_UPDATE',
+          referenceType: 'CAMP_PARTICIPANT',
+          referenceId: p.id,
+          eventKey: `camp-participant:${p.id}:${status}`,
         },
       });
 
@@ -907,13 +911,23 @@ export const deleteAdminNotice = async (req: AuthRequest, res: Response): Promis
 
 
 // 12. Audit Logs: List
-export const getAdminAuditLogs = async (_req: AuthRequest, res: Response): Promise<void> => {
+export const getAdminAuditLogs = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user || req.user.role !== Role.ADMIN_ANO) { res.status(403).json({ success: false, message: 'Admin / ANO authorization required.' }); return; }
   try {
-    const logs = await prisma.auditLog.findMany({
-      take: 50,
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json({ success: true, count: logs.length, logs });
+    const page = Math.max(1, Number.parseInt(String(req.query.page || '1'), 10) || 1);
+    const pageSize = Math.min(50, Math.max(1, Number.parseInt(String(req.query.pageSize || '25'), 10) || 25));
+    const where: any = {};
+    if (req.query.action) where.action = { contains: String(req.query.action).slice(0, 80), mode: 'insensitive' };
+    if (req.query.entity) where.targetType = { contains: String(req.query.entity).slice(0, 80), mode: 'insensitive' };
+    if (req.query.actor) where.actorName = { contains: String(req.query.actor).slice(0, 100), mode: 'insensitive' };
+    if (req.query.q) where.OR = [{ details: { contains: String(req.query.q).slice(0, 120), mode: 'insensitive' } }, { targetId: { contains: String(req.query.q).slice(0, 120), mode: 'insensitive' } }];
+    if (req.query.from || req.query.to) where.createdAt = { ...(req.query.from ? { gte: new Date(String(req.query.from)) } : {}), ...(req.query.to ? { lte: new Date(String(req.query.to)) } : {}) };
+    if (where.createdAt && Object.values(where.createdAt).some((d) => Number.isNaN((d as Date).getTime()))) { res.status(400).json({ success: false, message: 'Invalid date filter.' }); return; }
+    const [logs, total] = await Promise.all([
+      prisma.auditLog.findMany({ where, skip: (page - 1) * pageSize, take: pageSize, orderBy: { createdAt: 'desc' } }),
+      prisma.auditLog.count({ where }),
+    ]);
+    res.json({ success: true, count: logs.length, logs, page, pageSize, total, totalPages: Math.ceil(total / pageSize) });
   } catch (error) {
     console.error('getAdminAuditLogs error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch audit logs' });

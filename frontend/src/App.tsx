@@ -21,6 +21,7 @@ import { LoginModal } from './components/auth/LoginModal';
 import { RegisterModal } from './components/auth/RegisterModal';
 import { RoleShellView } from './components/shells/RoleShellView';
 import { HelpButton } from './components/common/HelpButton';
+import { DigitalIdVerification } from './components/digitalId/DigitalIdView';
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -41,6 +42,7 @@ const AppContent: React.FC = () => {
   };
 
   const currentRole = activeShellRole || (user ? user.role : null);
+  if (window.location.pathname.startsWith('/verify-id/')) return <DigitalIdVerification />;
 
   return (
     <div className="app-root">

@@ -59,3 +59,25 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Display server-queued push notifications and route clicks only within this origin.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data?.text() || '' }; }
+  event.waitUntil(self.registration.showNotification(payload.title || 'NCC AIT Pune', {
+    body: payload.body || 'You have a new notification.',
+    icon: '/assets/icons/icon-192.png',
+    badge: '/assets/icons/icon-192.png',
+    data: { url: payload.url || '/' },
+  }));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const requested = new URL(event.notification.data?.url || '/', self.location.origin);
+  const destination = requested.origin === self.location.origin ? requested.href : self.location.origin + '/';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    const client = clients.find((item) => new URL(item.url).origin === self.location.origin);
+    if (client) { client.navigate(destination); return client.focus(); }
+    return self.clients.openWindow(destination);
+  }));
+});

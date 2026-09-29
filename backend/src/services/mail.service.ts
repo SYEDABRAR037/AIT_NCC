@@ -12,12 +12,12 @@ let transporter: Transporter | null = null;
 export const getTransporter = (): Transporter => {
   if (transporter) return transporter;
 
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const user = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'kashmirgaming033@gmail.com';
-  const rawPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || 'gjemdiespkujqayq';
-  const pass = rawPass.replace(/\s+/g, ''); // Strip any accidental spaces from 16-char Google App Password
-
+  const user = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
+  const rawPass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD;
+  if (!host || !user || !rawPass) throw new Error('SMTP host, user, and password must be configured.');
+  const pass = rawPass.replace(/\s+/g, '');
   const isGmail = host.includes('gmail.com') || user.endsWith('@gmail.com');
 
   if (isGmail) {
@@ -70,9 +70,8 @@ export const sendOtpEmail = async ({
   otp,
   expiresInMinutes = 5,
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  const mailFrom = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || 'kashmirgaming033@gmail.com';
+  const mailFrom = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '';
   const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
-  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || 'gjemdiespkujqayq';
 
   // Exact Subject required by Phase 12
   const subject = 'NCC Account Recovery — One-Time Password (OTP)';

@@ -127,7 +127,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               }}>
                 {displayUser?.status || 'ACTIVE'}
               </span>
-              <span className="badge-institutional">CADET</span>
+              <span className="badge-institutional">{displayUser?.role || 'CADET'}</span>
             </div>
             <div style={{ fontSize: '0.88rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
               Regimental No: <strong>{displayUser?.regimentalNumber}</strong> &bull; Roll: <strong>{displayUser?.collegeRollNumber}</strong> &bull; Platoon: <strong>{displayUser?.platoonName}</strong>

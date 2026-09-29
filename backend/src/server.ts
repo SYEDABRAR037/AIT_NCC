@@ -22,6 +22,10 @@ import dashboardRoutes from './routes/dashboard.routes';
 import serviceRecordRoutes from './routes/serviceRecord.routes';
 import rankRoutes from './routes/rank.routes';
 import mediaRoutes from './routes/media.routes';
+import searchRoutes from './routes/search.routes';
+import digitalIdRoutes from './routes/digitalId.routes';
+import digitalIdPublicRoutes from './routes/digitalIdPublic.routes';
+import { processNotificationDeliveries } from './services/notificationDelivery.service';
 
 dotenv.config();
 
@@ -72,6 +76,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // API Routes
 app.use('/api/public', publicRoutes);
+app.use('/api/public/digital-id', digitalIdPublicRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/digital-id', digitalIdRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/hierarchy', hierarchyRoutes);
@@ -110,6 +117,9 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
 app.listen(PORT, () => {
   console.log(`[NCC COMMAND SERVER] Running on port ${PORT}`);
+  void processNotificationDeliveries();
+  const notificationTimer = setInterval(() => { void processNotificationDeliveries(); }, 15_000);
+  notificationTimer.unref();
 });
 
 export default app;

@@ -2,7 +2,6 @@ import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
-import { notifyInquiryReply } from '../services/notification.service';
 
 // Generate unique Request Number: REQ-2026-XXXX
 const generateRequestNumber = async (): Promise<string> => {
@@ -938,25 +937,6 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
       return reply;
     });
 
-    // Officer replied -> Dispatch institutional email to cadet's registered institutional address (Phase 5C, 5D, 5E)
-    if (!isCadet && inquiry.cadet?.email) {
-      notifyInquiryReply(
-        {
-          fullName: inquiry.cadet.fullName,
-          email: inquiry.cadet.email,
-          regimentalNumber: inquiry.cadet.regimentalNumber,
-        },
-        {
-          requestNumber: inquiry.requestNumber,
-          title: inquiry.title,
-        },
-        sanitizedMsg,
-        req.user.role,
-        req.user.fullName
-      ).catch((err) => {
-        console.error('[INQUIRY EMAIL FAILURE - SAFE CATCH]:', err);
-      });
-    }
 
     res.status(201).json({
       success: true,

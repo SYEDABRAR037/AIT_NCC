@@ -73,7 +73,7 @@ export const promoteCadet = async (req: AuthRequest, res: Response): Promise<voi
         },
       });
       await tx.notification.create({
-        data: { userId: cadet.id, title: 'NCC Rank Updated', message: `Your cadet rank is now ${newRank}, effective ${appointmentDate.toLocaleDateString()}.` },
+        data: { userId: cadet.id, title: 'NCC Rank Updated', message: `Your cadet rank is now ${newRank}, effective ${appointmentDate.toLocaleDateString()}.`, type: 'RANK_UPDATED', referenceType: 'RANK_HISTORY', referenceId: history.id, eventKey: `rank-history:${history.id}` },
       });
       return { ...cadet, rank: newRank, history };
     });

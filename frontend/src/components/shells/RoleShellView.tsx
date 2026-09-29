@@ -43,6 +43,7 @@ import { RankPromotionDialog } from './RankPromotionDialog';
 import { InquiryDeskView } from './InquiryDeskView';
 import { safeApiFetch } from '../../utils/api';
 import { MediaManagementView } from './MediaManagementView';
+import { DigitalIdView } from '../digitalId/DigitalIdView';
 
 
 interface RoleShellViewProps {
@@ -61,6 +62,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const [adminEvents, setAdminEvents] = useState<any[]>([]);
   const [adminNotices, setAdminNotices] = useState<any[]>([]);
   const [adminAuditLogs, setAdminAuditLogs] = useState<any[]>([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotalPages, setAuditTotalPages] = useState(1);
+  const [auditFilters, setAuditFilters] = useState({ q: '', actor: '', action: '', entity: '', from: '', to: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterPlatoon, setFilterPlatoon] = useState('');
@@ -176,6 +180,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationFilter, setNotificationFilter] = useState<'ALL' | 'UNREAD'>('ALL');
+  const [notificationPreferences, setNotificationPreferences] = useState({ emailEnabled: true, pushEnabled: true });
+  const [globalQuery, setGlobalQuery] = useState('');
+  const [globalResults, setGlobalResults] = useState<any[]>([]);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   // Bulk Importers State (Google Sheets / CSV)
   const [attendanceImportModal, setAttendanceImportModal] = useState(false);
@@ -234,11 +243,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const fetchAdminAuditLogs = async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/admin/audit-logs', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const params = new URLSearchParams({ page: String(auditPage), pageSize: '25' });
+      Object.entries(auditFilters).forEach(([key, value]) => { if (value) params.set(key, value); });
+      const res = await fetch(`/api/admin/audit-logs?${params}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      if (res.ok && data.success) setAdminAuditLogs(data.logs);
+      if (res.ok && data.success) { setAdminAuditLogs(data.logs); setAuditTotalPages(Math.max(1, data.totalPages || 1)); }
     } catch (err) {
       console.error('Fetch audit logs error:', err);
     }
@@ -665,16 +674,63 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const handleMarkNotificationRead = async (id: string) => {
     if (!token) return;
     try {
-      await fetch(`/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      const wasUnread = notifications.some((item) => item.id === id && !item.isRead);
+      const response = await fetch(`/api/notifications/${id}/read`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+      if (response.ok) {
+        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+        if (wasUnread) setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
     } catch (err) {
       console.error('Mark read error:', err);
     }
   };
+
+  const markAllNotificationsRead = async () => {
+    if (!token) return;
+    const res = await fetch('/api/notifications/read-all', { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) { setNotifications((items) => items.map((item) => ({ ...item, isRead: true }))); setUnreadCount(0); }
+  };
+
+  const saveNotificationPreferences = async (patch: Partial<typeof notificationPreferences>) => {
+    if (!token) return;
+    const next = { ...notificationPreferences, ...patch };
+    const res = await fetch('/api/notifications/preferences', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(next) });
+    if (res.ok) setNotificationPreferences(next);
+  };
+
+  const disableBrowserPush = async () => {
+    if (!token || !('serviceWorker' in navigator)) { await saveNotificationPreferences({ pushEnabled: false }); return; }
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      await fetch('/api/notifications/push/subscription', { method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ endpoint: subscription.endpoint }) });
+      await subscription.unsubscribe();
+    }
+    await saveNotificationPreferences({ pushEnabled: false });
+  };
+
+  const enableBrowserPush = async () => {
+    if (!token || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) { alert('Browser push is unavailable on this device.'); return; }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+    const keyResponse = await fetch('/api/notifications/push/public-key', { headers: { Authorization: `Bearer ${token}` } });
+    const keyData = await keyResponse.json();
+    if (!keyResponse.ok || !keyData.publicKey) { alert(keyData.message || 'Browser push is not configured.'); return; }
+    const applicationServerKey = Uint8Array.from(atob(keyData.publicKey.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    const response = await fetch('/api/notifications/push/subscription', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ subscription: subscription.toJSON() }) });
+    if (!response.ok) { await subscription.unsubscribe(); alert('Could not save this device subscription.'); return; }
+    await saveNotificationPreferences({ pushEnabled: true });
+  };
+
+  useEffect(() => {
+    if (globalQuery.trim().length < 2 || !token) { setGlobalResults([]); return; }
+    const timer = window.setTimeout(async () => {
+      try { const res = await fetch(`/api/search?q=${encodeURIComponent(globalQuery.trim())}`, { headers: { Authorization: `Bearer ${token}` } }); const data = await res.json(); if (res.ok) setGlobalResults(data.results || []); } catch { setGlobalResults([]); }
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [globalQuery, token]);
 
   // CSV Parser for Attendance
   const parseAttendanceCSV = (rawText: string) => {
@@ -790,7 +846,17 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   };
 
   useEffect(() => {
+    if (role === 'ADMIN_ANO' && activeTab === 'audit') fetchAdminAuditLogs();
+  }, [role, activeTab, auditPage, auditFilters, token]);
+
+  useEffect(() => {
     fetchNotifications();
+    const notificationTimer = window.setInterval(fetchNotifications, 15000);
+    if (token) fetch('/api/notifications/preferences', { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json()).then((d) => { if (d.success) setNotificationPreferences({ emailEnabled: d.preferences.emailEnabled, pushEnabled: d.preferences.pushEnabled }); }).catch(() => undefined);
+    return () => window.clearInterval(notificationTimer);
+  }, [token]);
+
+  useEffect(() => {
     if (role === 'ADMIN_ANO') {
       fetchAdminUsers();
       fetchPendingReviews();
@@ -1135,6 +1201,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           items: [
             { id: 'overview', name: 'Cadet Dashboard' },
             { id: 'profile', name: 'Digital NCC Profile' },
+            { id: 'digital-id', name: 'Digital NCC ID' },
             { id: 'requests', name: 'NCC Request Center' },
             { id: 'inquiries', name: 'My Official Inquiries' },
             { id: 'timeline', name: 'Activity Timeline' },
@@ -1182,6 +1249,12 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ position: 'relative' }}>
+            <input aria-label="Global Search" value={globalQuery} onChange={(event) => { setGlobalQuery(event.target.value); setGlobalSearchOpen(true); }} onFocus={() => setGlobalSearchOpen(true)} placeholder="Search" style={{ width: 190, padding: '0.45rem 0.6rem', borderRadius: 4 }} />
+            {globalSearchOpen && globalQuery.trim().length >= 2 && <div style={{ position: 'absolute', top: '120%', right: 0, width: 320, maxHeight: 320, overflowY: 'auto', background: 'white', color: '#10233e', zIndex: 1300, boxShadow: '0 8px 24px #0003', borderRadius: 6 }}>
+              {globalResults.length ? globalResults.map((result) => <button key={`${result.type}-${result.id}`} onClick={() => { if (result.type === 'Camp') setActiveTab('camps'); else if (result.type === 'Duty') setActiveTab('duties'); else if (result.type === 'Certificate') setActiveTab('certificates'); else if (result.type === 'Leave') setActiveTab('leave'); else if (result.type === 'Notice') setActiveTab('notices'); else if (result.type === 'Cadet' || result.type === 'Senior' || result.type === 'Platoon Senior') setSelectedCadetForProfile({ id: result.id, fullName: result.title, rank: result.description.split(' · ')[0], regimentalNumber: result.description.split(' · ')[1], platoonName: result.description.split(' · ')[2] }); setGlobalSearchOpen(false); }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: 12, border: 0, borderBottom: '1px solid #e7eaf0', background: 'white', cursor: 'pointer' }}><b>{result.title}</b><small style={{ display: 'block' }}>{result.type} · {result.description}</small></button>) : <div style={{ padding: 12 }}>No matching records</div>}
+            </div>}
+          </div>
           {/* In-App Notification Bell & Popover */}
           <div style={{ position: 'relative' }}>
             <button
@@ -1240,16 +1313,21 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 }}
               >
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--navy-primary)', color: 'var(--color-background)', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em' }}>COMMAND NOTIFICATIONS</span>
-                  <span style={{ fontSize: '0.72rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.15rem 0.4rem', borderRadius: '3px' }}>{unreadCount} Unread</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em' }}>NOTIFICATIONS</span>
+                  <button onClick={() => void markAllNotificationsRead()} style={{ background: 'transparent', border: 0, color: 'white', cursor: 'pointer', fontSize: 12 }}>Mark all read ({unreadCount})</button>
+                </div>
+                <div style={{ display: 'flex', gap: 6, padding: '8px 10px', flexWrap: 'wrap' }}>
+                  <button onClick={() => setNotificationFilter('ALL')}>All</button><button onClick={() => setNotificationFilter('UNREAD')}>Unread</button>
+                  <button onClick={() => void saveNotificationPreferences({ emailEnabled: !notificationPreferences.emailEnabled })}>Email {notificationPreferences.emailEnabled ? 'On' : 'Off'}</button>
+                  <button onClick={() => notificationPreferences.pushEnabled ? void disableBrowserPush() : void enableBrowserPush()}>Push {notificationPreferences.pushEnabled ? 'On' : 'Enable'}</button>
                 </div>
                 <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
-                  {notifications.length === 0 ? (
+                  {(notificationFilter === 'UNREAD' ? notifications.filter((n) => !n.isRead) : notifications).length === 0 ? (
                     <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
                       No notifications recorded
                     </div>
                   ) : (
-                    notifications.map((n) => (
+                    (notificationFilter === 'UNREAD' ? notifications.filter((n) => !n.isRead) : notifications).map((n) => (
                       <div
                         key={n.id}
                         onClick={() => handleMarkNotificationRead(n.id)}
@@ -1360,6 +1438,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <main id="role-main-content" tabIndex={-1} style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
             {activeTab === 'overview' && <PendingActionsView onOpen={setActiveTab} />}
+            {activeTab === 'digital-id' && role === 'CADET' && <DigitalIdView token={token} />}
             {activeTab === 'media' && ['ADMIN_ANO', 'PLATOON_SENIOR', 'SENIOR'].includes(role) && <MediaManagementView role={role} />}
             {/* CENTRAL APPROVAL DESK (MODULE 3 & 7) */}
             {activeTab === 'approvals' && (
@@ -1970,6 +2049,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   </button>
                 </div>
 
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {(['q', 'actor', 'action', 'entity', 'from', 'to'] as const).map((field) => <input key={field} aria-label={`Audit ${field}`} type={field === 'from' || field === 'to' ? 'date' : 'search'} placeholder={field === 'q' ? 'Search details / target' : field[0].toUpperCase() + field.slice(1)} value={auditFilters[field]} onChange={(event) => { setAuditFilters((old) => ({ ...old, [field]: event.target.value })); setAuditPage(1); }} style={{ padding: '0.5rem', minWidth: 130 }} />)}
+                </div>
                 <div style={{ backgroundColor: 'var(--white-pure)', borderRadius: '4px', border: '1px solid var(--white-border)', overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
@@ -2007,6 +2089,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       )}
                     </tbody>
                   </table>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, padding: 12 }}>
+                  <button disabled={auditPage <= 1} onClick={() => setAuditPage((page) => Math.max(1, page - 1))}>Previous</button>
+                  <span>Page {auditPage} of {auditTotalPages}</span>
+                  <button disabled={auditPage >= auditTotalPages} onClick={() => setAuditPage((page) => Math.min(auditTotalPages, page + 1))}>Next</button>
                 </div>
               </div>
             )}
