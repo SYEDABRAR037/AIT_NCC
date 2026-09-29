@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, Play, X } from 'lucide-react';
+import { Play, X } from 'lucide-react';
 import '../../styles/hero.css';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 
@@ -11,13 +11,6 @@ interface HeroVideoProps {
 export const HeroVideo: React.FC<HeroVideoProps> = () => {
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const dialogRef = useAccessibleDialog<HTMLDivElement>(videoModalOpen, () => setVideoModalOpen(false));
-
-  const handleExploreClick = () => {
-    const target = document.getElementById('features') || document.getElementById('about');
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <>
@@ -52,11 +45,6 @@ export const HeroVideo: React.FC<HeroVideoProps> = () => {
             </p>
 
             <div className="ref-hero-cta-group">
-              <button className="ref-hero-btn-primary" onClick={handleExploreClick}>
-                <span>Explore NCC</span>
-                <ArrowRight size={18} aria-hidden="true" />
-              </button>
-
               <button
                 className="ref-hero-btn-secondary"
                 onClick={() => setVideoModalOpen(true)}
