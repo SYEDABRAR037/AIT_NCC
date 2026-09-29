@@ -80,12 +80,6 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
     inputRefs.current[0]?.focus();
   };
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onVerify(otp.join(''));
@@ -100,10 +94,10 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
       )}
       <div className="otp-header">
         <h2>Verify Your Identity</h2>
-        <p>Enter the {length}-digit verification code sent to {destination}.</p>
+        <p>If your details match an account, a {length}-digit code was sent to {destination}.</p>
         {expiresInSeconds !== undefined && (
           <p className="otp-expiry" aria-live="polite">
-            {expiresInSeconds > 0 ? `Code expires in ${formatTime(expiresInSeconds)}` : 'This verification code has expired.'}
+            {expiresInSeconds > 0 ? `OTP expires in ${expiresInSeconds}s` : 'OTP expired. Please request a new OTP.'}
           </p>
         )}
       </div>

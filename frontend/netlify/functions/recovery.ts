@@ -5,14 +5,48 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import nodemailer from 'nodemailer';
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ||
-  'postgresql://ncc_admin:bJEqUwKC6TI1LjRdOz43vwnsEskmtJWq@dpg-daq7ov49v7es73c55f0g-a.singapore-postgres.render.com/ncc_command_db?sslmode=require';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
-const SENDER_EMAIL = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'kashmirgaming033@gmail.com';
+const DATABASE_URL = process.env.DATABASE_URL;
+const JWT_SECRET = process.env.JWT_SECRET;
+const SENDER_EMAIL = 'kashmirgaming033@gmail.com';
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
-const SENDER_PASS = (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || 'gjemdiespkujqayq').replace(/\s+/g, '');
+const SMTP_USER = process.env.SMTP_USER || SENDER_EMAIL;
+const SENDER_PASS = (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
+const OTP_TTL_MS = 60_000;
+const requestLimits = new Map<string, number[]>();
+const dummySessions = new Map<string, { email: string; lastIssuedAt: number; issuedAtTimes: number[] }>();
+
+const isRateLimited = (key: string, max: number, windowMs: number): boolean => {
+  const now = Date.now();
+  const recent = (requestLimits.get(key) || []).filter((time) => now - time < windowMs);
+  if (recent.length >= max) {
+    requestLimits.set(key, recent);
+    return true;
+  }
+  recent.push(now);
+  requestLimits.set(key, recent);
+  return false;
+};
+
+const genericChallenge = (email: string, headers: Record<string, string>) => {
+  const serverNow = new Date();
+  const recoveryId = crypto.randomUUID();
+  dummySessions.set(recoveryId, { email: email ? maskEmail(email.trim()) : 'your registered email address', lastIssuedAt: serverNow.getTime(), issuedAtTimes: [serverNow.getTime()] });
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({
+      success: true,
+      challengeAccepted: true,
+      nextStep: 'VERIFY_OTP',
+      message: 'If the details match an account, a code was sent to its registered email address.',
+      recoveryId,
+      verificationId: recoveryId,
+      maskedEmail: dummySessions.get(recoveryId)!.email,
+      expiresAt: new Date(serverNow.getTime() + OTP_TTL_MS).toISOString(),
+      serverNow: serverNow.toISOString(),
+    }),
+  };
+};
 
 const maskEmail = (email: string): string => {
   if (!email || !email.includes('@')) return email;
@@ -23,12 +57,13 @@ const maskEmail = (email: string): string => {
 
 const sendMailOverSmtp = async (recipientEmail: string, cadetName: string, otp: string): Promise<boolean> => {
   try {
+    if (!SENDER_PASS || !SMTP_USER || SMTP_USER.toLowerCase() !== SENDER_EMAIL) return false;
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
       auth: {
-        user: SENDER_EMAIL,
+        user: SMTP_USER,
         pass: SENDER_PASS,
       },
       connectionTimeout: 8000,
@@ -138,7 +173,21 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     event.path.split('/').pop() ||
     'request-otp';
 
-  const body = JSON.parse(event.body || '{}');
+  let body: Record<string, any>;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Invalid request.' }) };
+  }
+
+  const clientIp = event.headers['x-nf-client-connection-ip'] || 'unknown';
+  const maxRequestsByAction: Record<string, number> = { 'request-otp': 10, 'resend-otp': 20, 'verify-otp': 30, 'reset-password': 10 };
+  if (maxRequestsByAction[action] && isRateLimited(`${action}:${clientIp}`, maxRequestsByAction[action], 10 * 60_000)) {
+    return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait before trying again.' }) };
+  }
+  if (!DATABASE_URL || !JWT_SECRET) {
+    return { statusCode: 503, headers, body: JSON.stringify({ success: false, message: 'Account recovery is temporarily unavailable.' }) };
+  }
 
   const pgClient = new Client({
     connectionString: DATABASE_URL,
@@ -151,7 +200,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     // 1. REQUEST OTP
     if (action === 'request-otp') {
       const { email, regimentalNumber } = body;
-      if (!email || !regimentalNumber) {
+      if (typeof email !== 'string' || typeof regimentalNumber !== 'string' || !email.trim() || !regimentalNumber.trim()) {
         return {
           statusCode: 400,
           headers,
@@ -168,21 +217,23 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       );
 
       if (userRes.rows.length === 0) {
-        return {
-          statusCode: 404,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            message: 'No registered cadet found matching both the provided Email ID and Regimental Number.',
-          }),
-        };
+        return genericChallenge(email, headers);
       }
 
       const user = userRes.rows[0];
-      const otp = crypto.randomInt(100000, 999999).toString();
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentRequests = await pgClient.query(
+        'SELECT COUNT(*)::int AS count FROM "PasswordReset" WHERE "userId" = $1 AND "createdAt" >= $2',
+        [user.id, hourAgo]
+      );
+      if (recentRequests.rows[0].count >= 5 || isRateLimited(`account:${user.id}`, 5, 60 * 60_000)) {
+        return genericChallenge(email, headers);
+      }
+
+      const otp = crypto.randomInt(100000, 1000000).toString();
       const otpHash = await bcrypt.hash(otp, 10);
       const recoveryId = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
+      const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
       // Invalidate existing unused records
       await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW() WHERE "userId" = $1 AND "usedAt" IS NULL', [
@@ -210,19 +261,24 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         };
       }
 
+      // Start the 60-second window after the provider accepts the email.
+      const issuedAt = new Date();
+      const actualExpiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
+      await pgClient.query('UPDATE "PasswordReset" SET "expiresAt" = $1, "lastResendAt" = $2 WHERE id = $3', [actualExpiresAt, issuedAt, recoveryId]);
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          otpSent: true,
+          challengeAccepted: true,
           nextStep: 'VERIFY_OTP',
-          status: 'OTP_SENT',
-          message: 'A verification code has been dispatched to your official registered email address.',
+          message: 'If the details match an account, a code was sent to its registered email address.',
           recoveryId,
           verificationId: recoveryId,
           maskedEmail: maskEmail(user.email),
-          expiresInSeconds: 60,
+          expiresAt: actualExpiresAt.toISOString(),
+          serverNow: issuedAt.toISOString(),
         }),
       };
     }
@@ -244,10 +300,33 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       );
 
       if (prevRes.rows.length === 0) {
+        const dummy = dummySessions.get(String(recoveryId));
+        if (!dummy || Date.now() - dummy.lastIssuedAt < 45_000) {
+          return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait 45 seconds before requesting a new code.' }) };
+        }
+        const recentDummyIssues = dummy.issuedAtTimes.filter((time) => Date.now() - time < 60 * 60_000);
+        if (recentDummyIssues.length >= 5) {
+          return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait before requesting another code.' }) };
+        }
+        const issuedAt = new Date();
+        const newRecoveryId = crypto.randomUUID();
+        dummySessions.delete(String(recoveryId));
+        dummySessions.set(newRecoveryId, { email: dummy.email, lastIssuedAt: issuedAt.getTime(), issuedAtTimes: [...recentDummyIssues, issuedAt.getTime()] });
+        const expiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
         return {
-          statusCode: 400,
+          statusCode: 200,
           headers,
-          body: JSON.stringify({ success: false, message: 'Invalid or expired recovery session.' }),
+          body: JSON.stringify({
+            success: true,
+            challengeAccepted: true,
+            nextStep: 'VERIFY_OTP',
+            message: 'If the details match an account, a code was sent to its registered email address.',
+            recoveryId: newRecoveryId,
+            verificationId: newRecoveryId,
+            maskedEmail: dummy.email,
+            expiresAt: expiresAt.toISOString(),
+            serverNow: issuedAt.toISOString(),
+          }),
         };
       }
 
@@ -263,12 +342,24 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         };
       }
 
+      const issuedLastHour = await pgClient.query(
+        'SELECT COUNT(*)::int AS count FROM "PasswordReset" WHERE "userId" = $1 AND "createdAt" >= $2',
+        [prev.userId, new Date(Date.now() - 60 * 60_000)]
+      );
+      if (issuedLastHour.rows[0].count >= 5) {
+        return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait before requesting another code.' }) };
+      }
+
+      if (isRateLimited(`resend:${prev.userId}`, 5, 60 * 60_000)) {
+        return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait 45 seconds before requesting a new code.' }) };
+      }
+
       await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW() WHERE id = $1', [prev.id]);
 
-      const otp = crypto.randomInt(100000, 999999).toString();
+      const otp = crypto.randomInt(100000, 1000000).toString();
       const otpHash = await bcrypt.hash(otp, 10);
       const newRecoveryId = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds validity
+      const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
       await pgClient.query(
         'INSERT INTO "PasswordReset" (id, "userId", "otpHash", "expiresAt", "attemptCount", "lastResendAt", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, 0, NOW(), NOW(), NOW())',
@@ -285,19 +376,23 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         };
       }
 
+      const issuedAt = new Date();
+      const actualExpiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
+      await pgClient.query('UPDATE "PasswordReset" SET "expiresAt" = $1, "lastResendAt" = $2 WHERE id = $3', [actualExpiresAt, issuedAt, newRecoveryId]);
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          otpSent: true,
+          challengeAccepted: true,
           nextStep: 'VERIFY_OTP',
-          status: 'OTP_SENT',
-          message: 'A fresh verification code has been dispatched.',
+          message: 'If the details match an account, a code was sent to its registered email address.',
           recoveryId: newRecoveryId,
           verificationId: newRecoveryId,
           maskedEmail: maskEmail(prev.email),
-          expiresInSeconds: 60,
+          expiresAt: actualExpiresAt.toISOString(),
+          serverNow: issuedAt.toISOString(),
         }),
       };
     }
@@ -318,7 +413,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ success: false, message: 'Invalid or expired recovery session.' }),
+          body: JSON.stringify({ success: false, message: 'Invalid or expired OTP. Please request a new one.' }),
         };
       }
 
@@ -327,11 +422,11 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ success: false, message: 'This OTP has already been utilized.' }),
+          body: JSON.stringify({ success: false, message: 'Invalid or expired OTP. Please request a new one.' }),
         };
       }
 
-      if (new Date() > new Date(reset.expiresAt)) {
+      if (Date.now() >= new Date(reset.expiresAt).getTime()) {
         await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW() WHERE id = $1', [reset.id]);
         return {
           statusCode: 400,
@@ -349,14 +444,13 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
         };
       }
 
-      const isOtpValid = await bcrypt.compare(String(otp).trim(), reset.otpHash);
+      const isOtpValid = /^\d{6}$/.test(String(otp)) && await bcrypt.compare(String(otp), reset.otpHash);
       if (!isOtpValid) {
-        const attempts = reset.attemptCount + 1;
-        await pgClient.query('UPDATE "PasswordReset" SET "attemptCount" = $1, "usedAt" = $2 WHERE id = $3', [
-          attempts,
-          attempts >= 5 ? new Date() : null,
-          reset.id,
-        ]);
+        const attemptResult = await pgClient.query(
+          'UPDATE "PasswordReset" SET "attemptCount" = "attemptCount" + 1, "usedAt" = CASE WHEN "attemptCount" + 1 >= 5 THEN NOW() ELSE "usedAt" END WHERE id = $1 AND "usedAt" IS NULL AND "attemptCount" < 5 RETURNING "attemptCount"',
+          [reset.id]
+        );
+        const attempts = attemptResult.rows[0]?.attemptCount || 5;
 
         if (attempts >= 5) {
           return {
@@ -372,12 +466,18 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
           headers,
           body: JSON.stringify({
             success: false,
-            message: `Invalid OTP. Please check the code and try again. (${remaining} attempt${remaining === 1 ? '' : 's'} remaining)`,
+            message: 'Invalid or expired OTP. Please request a new one.',
           }),
         };
       }
 
-      await pgClient.query('UPDATE "PasswordReset" SET "verifiedAt" = NOW() WHERE id = $1', [reset.id]);
+      const verified = await pgClient.query(
+        'UPDATE "PasswordReset" SET "verifiedAt" = NOW() WHERE id = $1 AND "usedAt" IS NULL AND "verifiedAt" IS NULL AND "expiresAt" > NOW() RETURNING id',
+        [reset.id]
+      );
+      if (verified.rows.length === 0) {
+        return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Invalid or expired recovery session.' }) };
+      }
 
       const resetToken = jwt.sign(
         { userId: reset.userId, recoveryId: reset.id, purpose: 'PASSWORD_RESET' },
@@ -446,7 +546,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       }
 
       const resetRes = await pgClient.query('SELECT * FROM "PasswordReset" WHERE id = $1', [decoded.recoveryId]);
-      if (resetRes.rows.length === 0 || !resetRes.rows[0].verifiedAt || resetRes.rows[0].usedAt) {
+      if (resetRes.rows.length === 0 || resetRes.rows[0].userId !== decoded.userId || !resetRes.rows[0].verifiedAt || resetRes.rows[0].usedAt) {
         return {
           statusCode: 400,
           headers,
@@ -459,13 +559,15 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       // Atomic Transaction: update passwordHash and invalidate recovery records
       await pgClient.query('BEGIN');
       try {
+        const claimed = await pgClient.query(
+          'UPDATE "PasswordReset" SET "usedAt" = NOW(), "updatedAt" = NOW() WHERE id = $1 AND "userId" = $2 AND "verifiedAt" IS NOT NULL AND "usedAt" IS NULL RETURNING id',
+          [decoded.recoveryId, decoded.userId]
+        );
+        if (claimed.rows.length !== 1) throw new Error('Reset session already consumed');
+
         await pgClient.query('UPDATE "User" SET "passwordHash" = $1, "updatedAt" = NOW() WHERE id = $2', [
           passwordHash,
           decoded.userId,
-        ]);
-
-        await pgClient.query('UPDATE "PasswordReset" SET "usedAt" = NOW(), "updatedAt" = NOW() WHERE id = $1', [
-          decoded.recoveryId,
         ]);
 
         await pgClient.query(
@@ -498,7 +600,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       body: JSON.stringify({ success: false, message: `Unknown recovery action: ${action}` }),
     };
   } catch (error: any) {
-    console.error('[NETLIFY RECOVERY] Error:', error);
+    console.error('[NETLIFY RECOVERY] Request failed:', error?.name || 'internal error');
     return {
       statusCode: 500,
       headers,

@@ -4,7 +4,6 @@ interface SendOtpEmailParams {
   recipientEmail: string;
   cadetName: string;
   otp: string;
-  expiresInMinutes?: number;
 }
 
 let transporter: Transporter | null = null;
@@ -68,9 +67,8 @@ export const sendOtpEmail = async ({
   recipientEmail,
   cadetName,
   otp,
-  expiresInMinutes = 5,
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  const mailFrom = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER || '';
+  const mailFrom = 'kashmirgaming033@gmail.com';
   const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 
   // Exact Subject required by Phase 12
@@ -153,7 +151,7 @@ NCC Digital Command & Cadet Management System`;
 
   if (relayUrl) {
     try {
-      console.log(`[MAIL SERVICE] Dispatching OTP via HTTPS Relay (${relayUrl}) to ${recipientEmail}...`);
+      console.log('[MAIL SERVICE] Dispatching recovery OTP via HTTPS relay.');
       const relaySecret =
         process.env.RECOVERY_RELAY_SECRET || '';
 
@@ -170,7 +168,6 @@ NCC Digital Command & Cadet Management System`;
           recipientEmail,
           cadetName,
           otp,
-          expiresInMinutes,
           subject,
           textContent,
           htmlContent,
@@ -197,7 +194,7 @@ NCC Digital Command & Cadet Management System`;
   // Strategy 2: Direct Nodemailer SMTP (works on local machine, non-restricted VPS, or paid tiers)
   try {
     const client = getTransporter();
-    console.log(`[MAIL SERVICE] EMAIL_SEND_STARTED: Direct SMTP from ${mailFrom} to ${recipientEmail}`);
+    console.log('[MAIL SERVICE] Direct SMTP recovery dispatch started.');
 
     const sendPromise = client.sendMail({
       from: `"${mailFromName}" <${mailFrom}>`,
@@ -239,7 +236,6 @@ NCC Digital Command & Cadet Management System`;
             recipientEmail,
             cadetName,
             otp,
-            expiresInMinutes,
             subject,
             textContent,
             htmlContent,

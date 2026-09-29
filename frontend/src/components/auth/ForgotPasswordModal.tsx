@@ -28,7 +28,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
 
   // Timers and UI states
-  const [timerSeconds, setTimerSeconds] = useState(60); // 60 seconds
+  const [timerSeconds, setTimerSeconds] = useState(60);
+  const [otpDeadline, setOtpDeadline] = useState<number | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0); // 45s cooldown
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -70,20 +71,31 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       setNewPassword('');
       setConfirmPassword('');
       setTimerSeconds(60);
+      setOtpDeadline(null);
       setResendCooldown(0);
     }
   }, [isOpen]);
 
-  // OTP Expiry Countdown (5 mins)
+  // Count against the server-issued expiry using a monotonic clock.
   useEffect(() => {
-    let interval: any;
-    if (isOpen && step === 'OTP' && timerSeconds > 0) {
-      interval = setInterval(() => {
-        setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isOpen, step, timerSeconds]);
+    if (!isOpen || step !== 'OTP' || otpDeadline === null) return;
+    const updateRemaining = () => {
+      setTimerSeconds(Math.max(0, Math.ceil((otpDeadline - performance.now()) / 1000)));
+    };
+    updateRemaining();
+    const interval = window.setInterval(updateRemaining, 200);
+    return () => window.clearInterval(interval);
+  }, [isOpen, step, otpDeadline]);
+
+  const applyServerExpiry = (data: any) => {
+    const expiry = Date.parse(data?.expiresAt);
+    const serverNow = Date.parse(data?.serverNow);
+    const remainingMs = Number.isFinite(expiry) && Number.isFinite(serverNow)
+      ? Math.max(0, expiry - serverNow)
+      : 60_000;
+    setOtpDeadline(performance.now() + remainingMs);
+    setTimerSeconds(Math.ceil(remainingMs / 1000));
+  };
 
   // Resend Cooldown Countdown
   useEffect(() => {
@@ -126,10 +138,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       if (isSuccessful) {
         const id = data?.recoveryId || data?.verificationId || '';
         const masked = data?.maskedEmail || maskEmailAddress(email.trim());
-        const seconds = Number(data?.expiresInSeconds) || 60;
         setRecoveryId(id);
         setMaskedEmail(masked);
-        setTimerSeconds(seconds);
+        applyServerExpiry(data);
         setResendCooldown(45);
         setLoading(false);
         setStep('OTP');
@@ -175,12 +186,11 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       if (isSuccessful) {
         const id = data?.recoveryId || data?.verificationId || recoveryId;
         const masked = data?.maskedEmail || maskedEmail;
-        const seconds = Number(data?.expiresInSeconds) || 60;
         setRecoveryId(id);
         setMaskedEmail(masked);
-        setTimerSeconds(seconds);
+        applyServerExpiry(data);
         setResendCooldown(45);
-        setSuccessNotice('A fresh verification code has been dispatched.');
+        setSuccessNotice('A fresh verification code is on its way.');
         return true;
       } else {
         setErrorMsg(otpErrorMessage(data?.message, 'Unable to resend the verification code. Please try again.'));
