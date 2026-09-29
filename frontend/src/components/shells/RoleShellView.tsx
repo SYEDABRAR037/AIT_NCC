@@ -42,6 +42,7 @@ import { PendingActionsView } from './PendingActionsView';
 import { RankPromotionDialog } from './RankPromotionDialog';
 import { InquiryDeskView } from './InquiryDeskView';
 import { safeApiFetch } from '../../utils/api';
+import { MediaManagementView } from './MediaManagementView';
 
 
 interface RoleShellViewProps {
@@ -381,11 +382,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         return;
       }
     } catch (err) {
-      console.warn('Fetch pending reviews fallback:', err);
-      try {
-        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-        setPendingReviews(offlineCadets.filter((c: any) => c.status === 'UNDER_REVIEW' || c.status === 'HOLD'));
-      } catch {}
+      console.error('Fetch pending reviews error:', err);
     }
   };
 
@@ -1088,6 +1085,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'certificates', name: 'Certificate Vault & Issuance' },
             { id: 'notices', name: 'Institutional Notices' },
             { id: 'audit', name: 'Audit Logs' },
+            { id: 'media', name: 'Photo Archives & Rank Holders' },
           ],
         };
       case 'PLATOON_SENIOR':
@@ -1106,6 +1104,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'certificates', name: 'My Certificates' },
+            { id: 'media', name: 'Photo Archives' },
           ],
         };
       case 'SENIOR':
@@ -1124,6 +1123,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'certificates', name: 'My Certificates' },
+            { id: 'media', name: 'Photo Archives' },
           ],
         };
       case 'CADET':
@@ -1360,6 +1360,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         <main id="role-main-content" tabIndex={-1} style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
             {activeTab === 'overview' && <PendingActionsView onOpen={setActiveTab} />}
+            {activeTab === 'media' && ['ADMIN_ANO', 'PLATOON_SENIOR', 'SENIOR'].includes(role) && <MediaManagementView role={role} />}
             {/* CENTRAL APPROVAL DESK (MODULE 3 & 7) */}
             {activeTab === 'approvals' && (
               <ApprovalCenterView role={role} />

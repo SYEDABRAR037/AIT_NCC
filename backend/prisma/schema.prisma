@@ -17,6 +17,7 @@ enum Role {
 
 enum AccountStatus {
   UNDER_REVIEW
+  ANO_REVIEW
   APPROVED
   ACTIVE
   HOLD
@@ -95,6 +96,42 @@ model ReviewRecord {
 
   @@index([cadetId])
   @@index([reviewerId])
+}
+
+model GalleryPhoto {
+  id          String   @id @default(uuid())
+  title       String
+  category    String   @default("NCC")
+  altText     String
+  image       Bytes
+  mimeType    String
+  isPublished Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isPublished, createdAt])
+}
+
+model RankHolder {
+  id        String   @id @default(uuid())
+  rank      String   @unique
+  name      String?
+  image     Bytes?
+  mimeType  String?
+  isActive  Boolean  @default(false)
+  sortOrder Int
+  updatedAt DateTime @updatedAt
+}
+
+model InstitutionalInfo {
+  id          String   @id @default("main")
+  address     String?
+  email       String?
+  phone       String?
+  timings     String?
+  updatedById String?
+  updatedAt   DateTime @updatedAt
 }
 
 model SeniorAssignment {

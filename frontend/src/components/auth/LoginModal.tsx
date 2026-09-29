@@ -49,12 +49,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     }
   };
 
-  const handleQuickFill = (email: string, pass: string) => {
-    setIdentifier(email);
-    setPassword(pass);
-    setErrorMsg(null);
-    setAccountStatus(null);
-  };
 
   return (
     <div
@@ -216,25 +210,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
             </button>
           </form>
 
-          {/* Official Institutional Leadership Command Helper */}
-          <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid var(--white-border)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--navy-hover)', letterSpacing: '0.08em', marginBottom: '0.65rem' }}>
-              OFFICIAL COMMAND ACCESS:
-            </div>
-            <div>
-              <button
-                type="button"
-                className="shells-item"
-                style={{ width: '100%', fontSize: '0.8rem', border: '1px solid var(--white-border)', padding: '0.6rem', textAlign: 'center', background: 'var(--white-surface)' }}
-                onClick={() => handleQuickFill('ano.admin@aitpune.edu.in', 'AdminCommand@2026')}
-              >
-                <span>🛡️ Quick-fill ANO / Admin Credentials (Lt. Col. Sanjeev Sharma)</span>
-              </button>
-            </div>
-            <div style={{ fontSize: '0.74rem', color: 'var(--navy-text-muted)', marginTop: '0.65rem', textAlign: 'center', lineHeight: '1.4' }}>
-              New Cadets & Appointees: Please register via <strong>Cadet Registration</strong>. Credentials activate once approved by the ANO Command.
-            </div>
-          </div>
         </div>
       </div>
 

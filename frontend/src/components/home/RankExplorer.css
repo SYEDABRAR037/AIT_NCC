@@ -78,6 +78,13 @@
 .rank-explorer-disclaimer { margin: 0.85rem 0 0; font-size: 0.76rem; line-height: 1.5; }
 .rank-explorer-mobile-controls { display: none; }
 
+.rank-holder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+.rank-holder-card { min-width: 0; padding: 1rem; border: 1px solid var(--color-border); border-radius: 12px; background: var(--color-background); text-align: center; }
+.rank-holder-card h4 { margin: 0 0 .75rem; color: var(--color-primary); letter-spacing: .08em; }
+.rank-holder-card img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 8px; }
+.rank-holder-card p { margin: .7rem 0 0; color: var(--color-text-secondary); }
+.rank-holder-card .rank-holder-empty { display: grid; min-height: 145px; place-items: center; font-size: .82rem; }
+
 @media (max-width: 700px) {
   .rank-explorer-layout { grid-template-columns: 1fr; }
   .rank-explorer-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

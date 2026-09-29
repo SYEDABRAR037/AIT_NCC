@@ -369,7 +369,7 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
     });
 
     // Generate temporary Reset Token (valid for 10 minutes)
-    const secret = process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+    const secret = process.env.JWT_SECRET!;
     const resetToken = jwt.sign(
       {
         userId: resetRecord.userId,
@@ -435,7 +435,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
 
     // Verify reset token
-    const secret = process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+    const secret = process.env.JWT_SECRET!;
     let decoded: any;
     try {
       decoded = jwt.verify(resetToken, secret);

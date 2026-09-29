@@ -394,7 +394,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 </strong>
                 <span>{successMsg}</span>
                 <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--color-success)' }}>
-                  Your account status is currently <strong>UNDER_REVIEW</strong>. Once vetted by your Senior, Platoon Senior, and approved by the ANO, you will be able to log in.
+                  Your account status is currently <strong>UNDER_REVIEW</strong>. After approval by either your Senior or Platoon Senior, Admin/ANO will complete the final review.
                 </div>
               </div>
             </div>

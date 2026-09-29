@@ -40,7 +40,7 @@ export const authenticateToken = async (
       return;
     }
 
-    const secret = process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+    const secret = process.env.JWT_SECRET!;
     const decoded = jwt.verify(token, secret) as { userId: string };
 
     const user = await prisma.user.findUnique({
@@ -67,7 +67,7 @@ export const authenticateToken = async (
     }
 
     // Account Status Handling
-    if (user.status === 'UNDER_REVIEW') {
+    if (user.status === 'UNDER_REVIEW' || user.status === 'ANO_REVIEW') {
       res.status(403).json({
         success: false,
         status: user.status,

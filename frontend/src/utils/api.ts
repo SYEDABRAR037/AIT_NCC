@@ -52,15 +52,6 @@ export const resolveApiUrl = (endpoint: string): string => {
 
 export const getAuthToken = (): string | null => {
   const token = localStorage.getItem('token') || localStorage.getItem('ncc_auth_token');
-  if (token && token.startsWith('mock_jwt_')) {
-    // Wipe stale mock token so real institutional JWT is required
-    try {
-      localStorage.removeItem('token');
-      localStorage.removeItem('ncc_auth_token');
-      localStorage.removeItem('ncc_current_user');
-    } catch {}
-    return null;
-  }
   return token;
 };
 

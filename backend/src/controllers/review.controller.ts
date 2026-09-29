@@ -15,7 +15,7 @@ export const getPendingApplications = async (req: AuthRequest, res: Response): P
     // Pending applications are those under review or returned/on hold
     const whereClause: any = {
       role: 'CADET',
-      status: { in: ['UNDER_REVIEW', 'HOLD', 'RETURNED'] },
+      status: req.user.role === 'ADMIN_ANO' ? 'ANO_REVIEW' : { in: ['UNDER_REVIEW', 'HOLD', 'RETURNED'] },
     };
 
     const pending = await prisma.user.findMany({
@@ -151,6 +151,16 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    if (reviewerRole === 'ADMIN_ANO' && normalizedAction === 'FORWARD') {
+      res.status(400).json({ success: false, message: 'Admin/ANO must make a final approve, return, or reject decision.' });
+      return;
+    }
+
+    if (normalizedAction === 'REJECT' && !String(remarks || '').trim()) {
+      res.status(400).json({ success: false, message: 'A rejection reason is required.' });
+      return;
+    }
+
     // Execute atomic transaction with concurrency check (Phase 3 & 4)
     const result = await prisma.$transaction(async (tx) => {
       // Fetch fresh cadet record inside transaction
@@ -178,34 +188,14 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
         };
       }
 
-      // STAGE-SPECIFIC CONCURRENCY PROTECTION:
-      // Prevent duplicate reviews at the same officer tier
-      if (reviewerRole === 'SENIOR') {
-        const priorSeniorReview = cadet.applicationReviews.find((r) =>
-          (r.stage === 'SENIOR_REVIEW' || r.stage === 'SENIOR_FORWARDED') &&
-          ['FORWARD', 'APPROVE'].includes(r.action)
-        );
-        if (priorSeniorReview) {
-          const priorOfficerName = priorSeniorReview.reviewer?.fullName || 'a Senior Cadet';
-          throw {
-            statusCode: 409,
-            message: `Senior Review already completed by ${priorOfficerName}. Application is currently in the Platoon Senior / ANO queue.`,
-          };
-        }
+      if (reviewerRole === 'ADMIN_ANO' && cadet.status !== 'ANO_REVIEW') {
+        throw { statusCode: 409, message: 'This application is not awaiting Admin/ANO final review.' };
       }
-
-      if (reviewerRole === 'PLATOON_SENIOR') {
-        const priorPlatoonReview = cadet.applicationReviews.find((r) =>
-          (r.stage === 'PLATOON_SENIOR_REVIEW' || r.stage === 'PLATOON_SENIOR_FORWARDED') &&
-          ['FORWARD', 'APPROVE'].includes(r.action)
-        );
-        if (priorPlatoonReview) {
-          const priorOfficerName = priorPlatoonReview.reviewer?.fullName || 'a Platoon Senior';
-          throw {
-            statusCode: 409,
-            message: `Platoon Senior Review already completed by ${priorOfficerName}. Application is currently awaiting ANO Final Approval.`,
-          };
-        }
+      if (reviewerRole !== 'ADMIN_ANO' && cadet.status === 'ANO_REVIEW') {
+        throw { statusCode: 409, message: 'A Senior or Platoon Senior has already advanced this application to Admin/ANO.' };
+      }
+      if (reviewerRole !== 'ADMIN_ANO' && !['UNDER_REVIEW', 'HOLD', 'RETURNED'].includes(cadet.status)) {
+        throw { statusCode: 409, message: 'This application is not available for peer review.' };
       }
 
       // Determine stage and target status
@@ -223,15 +213,17 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
       } else if (normalizedAction === 'HOLD' || normalizedAction === 'RETURN' || normalizedAction === 'CORRECTION_REQUESTED') {
         newStatus = 'RETURNED';
       } else if (normalizedAction === 'APPROVE') {
-        if (reviewerRole === 'ADMIN_ANO') {
-          // ANO Final Approval: transitions to ACTIVE
-          newStatus = 'ACTIVE';
-        } else {
-          // Senior / Platoon Senior first approval forwards to next review stage
-          newStatus = 'UNDER_REVIEW';
-        }
+        newStatus = reviewerRole === 'ADMIN_ANO' ? 'ACTIVE' : 'ANO_REVIEW';
       } else if (normalizedAction === 'FORWARD') {
-        newStatus = 'UNDER_REVIEW';
+        newStatus = 'ANO_REVIEW';
+      }
+
+      const transition = await tx.user.updateMany({
+        where: { id: cadet.id, status: cadet.status },
+        data: { status: newStatus },
+      });
+      if (transition.count !== 1) {
+        throw { statusCode: 409, message: 'This application was updated by another reviewer. Refresh the queue and try again.' };
       }
 
       // 1. Create Review Record
@@ -327,7 +319,7 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
             : normalizedAction === 'REJECT'
             ? 'Registration Rejected by ANO'
             : 'Registration Dossier Returned for Corrections'
-          : `Registration Dossier Forwarded by ${reviewerRole === 'SENIOR' ? 'Senior Cadet' : 'Platoon Senior'}`;
+          : `Registration Dossier Advanced to Admin/ANO by ${reviewerRole === 'SENIOR' ? 'Senior Cadet' : 'Platoon Senior'}`;
 
       const timelineDesc = remarks
         ? String(remarks).trim()

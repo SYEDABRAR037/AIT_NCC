@@ -23,21 +23,13 @@ interface AuthContextType {
   login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string; status?: string; user?: UserProfile }>;
   registerCadet: (data: any) => Promise<{ success: boolean; message?: string; field?: string }>;
   logout: () => Promise<void>;
-  setUserFromSession: (user: UserProfile) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(() => {
-    try {
-      const saved = localStorage.getItem('ncc_current_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('ncc_auth_token'));
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Restore authenticated session on mount
@@ -45,17 +37,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const initAuth = async () => {
       const storedToken = localStorage.getItem('ncc_auth_token') || localStorage.getItem('token');
       if (storedToken) {
-        if (storedToken.startsWith('mock_jwt_')) {
-          console.warn('Wiping stale preview mock token. Real institutional authentication required.');
-          localStorage.removeItem('ncc_auth_token');
-          localStorage.removeItem('token');
-          localStorage.removeItem('ncc_current_user');
-          setToken(null);
-          setUser(null);
-          setIsLoading(false);
-          return;
-        }
-
         const apiBase = getApiBaseUrl();
         try {
           const res = await fetch(`${apiBase}/api/auth/me`, {
@@ -68,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const data = await res.json();
             if (res.ok && data.success && data.user) {
               setUser(data.user);
+              setToken(storedToken);
               localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
               setIsLoading(false);
               return;
@@ -123,102 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (apiBase) {
         return { success: false, message: err.message || 'Authentication server communication failed.' };
       }
-      console.warn('Backend server offline or unreachable. Engaging cloud preview authentication:', err);
-
-      const cleanId = identifier.trim().toLowerCase();
-
-      // 1. Check local registered cadets
-      try {
-        const offlineCadets: any[] = JSON.parse(localStorage.getItem('ncc_offline_cadets') || '[]');
-        const foundCadet = offlineCadets.find(
-          (c: any) =>
-            c.email?.toLowerCase() === cleanId ||
-            c.regimentalNumber?.toLowerCase() === cleanId ||
-            c.collegeRollNumber?.toLowerCase() === cleanId
-        );
-
-        if (foundCadet) {
-          if (foundCadet.password !== password) {
-            return { success: false, message: 'Invalid institutional credentials.' };
-          }
-          if (foundCadet.status === 'UNDER_REVIEW') {
-            return {
-              success: false,
-              status: 'UNDER_REVIEW',
-              message: 'Your registration is currently under review by your Senior and ANO.',
-            };
-          }
-          if (foundCadet.status === 'HOLD') {
-            return {
-              success: false,
-              status: 'HOLD',
-              message: 'Your registration is on hold pending institutional review.',
-            };
-          }
-          if (foundCadet.status === 'REJECTED') {
-            return {
-              success: false,
-              status: 'REJECTED',
-              message: 'Your registration has been rejected. Please contact NCC administration.',
-            };
-          }
-
-          // Cadet is APPROVED or ACTIVE
-          const cadetUser: UserProfile = {
-            id: foundCadet.id,
-            fullName: foundCadet.fullName,
-            regimentalNumber: foundCadet.regimentalNumber,
-            collegeRollNumber: foundCadet.collegeRollNumber,
-            email: foundCadet.email,
-            phone: foundCadet.phone,
-            year: foundCadet.year,
-            branch: foundCadet.branch,
-            platoonName: foundCadet.platoonName || 'Senior Division',
-            role: 'CADET',
-            status: foundCadet.status || 'APPROVED',
-            profilePhotoUrl: foundCadet.photoSnapshot || null,
-          };
-          const mockToken = 'mock_jwt_cadet_' + Date.now();
-          localStorage.setItem('ncc_auth_token', mockToken);
-          localStorage.setItem('token', mockToken);
-          localStorage.setItem('ncc_current_user', JSON.stringify(cadetUser));
-          setToken(mockToken);
-          setUser(cadetUser);
-          return { success: true, message: 'Authentication successful. Command clearance granted.', user: cadetUser };
-        }
-      } catch (e) {
-        console.error('Error reading offline cadets:', e);
-      }
-
-      // 2. Check Leadership Institutional Demo Accounts
-      const leadershipAccounts: Record<string, { role: 'ADMIN_ANO' | 'PLATOON_SENIOR' | 'SENIOR'; name: string; pass: string; platoon?: string }> = {
-        'ano.admin@aitpune.edu.in': { role: 'ADMIN_ANO', name: 'Lt. Col. Sanjeev Sharma (ANO)', pass: 'AdminCommand@2026' },
-        'platoon.senior@aitpune.edu.in': { role: 'PLATOON_SENIOR', name: 'JUO Aditya Pratap Singh', pass: 'PlatoonLead@2026', platoon: 'Alpha Platoon' },
-        'senior.cadet@aitpune.edu.in': { role: 'SENIOR', name: 'SUO Rajesh Nair', pass: 'SeniorCadet@2026', platoon: 'Alpha Platoon' },
-      };
-
-      const leader = leadershipAccounts[cleanId];
-      if (leader && leader.pass === password) {
-        const leaderUser: UserProfile = {
-          id: 'leader-' + leader.role.toLowerCase(),
-          fullName: leader.name,
-          regimentalNumber: 'LEAD-' + leader.role,
-          collegeRollNumber: 'AIT-LEAD-01',
-          email: cleanId,
-          role: leader.role,
-          status: 'ACTIVE',
-          platoonName: leader.platoon || 'Alpha Platoon',
-        };
-        const mockToken = 'mock_jwt_' + leader.role.toLowerCase() + '_' + Date.now();
-        localStorage.setItem('ncc_auth_token', mockToken);
-        localStorage.setItem('token', mockToken);
-        localStorage.setItem('ncc_current_user', JSON.stringify(leaderUser));
-        setToken(mockToken);
-        setUser(leaderUser);
-        return { success: true, message: 'Authentication successful. Command clearance granted.', user: leaderUser };
-      }
-
-      return { success: false, message: 'Invalid institutional credentials.' };
+      console.error('Authentication server communication error:', err);
+      return { success: false, message: 'Authentication service is unavailable. Please try again when connected.' };
     }
   };
 
@@ -274,10 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const setUserFromSession = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem('ncc_current_user', JSON.stringify(profile));
-  };
+
 
   return (
     <AuthContext.Provider
@@ -288,7 +173,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         registerCadet,
         logout,
-        setUserFromSession,
       }}
     >
       {children}

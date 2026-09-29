@@ -211,10 +211,10 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Check Account Status Rules
-    if (user.status === 'UNDER_REVIEW') {
+    if (user.status === 'UNDER_REVIEW' || user.status === 'ANO_REVIEW') {
       res.status(403).json({
         success: false,
-        status: 'UNDER_REVIEW',
+        status: user.status,
         message: 'Your registration is currently under review.',
       });
       return;
@@ -248,7 +248,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate Session JWT Token for ACTIVE or APPROVED users
-    const secret = process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+    const secret = process.env.JWT_SECRET!;
     const token = jwt.sign(
       {
         userId: user.id,

@@ -1,216 +1,48 @@
-import React, { useState } from 'react';
-import { Image as ImageIcon, X, Maximize2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Image as ImageIcon, X } from 'lucide-react';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
+import { getApiBaseUrl } from '../../utils/api';
 
-interface GalleryItem {
-  title: string;
-  category: string;
-  src: string;
-  alt: string;
-}
+interface GalleryItem { id: string; title: string; category: string; altText: string; imageUrl: string; }
 
 export const GallerySection: React.FC = () => {
+  const [images, setImages] = useState<GalleryItem[]>([]);
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
-  const [activeCategory, setActiveCategory] = useState('ALL');
   const dialogRef = useAccessibleDialog<HTMLDivElement>(Boolean(selectedImage), () => setSelectedImage(null));
 
-  const images: GalleryItem[] = [
-    {
-      title: 'Ceremonial Parade & Guard of Honour',
-      category: 'Parade',
-      src: 'https://images.unsplash.com/photo-1541872703-74c5e44368f9?q=80&w=800&auto=format&fit=crop',
-      alt: 'Cadets marching in synchronized ceremonial drill formation',
-    },
-    {
-      title: 'Obstacle Course & Physical Training',
-      category: 'Training',
-      src: 'https://images.unsplash.com/photo-1579975096649-e773152b04cb?q=80&w=800&auto=format&fit=crop',
-      alt: 'Cadets engaging in outdoor obstacle and field fitness training',
-    },
-    {
-      title: 'Range Firing & .22 Deluxe Marksmanship',
-      category: 'Firing',
-      src: 'https://images.unsplash.com/photo-1569420074719-7561858c27cf?q=80&w=800&auto=format&fit=crop',
-      alt: 'Cadets receiving briefing on weapon safety and grouping at range',
-    },
-    {
-      title: 'Annual Training Camp (CATC) Bivouac',
-      category: 'Camps',
-      src: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=800&auto=format&fit=crop',
-      alt: 'Cadets assembled at institutional field camp grounds',
-    },
-  ];
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${getApiBaseUrl()}/api/public/gallery`, { signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (data?.success && Array.isArray(data.photos)) setImages(data.photos); })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
 
-  const categories = ['ALL', 'Parade', 'Training', 'Firing', 'Camps'];
-
-  const filteredImages = activeCategory === 'ALL'
-    ? images
-    : images.filter((img) => img.category === activeCategory);
+  if (!images.length) return null;
 
   return (
     <section id="gallery" className="section-py" style={{ backgroundColor: 'var(--color-background)' }} aria-label="NCC Photo Gallery">
       <div className="container">
         <div className="section-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
-            <ImageIcon size={16} />
-            PHOTOGRAPHIC ARCHIVES
-          </span>
-          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
-            Cadet Training & Life in Action
-          </h2>
+          <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}><ImageIcon size={16} /> PHOTOGRAPHIC ARCHIVES</span>
+          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>Photographic Archives</h2>
         </div>
-
-        {/* Category Filter Pills */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveCategory(cat)}
-              aria-pressed={activeCategory === cat}
-              style={{
-                background: activeCategory === cat ? 'var(--color-primary)' : 'var(--color-surface)',
-                color: activeCategory === cat ? 'var(--color-background)' : 'var(--color-text-secondary)',
-                border: 'none',
-                borderRadius: '50px',
-                padding: '6px 18px',
-                minHeight: '44px',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Image Grid */}
         <div className="grid-4" style={{ gap: '1.25rem' }}>
-          {filteredImages.map((img) => (
-            <button
-              key={img.title}
-              type="button"
-              onClick={() => setSelectedImage(img)}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: 0,
-                color: 'inherit',
-                font: 'inherit',
-                textAlign: 'left',
-                cursor: 'pointer',
-                backgroundColor: 'var(--color-background)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '1px solid var(--color-border)',
-                boxShadow: '0 4px 15px rgba(7, 26, 51, 0.05)',
-                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-              }}
-            >
-              <span style={{ display: 'block', height: '210px', overflow: 'hidden', position: 'relative' }}>
-                <img
-                  src={img.src}
-                  alt={img.alt}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  loading="lazy"
-                />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '0.75rem',
-                    left: '0.75rem',
-                    backgroundColor: 'rgba(7, 26, 51, 0.85)',
-                    color: 'var(--color-background)',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    backdropFilter: 'blur(4px)',
-                  }}
-                >
-                  {img.category}
-                </span>
-                <span
-                  style={{
-                    position: 'absolute',
-                    bottom: '0.75rem',
-                    right: '0.75rem',
-                    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-                    borderRadius: '50%',
-                    width: '28px',
-                    height: '28px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--color-primary)',
-                  }}
-                >
-                  <Maximize2 size={14} />
-                </span>
-              </span>
-              <span style={{ display: 'block', padding: '1rem 1.15rem' }}>
-                <span style={{ display: 'block', fontSize: '0.92rem', color: 'var(--color-primary)', fontWeight: 700, margin: 0, lineHeight: 1.4 }}>
-                  {img.title}
-                </span>
-              </span>
+          {images.map((img) => (
+            <button key={img.id} type="button" onClick={() => setSelectedImage(img)} aria-label={`View ${img.title}`} style={{ display: 'block', width: '100%', padding: 0, color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer', backgroundColor: 'var(--color-background)', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--color-border)' }}>
+              <span style={{ display: 'block', height: '210px', overflow: 'hidden' }}><img src={img.imageUrl} alt={img.altText} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /></span>
+              <span style={{ display: 'block', padding: '1rem 1.15rem' }}><strong>{img.title}</strong></span>
             </button>
           ))}
         </div>
       </div>
-
-      {/* Lightbox Viewer */}
-      {selectedImage && (
-        <div
-          ref={dialogRef}
-          className="ref-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="gallery-dialog-title"
-          tabIndex={-1}
-          onClick={() => setSelectedImage(null)}
-          style={{ padding: '1rem' }}
-        >
-          <div
-            style={{
-              position: 'relative',
-              maxWidth: '850px',
-              width: '100%',
-              background: 'var(--color-primary)',
-              borderRadius: '14px',
-              overflow: 'hidden',
-              boxShadow: '0 25px 50px rgba(0,0,0,0.6)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              <div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--color-info-border)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {selectedImage.category}
-                </span>
-                <h3 id="gallery-dialog-title" style={{ color: 'var(--color-background)', fontSize: '1.05rem', margin: '2px 0 0' }}>{selectedImage.title}</h3>
-              </div>
-              <button
-                onClick={() => setSelectedImage(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--color-border)', cursor: 'pointer', padding: '4px' }}
-                aria-label="Close image"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div style={{ maxHeight: '70vh', overflow: 'hidden' }}>
-              <img
-                src={selectedImage.src}
-                alt={selectedImage.alt}
-                style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-              />
-            </div>
-          </div>
+      {selectedImage && <div ref={dialogRef} className="ref-modal-backdrop" role="dialog" aria-modal="true" aria-label={selectedImage.title} tabIndex={-1} onClick={() => setSelectedImage(null)} style={{ padding: '1rem' }}>
+        <div onClick={(event) => event.stopPropagation()} style={{ position: 'relative', maxWidth: '850px', width: '100%', background: 'var(--color-primary)', borderRadius: '14px', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', color: 'white' }}><strong>{selectedImage.title}</strong><button onClick={() => setSelectedImage(null)} aria-label="Close image"><X size={20} /></button></div>
+          <img src={selectedImage.imageUrl} alt={selectedImage.altText} style={{ width: '100%', maxHeight: '70vh', objectFit: 'contain', display: 'block' }} />
         </div>
-      )}
+      </div>}
     </section>
   );
 };

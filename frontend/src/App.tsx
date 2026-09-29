@@ -23,26 +23,16 @@ import { RoleShellView } from './components/shells/RoleShellView';
 import { HelpButton } from './components/common/HelpButton';
 
 const AppContent: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [activeShellRole, setActiveShellRole] = useState<string | null>(null);
 
-  const roleTestCredentials: Record<string, { email: string; pass: string }> = {
-    ADMIN_ANO: { email: 'ano.admin@aitpune.edu.in', pass: 'AdminCommand@2026' },
-    PLATOON_SENIOR: { email: 'platoon.senior@aitpune.edu.in', pass: 'PlatoonLead@2026' },
-    SENIOR: { email: 'senior.cadet@aitpune.edu.in', pass: 'SeniorCadet@2026' },
-  };
-
-  const handleSelectShell = async (role: string) => {
-    setActiveShellRole(role);
-    if (!user || user.role !== role) {
-      const creds = roleTestCredentials[role];
-      if (creds) {
-        await login(creds.email, creds.pass);
-      } else if (role === 'CADET') {
-        setLoginModalOpen(true);
-      }
+  const handleSelectShell = (role: string) => {
+    if (user && user.role === role) setActiveShellRole(role);
+    else {
+      setActiveShellRole(null);
+      setLoginModalOpen(true);
     }
   };
 
@@ -129,7 +119,7 @@ const AppContent: React.FC = () => {
       <LoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
-        onLoginSuccess={(role) => handleSelectShell(role)}
+        onLoginSuccess={(role) => { setActiveShellRole(role); setLoginModalOpen(false); }}
       />
 
       <RegisterModal

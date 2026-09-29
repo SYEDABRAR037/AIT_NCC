@@ -156,9 +156,7 @@ NCC Digital Command & Cadet Management System`;
     try {
       console.log(`[MAIL SERVICE] Dispatching OTP via HTTPS Relay (${relayUrl}) to ${recipientEmail}...`);
       const relaySecret =
-        process.env.RECOVERY_RELAY_SECRET ||
-        process.env.JWT_SECRET ||
-        'ncc_command_jwt_super_secure_key_2026_ait_pune';
+        process.env.RECOVERY_RELAY_SECRET || '';
 
       const controller = new AbortController();
       const relayTimeout = setTimeout(() => controller.abort(), 9000);
@@ -227,9 +225,7 @@ NCC Digital Command & Cadet Management System`;
         console.log(`[MAIL SERVICE] Retrying dispatch via Netlify HTTPS Relay to ${recipientEmail}...`);
         const fallbackRelayUrl = 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay';
         const relaySecret =
-          process.env.RECOVERY_RELAY_SECRET ||
-          process.env.JWT_SECRET ||
-          'ncc_command_jwt_super_secure_key_2026_ait_pune';
+          process.env.RECOVERY_RELAY_SECRET || '';
 
         const controller = new AbortController();
         const relayTimeout = setTimeout(() => controller.abort(), 9000);

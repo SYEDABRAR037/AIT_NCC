@@ -21,10 +21,14 @@ import campRoutes from './routes/camp.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import serviceRecordRoutes from './routes/serviceRecord.routes';
 import rankRoutes from './routes/rank.routes';
+import mediaRoutes from './routes/media.routes';
 
 dotenv.config();
 
 const app = express();
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be configured with at least 32 characters before the API can start.');
+}
 const PORT = process.env.PORT || 5050;
 
 // Security & Middleware
@@ -43,12 +47,7 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (
-        configuredOrigins.includes(origin) ||
-        origin.endsWith('.netlify.app') ||
-        origin.endsWith('.aitpune.edu.in') ||
-        process.env.NODE_ENV !== 'production'
-      ) {
+      if (configuredOrigins.includes(origin)) {
         return callback(null, true);
       }
       return callback(new Error(`CORS blocked for origin: ${origin}`));
@@ -90,6 +89,7 @@ app.use('/api/camps', campRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/service-record', serviceRecordRoutes);
 app.use('/api/ranks', rankRoutes);
+app.use('/api', mediaRoutes);
 
 // 404 JSON Handler for all API routes (Phases 2 & 4: API endpoints must never return HTML)
 app.all('/api/*', (_req: Request, res: Response) => {

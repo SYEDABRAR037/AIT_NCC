@@ -374,7 +374,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                               }
                               className="btn-primary btn-sm"
                             >
-                              Endorse &amp; Forward (Senior Review)
+                              Approve &amp; send to Admin/ANO
                             </button>
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}
@@ -419,7 +419,7 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
                               }
                               className="btn-primary btn-sm"
                             >
-                              Endorse &amp; Forward to ANO
+                              Approve &amp; send to Admin/ANO
                             </button>
                             <button
                               onClick={() => setActionModal({ type: 'registration', item: cadet, action: 'RETURN' })}

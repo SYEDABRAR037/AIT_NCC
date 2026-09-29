@@ -75,7 +75,7 @@ export const Footer: React.FC = () => {
                 </svg>
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/ncc_ait_pune/"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Instagram"

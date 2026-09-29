@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Mail, Phone, Clock, Shield, CheckCircle2, AlertCircle, Lock, ArrowRight } from 'lucide-react';
+import { MapPin, Mail, Phone, Clock, CheckCircle2, AlertCircle, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getApiBaseUrl } from '../../utils/api';
 
 interface ContactSectionProps {
   onOpenLogin?: () => void;
@@ -17,6 +18,11 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
   const [submitting, setSubmitting] = useState(false);
   const [successResult, setSuccessResult] = useState<{ inquiryId: string; subject: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [institutionalInfo, setInstitutionalInfo] = useState<{ address: string; email: string; phone: string; timings: string }>({ address: '', email: '', phone: '', timings: '' });
+
+  useEffect(() => {
+    fetch(`${getApiBaseUrl()}/api/public/institutional-info`).then((response) => response.ok ? response.json() : null).then((data) => { if (data?.success && data.info) setInstitutionalInfo({ address: data.info.address || '', email: data.info.email || '', phone: data.info.phone || '', timings: data.info.timings || '' }); }).catch(() => undefined);
+  }, []);
 
   // Auto-populate when user is logged in
   useEffect(() => {
@@ -97,58 +103,23 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             <Mail size={16} />
             Institutional Liaison
           </span>
-          <h2 className="cinzel-title">Official Unit Contact & Command Desk</h2>
+          <h2 className="cinzel-title">Contact</h2>
           <p className="description">
-            Official communications desk for Army Institute of Technology NCC Unit.
+            Send an inquiry to the NCC team.
           </p>
         </div>
 
         <div className="grid-2">
-          {/* Left Column: Contact Details */}
+          {/* Verified campus information only */}
           <div className="institutional-card">
-            <h3 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', marginBottom: '1.25rem' }}>
-              Headquarters & Training Grounds
-            </h3>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <MapPin size={20} style={{ color: 'var(--navy-hover)', marginTop: '3px', flexShrink: 0 }} />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--navy-primary)' }}>Unit Address</strong>
-                  <span style={{ fontSize: '0.92rem' }}>
-                    NCC Detachment, Army Institute of Technology (AIT),<br />
-                    Alandi Road, Dighi, Pune, Maharashtra - 411015, India
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <Mail size={20} style={{ color: 'var(--navy-hover)', marginTop: '3px', flexShrink: 0 }} />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--navy-primary)' }}>Official Email</strong>
-                  <span style={{ fontSize: '0.92rem' }}>ncc@aitpune.edu.in</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <Phone size={20} style={{ color: 'var(--navy-hover)', marginTop: '3px', flexShrink: 0 }} />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--navy-primary)' }}>Unit Office Phone</strong>
-                  <span style={{ fontSize: '0.92rem' }}>+91 (020) 2715-7534 / Ext. NCC Command Desk</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <Clock size={20} style={{ color: 'var(--navy-hover)', marginTop: '3px', flexShrink: 0 }} />
-                <div>
-                  <strong style={{ display: 'block', color: 'var(--navy-primary)' }}>Parade & Reporting Timings</strong>
-                  <span style={{ fontSize: '0.92rem' }}>
-                    Parades: Tue & Thu (0600 - 0800 hrs)<br />
-                    Command Desk Hours: Mon - Fri (1530 - 1730 hrs)
-                  </span>
-                </div>
-              </div>
+            <h3 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', marginBottom: '1.25rem' }}>Headquarters &amp; Training Grounds</h3>
+            <div style={{ display: 'grid', gap: '.85rem' }}>
+              <p style={{ display: 'flex', gap: '.65rem', margin: 0, lineHeight: 1.7, color: 'var(--color-text-secondary)' }}><MapPin size={18} /><span>{institutionalInfo.address || 'Army Institute of Technology, Dighi Hills, Pune - 411015.'}</span></p>
+              {institutionalInfo.email && <p style={{ display: 'flex', gap: '.65rem', margin: 0 }}><Mail size={18} /><a href={`mailto:${institutionalInfo.email}`}>{institutionalInfo.email}</a></p>}
+              {institutionalInfo.phone && <p style={{ display: 'flex', gap: '.65rem', margin: 0 }}><Phone size={18} /><a href={`tel:${institutionalInfo.phone}`}>{institutionalInfo.phone}</a></p>}
+              {institutionalInfo.timings && <p style={{ display: 'flex', gap: '.65rem', margin: 0 }}><Clock size={18} /><span>{institutionalInfo.timings}</span></p>}
             </div>
+            <a href="https://www.aitpune.com" target="_blank" rel="noopener noreferrer">Visit the official AIT website</a>
           </div>
 
           {/* Right Column: Database-Backed Inquiry Form */}
@@ -358,7 +329,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                   cursor: submitting ? 'wait' : 'pointer',
                 }}
               >
-                <Shield size={16} />
+                <Mail size={16} />
                 <span>{submitting ? 'LOGGING TO COMMAND DESK...' : 'SUBMIT OFFICIAL INQUIRY'}</span>
               </button>
             </form>

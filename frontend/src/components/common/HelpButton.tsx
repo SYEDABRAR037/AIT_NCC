@@ -1,7 +1,6 @@
 import React from 'react';
-import { HelpCircle } from 'lucide-react';
 
-const helpMessage = 'Hello NCC AIT Pune, I need help.';
+const helpMessage = 'Hello NCC AIT Pune, I need assistance.';
 const helpUrl = `https://wa.me/917893732737?text=${encodeURIComponent(helpMessage)}`;
 
 export const HelpButton: React.FC = () => (
@@ -32,7 +31,7 @@ export const HelpButton: React.FC = () => (
       textDecoration: 'none',
     }}
   >
-    <HelpCircle size={20} aria-hidden="true" />
-    <span>Help</span>
+    <img src="/assets/logos/ncc_logo.png" alt="" width="24" height="24" />
+    <span>HELP</span>
   </a>
 );

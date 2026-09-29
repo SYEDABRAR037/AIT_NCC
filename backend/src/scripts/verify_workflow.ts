@@ -1,4 +1,13 @@
-const BASE_URL = 'http://localhost:5050';
+const BASE_URL = process.env.TEST_API_URL || 'http://localhost:5050';
+const seniorEmail = process.env.TEST_SENIOR_EMAIL;
+const seniorPassword = process.env.TEST_SENIOR_PASSWORD;
+const platoonSeniorEmail = process.env.TEST_PLATOON_SENIOR_EMAIL;
+const platoonSeniorPassword = process.env.TEST_PLATOON_SENIOR_PASSWORD;
+const anoEmail = process.env.TEST_ADMIN_ANO_EMAIL;
+const anoPassword = process.env.TEST_ADMIN_ANO_PASSWORD;
+if (![seniorEmail, seniorPassword, platoonSeniorEmail, platoonSeniorPassword, anoEmail, anoPassword].every(Boolean)) {
+  throw new Error('Set TEST_SENIOR_EMAIL/PASSWORD, TEST_PLATOON_SENIOR_EMAIL/PASSWORD, and TEST_ADMIN_ANO_EMAIL/PASSWORD to run this integration script.');
+}
 
 async function main() {
   console.log('=== STARTING 18-PHASE CADET APPROVAL & VISIBILITY VERIFICATION ===\n');
@@ -10,7 +19,7 @@ async function main() {
   const seniorRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'senior.cadet@aitpune.edu.in', password: 'SeniorCadet@2026' })
+    body: JSON.stringify({ email: seniorEmail, password: seniorPassword })
   });
   const seniorData: any = await seniorRes.json();
   const seniorToken: string = seniorData.token;
@@ -21,7 +30,7 @@ async function main() {
   const psRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'platoon.senior@aitpune.edu.in', password: 'PlatoonLead@2026' })
+    body: JSON.stringify({ email: platoonSeniorEmail, password: platoonSeniorPassword })
   });
   const psData: any = await psRes.json();
   const psToken: string = psData.token;
@@ -31,7 +40,7 @@ async function main() {
   const anoRes = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'ano.admin@aitpune.edu.in', password: 'AdminCommand@2026' })
+    body: JSON.stringify({ email: anoEmail, password: anoPassword })
   });
   const anoData: any = await anoRes.json();
   const anoToken: string = anoData.token;
@@ -71,7 +80,7 @@ async function main() {
     throw new Error(`Registration failed: ${JSON.stringify(regData)}`);
   }
   const cadetUserId: string = regData.userId;
-  console.log(`✓ Registration succeeded. Status: ${regData.status} (Expected: UNDER_REVIEW)\n`);
+  console.log(`✓ Registration succeeded. Status: ${regData.status} (Expected: ANO_REVIEW)\n`);
 
   // Phase 2 - Step 2: Senior Review
   console.log('Phase 2 - Step 2: Senior reviewing and forwarding dossier...');
@@ -90,10 +99,10 @@ async function main() {
   if (!srReviewRes.ok) {
     throw new Error(`Senior review failed: ${JSON.stringify(srReviewData)}`);
   }
-  console.log(`✓ Senior Review recorded. Application Status: ${srReviewData.cadet?.status} (Expected: UNDER_REVIEW)\n`);
+  console.log(`✓ Senior Review recorded. Application Status: ${srReviewData.cadet?.status} (Expected: ANO_REVIEW)\n`);
 
-  // Phase 2 - Step 3: Platoon Senior Review
-  console.log('Phase 2 - Step 3: Platoon Senior reviewing and forwarding to ANO...');
+  // Confirm the other peer cannot approve a second time after the first peer has advanced the application.
+  console.log('Confirming the second peer cannot create a duplicate approval...');
   const psReviewRes = await fetch(`${BASE_URL}/api/reviews/${cadetUserId}/action`, {
     method: 'POST',
     headers: {
@@ -102,14 +111,14 @@ async function main() {
     },
     body: JSON.stringify({
       action: 'FORWARD',
-      feedback: 'Platoon drill muster verified. Forwarded to ANO for final sanction.'
+      remarks: 'Duplicate peer action should be rejected.'
     })
   });
   const psReviewData: any = await psReviewRes.json();
-  if (!psReviewRes.ok) {
-    throw new Error(`Platoon Senior review failed: ${JSON.stringify(psReviewData)}`);
+  if (psReviewRes.status !== 409) {
+    throw new Error(`Expected duplicate peer review to return 409, received ${psReviewRes.status}: ${JSON.stringify(psReviewData)}`);
   }
-  console.log(`✓ Platoon Senior Review recorded. Application Status: ${psReviewData.cadet?.status} (Expected: UNDER_REVIEW)\n`);
+  console.log('✓ Duplicate peer review was rejected.\n');
 
   // Phase 3 & 13: ANO Final Approval & Auto-assignment
   console.log('Phase 3 & 13: ANO Sanctioning & Commissioning Cadet as ACTIVE...');
