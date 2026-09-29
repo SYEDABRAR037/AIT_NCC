@@ -46,6 +46,7 @@ model User {
   passwordHash       String
   role               Role          @default(CADET)
   status             AccountStatus @default(UNDER_REVIEW)
+  rank               String        @default("CDT")
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
@@ -72,6 +73,8 @@ model User {
   attendanceNotifications AttendanceNotification[]
   inquiryReplies      InquiryReply[]       @relation("UserInquiryReplies")
   passwordResets      PasswordReset[]
+  rankHistory         RankHistory[] @relation("CadetRankHistory")
+  rankChanges         RankHistory[] @relation("RankChangedBy")
 
   @@index([role])
   @@index([status])
@@ -198,9 +201,26 @@ model Camp {
   instructions      String?
   requiredDocuments String?  @default("Medical Certificate, Indemnity Bond, College ID")
   assignedOfficers  String?
+  status            String   @default("OPEN")
+  reportingVenue    String?
+  eligibleYears     String?
+  targetPlatoon     String?
+  targetTeam        String?
   createdAt         DateTime @default(now())
 
   participants CampParticipant[]
+  documents    CampDocument[]
+}
+
+model CampDocument {
+  id        String   @id @default(uuid())
+  campId    String
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+  camp      Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
+
+  @@index([campId])
 }
 
 model CampParticipant {
@@ -340,6 +360,8 @@ model Duty {
   dutyType        String   // Guard of Honour | Quarter Guard | Pilot Escort | Parade Commander | Flag Officer | Armoury Duty | Administrative
   location        String
   dutyDate        DateTime
+  startTime       String?
+  endTime         String?
   reportingTime   String   @default("06:00 hrs")
   instructions    String?
   assignedCadetId String
@@ -366,6 +388,23 @@ model AuditLog {
 
   @@index([actorId])
   @@index([action])
+}
+
+model RankHistory {
+  id               String   @id @default(uuid())
+  cadetId          String
+  previousRank     String
+  newRank          String
+  appointmentDate  DateTime
+  remarks          String?
+  changedById      String
+  changedAt        DateTime @default(now())
+
+  cadet     User @relation("CadetRankHistory", fields: [cadetId], references: [id], onDelete: Cascade)
+  changedBy User @relation("RankChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([cadetId, changedAt])
+  @@index([changedById])
 }
 
 model Notification {
@@ -529,5 +568,3 @@ model PasswordReset {
   @@index([userId])
   @@index([expiresAt])
 }
-
-

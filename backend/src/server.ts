@@ -18,6 +18,9 @@ import timelineRoutes from './routes/timeline.routes';
 import calendarRoutes from './routes/calendar.routes';
 import dutyRoutes from './routes/duty.routes';
 import campRoutes from './routes/camp.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+import serviceRecordRoutes from './routes/serviceRecord.routes';
+import rankRoutes from './routes/rank.routes';
 
 dotenv.config();
 
@@ -84,6 +87,9 @@ app.use('/api/timeline', timelineRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/duties', dutyRoutes);
 app.use('/api/camps', campRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/service-record', serviceRecordRoutes);
+app.use('/api/ranks', rankRoutes);
 
 // 404 JSON Handler for all API routes (Phases 2 & 4: API endpoints must never return HTML)
 app.all('/api/*', (_req: Request, res: Response) => {

@@ -25,7 +25,9 @@ interface DutyItem {
   location: string;
   reportingTime?: string;
   instructions?: string;
-  status: 'ASSIGNED' | 'COMPLETED' | 'EXCUSED';
+  startTime?: string | null;
+  endTime?: string | null;
+  status: 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'EXCUSED';
   assignedByRole?: string;
   cadet?: {
     id: string;
@@ -72,6 +74,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
     cadetId: '',
     dutyType: 'GUARD_OF_HONOUR',
     date: new Date().toISOString().split('T')[0],
+    startTime: '06:30',
+    endTime: '08:00',
     location: 'AIT Main Gate & Central Plaza',
     reportingTime: '0630 hrs in ceremonial dress',
     instructions: 'Ceremonial drill kit, polished boots, brass items sparkled, beret hackle dressed.',
@@ -138,6 +142,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         dutyDate: assignForm.date,
         date: assignForm.date,
         reportingTime: assignForm.reportingTime,
+        startTime: assignForm.startTime,
+        endTime: assignForm.endTime,
         instructions: assignForm.instructions,
         assignedCadetId: assignForm.cadetId,
         cadetId: assignForm.cadetId,
@@ -158,6 +164,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         cadetId: '',
         dutyType: 'GUARD_OF_HONOUR',
         date: new Date().toISOString().split('T')[0],
+        startTime: '06:30',
+        endTime: '08:00',
         location: 'AIT Main Gate & Central Plaza',
         reportingTime: '0630 hrs in ceremonial dress',
         instructions: 'Ceremonial drill kit, polished boots, brass items sparkled, beret hackle dressed.',
@@ -229,6 +237,10 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
           color: 'var(--color-text-secondary)',
           border: '1px solid var(--color-border)',
         };
+      case 'IN_PROGRESS':
+        return { background: 'var(--color-info-soft)', color: 'var(--color-accent)', border: '1px solid var(--color-info-border)' };
+      case 'CANCELLED':
+        return { background: 'var(--color-error-soft)', color: 'var(--color-error)', border: '1px solid var(--color-error-border)' };
       default:
         return {
           background: 'var(--color-surface)',
@@ -352,7 +364,9 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
             {[
               { key: 'ALL', label: `All Duties (${duties.length})` },
               { key: 'ASSIGNED', label: `Active Assigned (${duties.filter((d) => d.status === 'ASSIGNED').length})` },
+              { key: 'IN_PROGRESS', label: `In Progress (${duties.filter((d) => d.status === 'IN_PROGRESS').length})` },
               { key: 'COMPLETED', label: `Completed (${duties.filter((d) => d.status === 'COMPLETED').length})` },
+              { key: 'CANCELLED', label: `Cancelled (${duties.filter((d) => d.status === 'CANCELLED').length})` },
               { key: 'EXCUSED', label: `Excused (${duties.filter((d) => d.status === 'EXCUSED').length})` },
             ].map((tab) => {
               const active = statusFilter === tab.key;
@@ -470,7 +484,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
           {filteredDuties.map((duty) => {
             const rawDate = duty.date || duty.dutyDate;
             const dutyDate = rawDate ? new Date(rawDate) : new Date();
-            const isPending = duty.status === 'ASSIGNED';
+            const isPending = ['ASSIGNED', 'IN_PROGRESS'].includes(duty.status);
             const cadetDisplayName = duty.cadet?.fullName || duty.cadet?.name;
             const badgeStyle = getStatusBadgeStyle(duty.status);
 
@@ -575,7 +589,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                           month: 'short',
                           year: 'numeric',
                         })}{' '}
-                        &bull; {duty.reportingTime || '0630 hrs'}
+                        &bull; {duty.startTime || duty.reportingTime || '0630 hrs'}{duty.endTime ? `–${duty.endTime}` : ''}
                       </span>
                     </div>
 
@@ -617,6 +631,14 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                       gap: '0.5rem',
                     }}
                   >
+                    {duty.status === 'ASSIGNED' && (
+                      <button
+                        onClick={() => handleUpdateStatus(duty.id, 'IN_PROGRESS')}
+                        disabled={statusUpdating === duty.id}
+                        className="btn-secondary btn-sm"
+                        style={{ fontSize: '0.78rem', padding: '0.45rem 0.65rem' }}
+                      >Start</button>
+                    )}
                     <button
                       onClick={() => handleUpdateStatus(duty.id, 'COMPLETED')}
                       disabled={statusUpdating === duty.id}
@@ -633,12 +655,12 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                       <span>Mark Completed</span>
                     </button>
                     <button
-                      onClick={() => handleUpdateStatus(duty.id, 'EXCUSED')}
+                      onClick={() => handleUpdateStatus(duty.id, 'CANCELLED')}
                       disabled={statusUpdating === duty.id}
                       className="btn-secondary btn-sm"
                       style={{ fontSize: '0.78rem', padding: '0.45rem 0.75rem' }}
                     >
-                      Excuse
+                      Cancel
                     </button>
                   </div>
                 )}
@@ -779,17 +801,21 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                     background: 'var(--white-pure)',
                   }}
                 >
+                  <option value="PARADE_DUTY">Parade Duty</option>
+                  <option value="EVENT_DUTY">Event Duty</option>
                   <option value="GUARD_OF_HONOUR">Guard of Honour (VIP / Dignitary)</option>
                   <option value="PILOT_DUTY">VIP Pilot Escort</option>
                   <option value="FLAG_HOISTING">Flag Hoisting & Ceremonial Protocol</option>
                   <option value="QUARTER_GUARD">Quarter Guard 24h Sentry</option>
                   <option value="CAMP_DUTY">Camp Security & Mess Duty</option>
                   <option value="CAMPUS_SECURITY">Campus Security Detail</option>
+                  <option value="CEREMONIAL_DUTY">Ceremonial Duty</option>
+                  <option value="OTHER">Other NCC Duty</option>
                 </select>
               </div>
 
-              {/* Date & Reporting Time */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Date & Duty Schedule */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
                     Duty Date *
@@ -811,14 +837,13 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
-                    Reporting Time *
+                    Start Time *
                   </label>
                   <input
-                    type="text"
+                    type="time"
                     required
-                    placeholder="e.g. 0630 hrs"
-                    value={assignForm.reportingTime}
-                    onChange={(e) => setAssignForm({ ...assignForm, reportingTime: e.target.value })}
+                    value={assignForm.startTime}
+                    onChange={(e) => setAssignForm({ ...assignForm, startTime: e.target.value, reportingTime: e.target.value })}
                     style={{
                       width: '100%',
                       padding: '0.6rem 0.85rem',
@@ -827,6 +852,18 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                       fontSize: '0.88rem',
                       color: 'var(--navy-text)',
                     }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
+                    End Time *
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={assignForm.endTime}
+                    onChange={(e) => setAssignForm({ ...assignForm, endTime: e.target.value })}
+                    style={{ width: '100%', padding: '0.6rem 0.85rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem', color: 'var(--navy-text)' }}
                   />
                 </div>
               </div>

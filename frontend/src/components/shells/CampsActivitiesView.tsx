@@ -53,6 +53,11 @@ interface CampItem {
   capacity?: number;
   maxCadets?: number;
   status?: string;
+  reportingVenue?: string;
+  eligibleYears?: string;
+  targetPlatoon?: string;
+  targetTeam?: string;
+  documents?: { id: string; title: string; url: string }[];
   participants?: CampParticipant[];
   _count?: {
     participants: number;
@@ -92,6 +97,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
     requiredDocuments: 'Medical fitness certificate, College NOC, Indemnity bond',
     assignedOfficers: 'Lt. Col. Sanjeev Sharma (ANO), Subedar Major R. K. Singh (DI)',
     capacity: 50,
+    reportingVenue: '', eligibleYears: '', targetPlatoon: '', targetTeam: '', status: 'OPEN',
   });
   const [creating, setCreating] = useState(false);
 
@@ -101,6 +107,8 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
   const [newStatus, setNewStatus] = useState<string>('RECOMMENDED');
   const [officerRemarks, setOfficerRemarks] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentUrl, setDocumentUrl] = useState('');
 
   const isOfficer = ['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO'].includes(userRole);
   const isAdmin = userRole === 'ADMIN_ANO';
@@ -187,6 +195,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
         requiredDocuments: 'Medical fitness certificate, College NOC, Indemnity bond',
         assignedOfficers: 'Lt. Col. Sanjeev Sharma (ANO), Subedar Major R. K. Singh (DI)',
         capacity: 50,
+        reportingVenue: '', eligibleYears: '', targetPlatoon: '', targetTeam: '', status: 'OPEN',
       });
       fetchCamps();
     } catch (err: any) {
@@ -214,6 +223,21 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
     } catch (err: any) {
       alert(err.message || 'Error deleting camp');
     }
+  };
+
+  const handleCampStatus = async (status: string) => {
+    if (!selectedCamp) return;
+    const { ok, data } = await safeApiFetch(`/api/camps/${selectedCamp.id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    if (!ok) { alert(data?.message || 'Unable to update camp status'); return; }
+    await fetchCamps();
+  };
+
+  const handleAddDocument = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedCamp) return;
+    const { ok, data } = await safeApiFetch(`/api/camps/${selectedCamp.id}/documents`, { method: 'POST', body: JSON.stringify({ title: documentTitle, url: documentUrl }) });
+    if (!ok) { alert(data?.message || 'Unable to add camp document'); return; }
+    setDocumentTitle(''); setDocumentUrl(''); await fetchCamps();
   };
 
   const handleUpdateParticipantStatus = async (e: React.FormEvent) => {
@@ -604,9 +628,25 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
               <div>
                 <h3 style={{ fontSize: '1.1rem', color: 'var(--navy-primary)', margin: '0 0 0.25rem' }}>{selectedCamp.name}</h3>
                 <span style={{ fontSize: '0.8rem', color: 'var(--navy-text-muted)', fontWeight: 600 }}>
-                  {selectedCamp.campType} · {selectedCamp.location}
+                  {selectedCamp.campType} · {selectedCamp.location} · {(selectedCamp.status || 'OPEN').replace(/_/g, ' ')}
                 </span>
               </div>
+
+              {isAdmin && <label style={{ fontSize: '0.8rem', fontWeight: 700 }}>Camp status
+                <select value={selectedCamp.status || 'OPEN'} onChange={(event) => handleCampStatus(event.target.value)} style={{ display: 'block', width: '100%', padding: '0.5rem', marginTop: '0.25rem' }}>
+                  {['DRAFT', 'OPEN', 'SELECTION_IN_PROGRESS', 'SELECTED', 'ONGOING', 'COMPLETED', 'CANCELLED'].map((status) => <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>)}
+                </select>
+              </label>}
+              <div style={{ fontSize: '0.82rem' }}><strong>Reporting:</strong> {selectedCamp.reportingTime || '—'} · {selectedCamp.reportingVenue || selectedCamp.location}<br /><strong>Eligible:</strong> {selectedCamp.eligibleYears || 'All years'} {selectedCamp.targetPlatoon ? `· ${selectedCamp.targetPlatoon}` : ''} {selectedCamp.targetTeam ? `· ${selectedCamp.targetTeam}` : ''}</div>
+              <section style={{ borderTop: '1px solid var(--white-border)', paddingTop: '0.65rem' }}>
+                <strong style={{ fontSize: '0.84rem' }}>Camp Documents</strong>
+                {(selectedCamp.documents || []).map((doc) => <div key={doc.id}><a href={doc.url} target="_blank" rel="noreferrer">{doc.title}</a></div>)}
+                {isAdmin && <form onSubmit={handleAddDocument} style={{ display: 'grid', gap: '0.4rem', marginTop: '0.5rem' }}>
+                  <input required placeholder="Document title" value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} />
+                  <input required type="url" placeholder="https://…" value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} />
+                  <button className="btn-secondary btn-sm" type="submit">Add document link</button>
+                </form>}
+              </section>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.82rem' }}>
                 <div style={{ padding: '0.75rem', borderRadius: '4px', backgroundColor: 'var(--white-surface)', border: '1px solid var(--white-border)' }}>
@@ -878,6 +918,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                 >
                   <option value="RECOMMENDED">RECOMMENDED (Platoon Senior / Senior Nomination)</option>
                   <option value="SELECTED">SELECTED (Battalion Level Quota Allocation)</option>
+                  <option value="WAITLISTED">WAITLISTED (Reserve Nominal Roll)</option>
                   <option value="CONFIRMED">CONFIRMED (Final Reporting Nominal Roll)</option>
                   <option value="PARTICIPATED">PARTICIPATED (In Physical Attendance on Ground)</option>
                   <option value="COMPLETED">COMPLETED (Honorably Completed / Camp Certificate Issued)</option>
@@ -1075,6 +1116,16 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
+              </div>
+
+              <div className="grid-2" style={{ gap: '0.75rem' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>Reporting Venue<input value={newCamp.reportingVenue} onChange={(e) => setNewCamp({ ...newCamp, reportingVenue: e.target.value })} style={{ display: 'block', width: '100%', padding: '0.6rem', marginTop: '0.35rem' }} placeholder="Assembly point" /></label>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>Initial Status<select value={newCamp.status} onChange={(e) => setNewCamp({ ...newCamp, status: e.target.value })} style={{ display: 'block', width: '100%', padding: '0.6rem', marginTop: '0.35rem' }}><option value="DRAFT">Draft</option><option value="OPEN">Open</option></select></label>
+              </div>
+              <div className="grid-2" style={{ gap: '0.75rem' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>Eligible Years (comma-separated)<input value={newCamp.eligibleYears} onChange={(e) => setNewCamp({ ...newCamp, eligibleYears: e.target.value })} style={{ display: 'block', width: '100%', padding: '0.6rem', marginTop: '0.35rem' }} placeholder="FE, SE, TE" /></label>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>Eligible Platoon<input value={newCamp.targetPlatoon} onChange={(e) => setNewCamp({ ...newCamp, targetPlatoon: e.target.value })} style={{ display: 'block', width: '100%', padding: '0.6rem', marginTop: '0.35rem' }} /></label>
+                <label style={{ fontSize: '0.82rem', fontWeight: 700 }}>Eligible Team<input value={newCamp.targetTeam} onChange={(e) => setNewCamp({ ...newCamp, targetTeam: e.target.value })} style={{ display: 'block', width: '100%', padding: '0.6rem', marginTop: '0.35rem' }} /></label>
               </div>
 
               <div>

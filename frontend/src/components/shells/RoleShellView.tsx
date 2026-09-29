@@ -38,6 +38,8 @@ import { ApprovalCenterView } from './ApprovalCenterView';
 import { TimelineView } from './TimelineView';
 import { CampsActivitiesView } from './CampsActivitiesView';
 import { DutyRosterView } from './DutyRosterView';
+import { PendingActionsView } from './PendingActionsView';
+import { RankPromotionDialog } from './RankPromotionDialog';
 import { InquiryDeskView } from './InquiryDeskView';
 import { safeApiFetch } from '../../utils/api';
 
@@ -61,6 +63,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterPlatoon, setFilterPlatoon] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterRank, setFilterRank] = useState('');
+  const [filterTeam, setFilterTeam] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterFaceEnrollment, setFilterFaceEnrollment] = useState('');
+  const [directoryPage, setDirectoryPage] = useState(1);
+  const [directoryTotal, setDirectoryTotal] = useState(0);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   // New Item Creation Modals State
@@ -102,6 +111,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const [selectedCadetForProfile, setSelectedCadetForProfile] = useState<any | null>(null);
   const [cadetLifecycleTarget, setCadetLifecycleTarget] = useState<{ cadet: any; action: CadetLifecycleAction } | null>(null);
   const [cadetLifecycleSubmitting, setCadetLifecycleSubmitting] = useState(false);
+  const [rankTarget, setRankTarget] = useState<any | null>(null);
+  const [rankSubmitting, setRankSubmitting] = useState(false);
 
   // Phase 7-9: Leave Management State
   const [leaveApplications, setLeaveApplications] = useState<any[]>([]); // for review (senior/PS/admin)
@@ -289,10 +300,18 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       if (searchQuery) params.append('search', searchQuery);
       if (filterRole) params.append('role', filterRole);
       if (filterPlatoon) params.append('platoon', filterPlatoon);
+      if (filterYear) params.append('year', filterYear);
+      if (filterRank) params.append('rank', filterRank);
+      if (filterTeam) params.append('team', filterTeam);
+      if (filterStatus) params.append('status', filterStatus);
+      if (filterFaceEnrollment) params.append('faceEnrolled', filterFaceEnrollment);
+      params.append('page', String(directoryPage));
+      params.append('pageSize', '50');
 
       const { ok, data } = await safeApiFetch(`/api/admin/users?${params.toString()}`);
       if (ok && data?.success) {
         setUsersList(data.users || []);
+        setDirectoryTotal(data.total || 0);
         if (typeof data.totalActiveCadets === 'number') {
           setTotalActiveCadets(data.totalActiveCadets);
         }
@@ -302,6 +321,25 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     } finally {
       setLoadingUsers(false);
     }
+  };
+
+  const exportCadetDirectoryCsv = async () => {
+    const params = new URLSearchParams({ export: 'csv' });
+    if (searchQuery) params.set('search', searchQuery);
+    if (filterRole) params.set('role', filterRole);
+    if (filterPlatoon) params.set('platoon', filterPlatoon);
+    if (filterYear) params.set('year', filterYear);
+    if (filterRank) params.set('rank', filterRank);
+    if (filterTeam) params.set('team', filterTeam);
+    if (filterStatus) params.set('status', filterStatus);
+    if (filterFaceEnrollment) params.set('faceEnrolled', filterFaceEnrollment);
+    const { ok, data } = await safeApiFetch(`/api/admin/users?${params.toString()}`);
+    if (!ok || !data?.success) { alert(data?.message || 'Could not export cadet list'); return; }
+    const columns = ['Name', 'Regimental Number', 'College Roll Number', 'Email', 'Year', 'Branch', 'Wing/Platoon', 'Team', 'Rank', 'Status'];
+    const quote = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = (data.users || []).map((u: any) => [u.fullName, u.regimentalNumber, u.collegeRollNumber, u.email, u.year, u.branch, u.platoonName, u.team, u.rank, u.status]);
+    const blob = new Blob([[columns, ...rows].map((row) => row.map(quote).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `ncc-cadet-list-${filterYear || 'all-years'}.csv`; link.click(); URL.revokeObjectURL(link.href);
   };
 
   // Fetch Senior Assigned Cadets
@@ -787,7 +825,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       fetchMyAttendance();
       fetchCadetCertificates();
     }
-  }, [role, token, filterRole, filterPlatoon]);
+  }, [role, token, filterRole, filterPlatoon, filterYear, filterRank, filterTeam, filterStatus, filterFaceEnrollment, directoryPage]);
 
   // Real-time synchronization across officer panels (Phase 15)
   useEffect(() => {
@@ -860,6 +898,24 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       return 'Unable to update cadet status. Please try again.';
     } finally {
       setCadetLifecycleSubmitting(false);
+    }
+  };
+
+  const submitCadetRank = async (values: { rank: string; appointmentDate: string; remarks: string }): Promise<string | null> => {
+    if (!rankTarget) return 'No cadet was selected';
+    setRankSubmitting(true);
+    try {
+      const { ok, data } = await safeApiFetch(`/api/ranks/cadets/${encodeURIComponent(rankTarget.id)}`, {
+        method: 'POST', body: JSON.stringify(values),
+      });
+      if (!ok || !data?.success) return data?.message || 'Unable to update cadet rank';
+      await fetchAdminUsers();
+      return null;
+    } catch (error) {
+      console.error('Rank update error:', error);
+      return 'Unable to update cadet rank. Please try again.';
+    } finally {
+      setRankSubmitting(false);
     }
   };
 
@@ -1311,6 +1367,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         {/* Content Area */}
         <main id="role-main-content" tabIndex={-1} style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+            {activeTab === 'overview' && <PendingActionsView onOpen={setActiveTab} />}
             {/* CENTRAL APPROVAL DESK (MODULE 3 & 7) */}
             {activeTab === 'approvals' && (
               <ApprovalCenterView role={role} />
@@ -1504,7 +1561,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       type="text"
                       placeholder="Search by name, regimental no, roll..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e) => { setDirectoryPage(1); setSearchQuery(e.target.value); }}
                       onKeyDown={(e) => e.key === 'Enter' && fetchAdminUsers()}
                       style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--white-border)', borderRadius: '4px', fontSize: '0.88rem' }}
                     />
@@ -1512,7 +1569,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                   <select
                     value={filterRole}
-                    onChange={(e) => setFilterRole(e.target.value)}
+                    onChange={(e) => { setDirectoryPage(1); setFilterRole(e.target.value); }}
                     style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="">All Cadets</option>
@@ -1524,13 +1581,31 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
                   <select
                     value={filterPlatoon}
-                    onChange={(e) => setFilterPlatoon(e.target.value)}
+                    onChange={(e) => { setDirectoryPage(1); setFilterPlatoon(e.target.value); }}
                     style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="">All Wings / Contingents</option>
                     <option value="Senior Division">Senior Division (SD)</option>
                     <option value="Senior Wing">Senior Wing (SW)</option>
                   </select>
+                  <select value={filterYear} onChange={(e) => { setDirectoryPage(1); setFilterYear(e.target.value); }} aria-label="Filter cadets by year" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}>
+                    <option value="">All Years</option>
+                    <option value="FE">1st Year (FE)</option>
+                    <option value="SE">2nd Year (SE)</option>
+                    <option value="TE">3rd Year (TE)</option>
+                  </select>
+                  <select value={filterRank} onChange={(e) => { setDirectoryPage(1); setFilterRank(e.target.value); }} aria-label="Filter cadets by rank" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}>
+                    <option value="">All Ranks</option>
+                    {['CDT', 'LCPL', 'CPL', 'SGT', 'CQMH', 'CSM', 'JUO', 'SUO'].map((rank) => <option key={rank} value={rank}>{rank}</option>)}
+                  </select>
+                  <input aria-label="Filter cadets by team" placeholder="Team" value={filterTeam} onChange={(e) => { setDirectoryPage(1); setFilterTeam(e.target.value); }} style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem', maxWidth: '130px' }} />
+                  <select value={filterStatus} onChange={(e) => { setDirectoryPage(1); setFilterStatus(e.target.value); }} aria-label="Filter cadets by status" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}>
+                    <option value="">All Statuses</option><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option><option value="PASSED_OUT">Passed Out</option><option value="UNDER_REVIEW">Under Review</option><option value="HOLD">On Hold</option>
+                  </select>
+                  <select value={filterFaceEnrollment} onChange={(e) => { setDirectoryPage(1); setFilterFaceEnrollment(e.target.value); }} aria-label="Filter by face enrollment" style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}>
+                    <option value="">All Face Enrollment</option><option value="true">Enrolled</option><option value="false">Not Enrolled</option>
+                  </select>
+                  <button type="button" className="btn-secondary btn-sm" onClick={exportCadetDirectoryCsv} style={{ padding: '0.5rem 0.75rem' }}>Export All Filtered CSV</button>
                 </div>
 
                 {/* Personnel Table */}
@@ -1542,6 +1617,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         <th style={{ padding: '0.75rem 1rem' }}>Regimental No</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Wing / Platoon</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Senior Mentor</th>
+                        <th style={{ padding: '0.75rem 1rem' }}>NCC Rank</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Role</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Status</th>
                         <th style={{ padding: '0.75rem 1rem' }}>Admin Actions</th>
@@ -1550,7 +1626,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <tbody>
                       {usersList.length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--navy-text-muted)' }}>
+                          <td colSpan={8} style={{ padding: '3rem 1rem', textAlign: 'center', color: 'var(--navy-text-muted)' }}>
                             <Users size={36} style={{ margin: '0 auto 0.75rem', opacity: 0.35, color: 'var(--navy-primary)' }} />
                             <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>
                               No Cadets Found
@@ -1602,6 +1678,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                             ) : (
                               <span style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>Commander</span>
                             )}
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--navy-primary)', whiteSpace: 'nowrap' }}>
+                            {u.role === 'CADET' ? (u.rank || 'CDT') : '—'}
                           </td>
                           <td style={{ padding: '0.75rem 1rem' }}>
                             <select
@@ -1726,6 +1805,11 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                                   </button>
                                 )
                               )}
+                              {u.role === 'CADET' && (
+                                <button className="btn-secondary btn-sm" style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }} onClick={() => setRankTarget(u)}>
+                                  Update Rank
+                                </button>
+                              )}
                               {/* Enroll Face — Cadets only */}
                               {u.role === 'CADET' && (
                                 <button
@@ -1750,6 +1834,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       )))}
                     </tbody>
                   </table>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', padding: '0.75rem 0' }}>
+                  <span style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem' }}>Showing {usersList.length ? (directoryPage - 1) * 50 + 1 : 0}–{Math.min(directoryPage * 50, directoryTotal)} of {directoryTotal} matching cadets</span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn-secondary btn-sm" disabled={directoryPage <= 1} onClick={() => setDirectoryPage((page) => Math.max(1, page - 1))}>Previous</button>
+                    <button className="btn-secondary btn-sm" disabled={directoryPage * 50 >= directoryTotal} onClick={() => setDirectoryPage((page) => page + 1)}>Next</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -5618,6 +5709,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           onClose={() => setCadetLifecycleTarget(null)}
           onSubmit={submitCadetLifecycle}
         />
+      )}
+      {rankTarget && (
+        <RankPromotionDialog cadet={rankTarget} saving={rankSubmitting} onClose={() => setRankTarget(null)} onSubmit={submitCadetRank} />
       )}
       {/* VERIFIED CADET PROFILE MODAL (Phase 12) */}
       {selectedCadetForProfile && (

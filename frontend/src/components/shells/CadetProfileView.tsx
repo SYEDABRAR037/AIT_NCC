@@ -31,51 +31,37 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
   const [camps, setCamps] = useState<any[]>([]);
   const [duties, setDuties] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [serviceRecord, setServiceRecord] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) return;
-
-
-    // Fetch personal records in parallel
-    Promise.all([
-      // 1. Attendance
-      safeApiFetch('/api/attendance/my')
-        .then((r) => r.data)
-        .catch(() => ({ success: false })),
-      // 2. Certificates
-      safeApiFetch('/api/certificates/my')
-        .then((r) => r.data)
-        .catch(() => ({ success: false })),
-      // 3. Camps
-      safeApiFetch('/api/camps')
-        .then((r) => r.data)
-        .catch(() => ({ success: false })),
-      // 4. Duties
-      safeApiFetch('/api/duties/my')
-        .then((r) => r.data)
-        .catch(() => ({ success: false })),
-      // 5. Leaves
-      safeApiFetch('/api/leave/my')
-        .then((r) => r.data)
-        .catch(() => ({ success: false })),
-    ])
-      .then(([attRes, certRes, campRes, dutyRes, leaveRes]) => {
-        if (attRes?.success && attRes?.stats) setAttendanceStats(attRes.stats);
-        if (certRes?.success && certRes?.certificates) setCertificates(certRes.certificates);
-        if (dutyRes?.success && dutyRes?.duties) setDuties(dutyRes.duties);
-        if (leaveRes?.success && leaveRes?.leaves) setLeaves(leaveRes.leaves);
-
-        // Filter camps for user participation
-        if (campRes?.success && campRes?.camps) {
-          const userCamps = campRes.camps.filter((c: any) =>
-            c.participants?.some((p: any) => p.cadetId === user?.id)
-          );
-          setCamps(userCamps);
-        }
+    if (!token) { setLoading(false); return; }
+    setLoading(true);
+    const endpoint = propUser?.id ? `/api/service-record/${encodeURIComponent(propUser.id)}` : '/api/service-record/me';
+    safeApiFetch(endpoint)
+      .then(({ ok, data }) => {
+        if (!ok || !data?.success) throw new Error(data?.message || 'Unable to load the service record');
+        const record = data.serviceRecord;
+        const historical = record.historicalInformation;
+        const attendanceCounts = historical.attendanceSummary || {};
+        const total = (attendanceCounts.PRESENT || 0) + (attendanceCounts.ABSENT || 0) + (attendanceCounts.EXCUSED || 0);
+        setServiceRecord(record);
+        setAttendanceStats({ present: attendanceCounts.PRESENT || 0, total, percentage: total ? Math.round(((attendanceCounts.PRESENT || 0) / total) * 100) : 0 });
+        setCertificates(historical.certificates || []);
+        setCamps(historical.camps || []);
+        setDuties(historical.duties || []);
+        setLeaves(historical.leaves || []);
       })
+      .catch((loadError) => console.error('Service record load error:', loadError))
       .finally(() => setLoading(false));
-  }, [token, user?.id]);
+  }, [token, user?.id, propUser?.id]);
+
+  const history = serviceRecord?.historicalInformation;
+  const displayUser = {
+    ...user,
+    ...(serviceRecord?.currentInformation || {}),
+    lifecycleHistory: history?.lifecycleHistory || user?.lifecycleHistory || [],
+  };
 
   const percentage = attendanceStats?.percentage || 0;
   const isEligible = percentage >= 75;
@@ -120,31 +106,31 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               overflow: 'hidden',
             }}
           >
-            {user?.profilePhotoUrl ? (
+            {displayUser?.profilePhotoUrl ? (
               <img
-                src={user.profilePhotoUrl}
-                alt={user.fullName}
+                src={displayUser.profilePhotoUrl}
+                alt={displayUser.fullName}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
-              user?.fullName?.charAt(0) || 'C'
+              displayUser?.fullName?.charAt(0) || 'C'
             )}
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.5rem', color: 'var(--navy-primary)', margin: 0 }}>
-                {user?.fullName}
+                {displayUser?.fullName}
               </h2>
               <span className="badge-institutional" style={{
-                background: ['INACTIVE', 'PASSED_OUT'].includes(user?.status) ? 'var(--color-warning-soft)' : 'var(--color-success-soft)',
-                color: ['INACTIVE', 'PASSED_OUT'].includes(user?.status) ? 'var(--color-primary)' : 'var(--color-success)',
+                background: ['INACTIVE', 'PASSED_OUT'].includes(displayUser?.status) ? 'var(--color-warning-soft)' : 'var(--color-success-soft)',
+                color: ['INACTIVE', 'PASSED_OUT'].includes(displayUser?.status) ? 'var(--color-primary)' : 'var(--color-success)',
               }}>
-                {user?.status || 'ACTIVE'}
+                {displayUser?.status || 'ACTIVE'}
               </span>
               <span className="badge-institutional">CADET</span>
             </div>
             <div style={{ fontSize: '0.88rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
-              Regimental No: <strong>{user?.regimentalNumber}</strong> &bull; Roll: <strong>{user?.collegeRollNumber}</strong> &bull; Platoon: <strong>{user?.platoonName}</strong>
+              Regimental No: <strong>{displayUser?.regimentalNumber}</strong> &bull; Roll: <strong>{displayUser?.collegeRollNumber}</strong> &bull; Platoon: <strong>{displayUser?.platoonName}</strong>
             </div>
           </div>
         </div>
@@ -159,21 +145,21 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
         </button>
       </div>
 
-      {user?.statusDetails && (
+      {displayUser?.statusDetails && (
         <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-warning)' }}>
           <h3 style={{ color: 'var(--navy-primary)', fontSize: '1rem', marginBottom: '0.5rem' }}>Cadet lifecycle status</h3>
-          <p><strong>Status:</strong> {user.status}</p>
-          <p><strong>Effective:</strong> {new Date(user.statusDetails.effectiveDate).toLocaleDateString()}</p>
-          <p><strong>Reason:</strong> {user.statusDetails.reason}</p>
-          {user.statusDetails.remarks && <p><strong>Remarks:</strong> {user.statusDetails.remarks}</p>}
+          <p><strong>Status:</strong> {displayUser.status}</p>
+          <p><strong>Effective:</strong> {new Date(displayUser.statusDetails.effectiveDate).toLocaleDateString()}</p>
+          <p><strong>Reason:</strong> {displayUser.statusDetails.reason}</p>
+          {displayUser.statusDetails.remarks && <p><strong>Remarks:</strong> {displayUser.statusDetails.remarks}</p>}
         </div>
       )}
 
-      {Array.isArray(user?.lifecycleHistory) && user.lifecycleHistory.length > 0 && (
+      {Array.isArray(displayUser?.lifecycleHistory) && displayUser.lifecycleHistory.length > 0 && (
         <div className="institutional-card">
           <h3 style={{ color: 'var(--navy-primary)', fontSize: '1rem', marginBottom: '0.75rem' }}>Cadet status history</h3>
           <ol style={{ display: 'grid', gap: '0.7rem', paddingLeft: '1.25rem' }}>
-            {user.lifecycleHistory.map((entry: any, index: number) => (
+            {displayUser.lifecycleHistory.map((entry: any, index: number) => (
               <li key={`${entry.timestamp}-${index}`} style={{ color: 'var(--navy-text-muted)', lineHeight: 1.5 }}>
                 <strong>{new Date(entry.timestamp).toLocaleDateString()}</strong> · {entry.previousStatus} → {entry.newStatus}
                 <div>Reason: {entry.reason || 'Status transition'}</div>
@@ -205,27 +191,27 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.88rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Full Name</span>
-              <span style={{ fontWeight: 700 }}>{user?.fullName}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.fullName}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>College Roll Number</span>
-              <span style={{ fontWeight: 700 }}>{user?.collegeRollNumber}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.collegeRollNumber}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Academic Year</span>
-              <span style={{ fontWeight: 700 }}>{user?.year}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.year}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Engineering Branch</span>
-              <span style={{ fontWeight: 700 }}>{user?.branch}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.branch}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Email Address</span>
-              <span>{user?.email}</span>
+              <span>{displayUser?.email}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Contact Phone</span>
-              <span>{user?.phone || 'On Record (Confidential)'}</span>
+              <span>{displayUser?.phone || 'On Record (Confidential)'}</span>
             </div>
           </div>
         </div>
@@ -248,27 +234,35 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.88rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Battalion</span>
-              <span style={{ fontWeight: 700 }}>{user?.battalion || '2 Maharashtra Battalion NCC'}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.battalion || '2 Maharashtra Battalion NCC'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Company</span>
-              <span style={{ fontWeight: 700 }}>{user?.company || 'Bravo Company'}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.company || 'Bravo Company'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Directorate & Group</span>
-              <span style={{ fontWeight: 700 }}>{user?.group || 'Pune Group HQ'}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.group || 'Pune Group HQ'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Assigned Platoon</span>
-              <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>{user?.platoonName || 'Alpha Platoon'}</span>
+              <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>{displayUser?.platoonName || 'Alpha Platoon'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
+              <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Current NCC Rank</span>
+              <span style={{ fontWeight: 700, color: 'var(--navy-primary)' }}>{displayUser?.rank || 'CDT'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--white-border)', paddingBottom: '0.4rem' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Cadet Squad / Section</span>
-              <span style={{ fontWeight: 700 }}>{user?.team || 'Section 1 (Alpha)'}</span>
+              <span style={{ fontWeight: 700 }}>{displayUser?.team || 'Section 1 (Alpha)'}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Enrollment Date</span>
-              <span>{user?.dateOfJoining ? new Date(user.dateOfJoining).toLocaleDateString() : 'Active Regimental'}</span>
+              <span>{displayUser?.dateOfJoining ? new Date(displayUser.dateOfJoining).toLocaleDateString() : 'Active Regimental'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--navy-text-muted)', fontWeight: 600 }}>Face Enrollment</span>
+              <span>{displayUser?.faceEnrolled ? `Enrolled${displayUser.faceEnrollment?.registeredAt ? ` · ${new Date(displayUser.faceEnrollment.registeredAt).toLocaleDateString()}` : ''}` : 'Not enrolled'}</span>
             </div>
           </div>
         </div>
@@ -415,6 +409,71 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
               ))}
             </div>
           )}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--white-border)', paddingTop: '1rem', marginTop: '1rem' }}>
+          <h5 style={{ fontSize: '0.92rem', color: 'var(--navy-primary)', marginBottom: '0.75rem' }}>Historical NCC Record</h5>
+          <div className="grid-2" style={{ gap: '0.75rem' }}>
+            <div className="institutional-card">
+              <strong>Recent parade attendance</strong>
+              {(history?.attendance || []).slice(0, 5).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.session?.title || 'Training parade'} · {entry.status} · {new Date(entry.session?.date || entry.createdAt).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.attendance?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No attendance records.</p>}
+            </div>
+            <div className="institutional-card">
+              <strong>Camp participation</strong>
+              {(history?.camps || []).slice(0, 5).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.camp?.name || 'Camp'} · {entry.status} · {new Date(entry.camp?.startDate || entry.createdAt).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.camps?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No camp participation records.</p>}
+            </div>
+            <div className="institutional-card">
+              <strong>Duty history</strong>
+              {(history?.duties || []).slice(0, 5).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.title} · {entry.status} · {new Date(entry.dutyDate).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.duties?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No duty records.</p>}
+            </div>
+            <div className="institutional-card">
+              <strong>Certificates & achievements</strong>
+              {(history?.certificates || []).slice(0, 4).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.title} · {entry.status} · {new Date(entry.issueDate).toLocaleDateString()}
+                </div>
+              ))}
+              {(history?.achievements || []).slice(0, 4).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.title} · {new Date(entry.eventDate).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.certificates?.length && !history?.achievements?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No certificates or achievements recorded.</p>}
+            </div>
+            <div className="institutional-card">
+              <strong>Cadet approval history</strong>
+              {(history?.approvals || []).slice(0, 6).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.stage} · {entry.action} · {entry.reviewer?.fullName || 'Officer'} · {new Date(entry.createdAt).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.approvals?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No approval history recorded.</p>}
+            </div>
+            <div className="institutional-card">
+              <strong>Rank / promotion history</strong>
+              {(history?.rankHistory || []).map((entry: any) => (
+                <div key={entry.id} style={{ padding: '0.45rem 0', borderBottom: '1px solid var(--white-border)', fontSize: '0.8rem' }}>
+                  {entry.previousRank} → {entry.newRank} · {new Date(entry.changedAt).toLocaleDateString()}
+                </div>
+              ))}
+              {!history?.rankHistory?.length && <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem' }}>No rank changes recorded.</p>}
+            </div>
+          </div>
         </div>
       </div>
     </div>

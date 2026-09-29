@@ -1,6 +1,25 @@
 import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
+
+const getOfficerCadetScope = async (req: AuthRequest): Promise<string[] | null> => {
+  if (!req.user || req.user.role === 'ADMIN_ANO' || req.user.role === 'DRILL_INSTRUCTOR') return null;
+  if (req.user.role === 'SENIOR') {
+    const assignments = await prisma.seniorAssignment.findMany({
+      where: { seniorId: req.user.id }, select: { cadetId: true },
+    });
+    return assignments.map((assignment) => assignment.cadetId);
+  }
+  if (req.user.role === 'PLATOON_SENIOR') {
+    const platoons = await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
+    const cadets = await prisma.user.findMany({
+      where: { role: 'CADET', platoonName: { in: platoons } }, select: { id: true },
+    });
+    return cadets.map((cadet) => cadet.id);
+  }
+  return [];
+};
 
 // 1. Cadet views own assigned duties
 export const getMyDuties = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -22,6 +41,7 @@ export const getMyDuties = async (req: AuthRequest, res: Response): Promise<void
             collegeRollNumber: true,
             company: true,
             battalion: true,
+            rank: true,
           },
         },
         assignedBy: {
@@ -38,7 +58,7 @@ export const getMyDuties = async (req: AuthRequest, res: Response): Promise<void
         ? {
             ...d.cadet,
             name: d.cadet.fullName,
-            rank: 'CDT',
+            rank: d.cadet.rank,
           }
         : undefined,
     }));
@@ -59,28 +79,8 @@ export const getUnitDuties = async (req: AuthRequest, res: Response): Promise<vo
     }
 
     const whereClause: any = {};
-    if (req.user.role === 'SENIOR') {
-      const assignments = await prisma.seniorAssignment.findMany({
-        where: { seniorId: req.user.id },
-        select: { cadetId: true },
-      });
-      const assignedIds = assignments.map((a) => a.cadetId);
-      if (assignedIds.length > 0) {
-        whereClause.assignedCadetId = { in: assignedIds };
-      } else if (req.user.platoonName) {
-        const cadets = await prisma.user.findMany({
-          where: { platoonName: req.user.platoonName, role: 'CADET' },
-          select: { id: true },
-        });
-        whereClause.assignedCadetId = { in: cadets.map((c) => c.id) };
-      }
-    } else if (req.user.role === 'PLATOON_SENIOR') {
-      const cadets = await prisma.user.findMany({
-        where: { platoonName: req.user.platoonName, role: 'CADET' },
-        select: { id: true },
-      });
-      whereClause.assignedCadetId = { in: cadets.map((c) => c.id) };
-    }
+    const scopedCadetIds = await getOfficerCadetScope(req);
+    if (scopedCadetIds !== null) whereClause.assignedCadetId = { in: scopedCadetIds };
 
     const duties = await prisma.duty.findMany({
       where: whereClause,
@@ -94,6 +94,7 @@ export const getUnitDuties = async (req: AuthRequest, res: Response): Promise<vo
             platoonName: true,
             company: true,
             battalion: true,
+            rank: true,
           },
         },
         assignedBy: {
@@ -110,7 +111,7 @@ export const getUnitDuties = async (req: AuthRequest, res: Response): Promise<vo
         ? {
             ...d.cadet,
             name: d.cadet.fullName,
-            rank: 'CDT',
+            rank: d.cadet.rank,
           }
         : undefined,
     }));
@@ -131,22 +132,8 @@ export const getAssignableCadets = async (req: AuthRequest, res: Response): Prom
     }
 
     const whereClause: any = { role: 'CADET', status: 'ACTIVE' };
-    if (req.user.role === 'PLATOON_SENIOR') {
-      if (req.user.platoonName) {
-        whereClause.platoonName = req.user.platoonName;
-      }
-    } else if (req.user.role === 'SENIOR') {
-      const assignments = await prisma.seniorAssignment.findMany({
-        where: { seniorId: req.user.id },
-        select: { cadetId: true },
-      });
-      const assignedIds = assignments.map((a) => a.cadetId);
-      if (assignedIds.length > 0) {
-        whereClause.id = { in: assignedIds };
-      } else if (req.user.platoonName) {
-        whereClause.platoonName = req.user.platoonName;
-      }
-    }
+    const scopedCadetIds = await getOfficerCadetScope(req);
+    if (scopedCadetIds !== null) whereClause.id = { in: scopedCadetIds };
 
     const cadets = await prisma.user.findMany({
       where: whereClause,
@@ -157,6 +144,7 @@ export const getAssignableCadets = async (req: AuthRequest, res: Response): Prom
         platoonName: true,
         collegeRollNumber: true,
         company: true,
+        rank: true,
       },
       orderBy: { fullName: 'asc' },
     });
@@ -168,7 +156,7 @@ export const getAssignableCadets = async (req: AuthRequest, res: Response): Prom
         name: c.fullName,
         fullName: c.fullName,
         regimentalNumber: c.regimentalNumber,
-        rank: 'CDT',
+        rank: c.rank,
         platoonName: c.platoonName,
       })),
     });
@@ -193,6 +181,8 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
       dutyDate,
       date,
       reportingTime,
+      startTime,
+      endTime,
       instructions,
       assignedCadetId,
       cadetId,
@@ -207,12 +197,40 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const cadet = await prisma.user.findUnique({
-      where: { id: String(targetCadetId) },
-    });
+    const cadet = await prisma.user.findUnique({ where: { id: String(targetCadetId) } });
 
     if (!cadet) {
       res.status(404).json({ success: false, message: 'Designated cadet not found' });
+      return;
+    }
+
+    if (cadet.role !== 'CADET' || !['ACTIVE', 'APPROVED'].includes(cadet.status)) {
+      res.status(409).json({ success: false, message: 'Duties can only be assigned to active cadets' });
+      return;
+    }
+    const scopedCadetIds = await getOfficerCadetScope(req);
+    if (scopedCadetIds !== null && !scopedCadetIds.includes(cadet.id)) {
+      res.status(403).json({ success: false, message: 'This cadet is outside your authorized assignment scope' });
+      return;
+    }
+
+    const parsedDate = new Date(targetDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      res.status(400).json({ success: false, message: 'Duty date is invalid' });
+      return;
+    }
+    const normalizedStart = typeof startTime === 'string' ? startTime.trim() : '';
+    const normalizedEnd = typeof endTime === 'string' ? endTime.trim() : '';
+    if (normalizedStart && !/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizedStart)) {
+      res.status(400).json({ success: false, message: 'Duty start time must use 24-hour HH:MM format' });
+      return;
+    }
+    if (normalizedEnd && !/^([01]\d|2[0-3]):[0-5]\d$/.test(normalizedEnd)) {
+      res.status(400).json({ success: false, message: 'Duty end time must use 24-hour HH:MM format' });
+      return;
+    }
+    if (normalizedStart && normalizedEnd && normalizedEnd <= normalizedStart) {
+      res.status(400).json({ success: false, message: 'Duty end time must be later than the start time' });
       return;
     }
 
@@ -222,7 +240,9 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
           title: String(targetTitle).trim(),
           dutyType: String(dutyType).trim(),
           location: String(location).trim(),
-          dutyDate: new Date(targetDate),
+          dutyDate: parsedDate,
+          startTime: normalizedStart || reportingTime ? normalizedStart || String(reportingTime).trim() : null,
+          endTime: normalizedEnd || null,
           reportingTime: reportingTime ? String(reportingTime).trim() : '0630 hrs in ceremonial dress',
           instructions: instructions ? String(instructions).trim() : null,
           assignedCadetId: cadet.id,
@@ -230,7 +250,7 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
           status: 'ASSIGNED',
         },
         include: {
-          cadet: { select: { id: true, fullName: true, regimentalNumber: true, platoonName: true } },
+          cadet: { select: { id: true, fullName: true, regimentalNumber: true, platoonName: true, rank: true } },
           assignedBy: { select: { fullName: true, role: true } },
         },
       });
@@ -244,6 +264,17 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
           description: `Assigned to ${targetTitle} at ${location} by ${req.user!.role} (${req.user!.fullName}). Reporting: ${reportingTime || '0630 hrs'}`,
           actorId: req.user!.id,
           actorRole: req.user!.role,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          actorId: req.user!.id,
+          actorName: req.user!.fullName,
+          action: 'DUTY_ASSIGNED',
+          targetType: 'DUTY',
+          targetId: d.id,
+          details: JSON.stringify({ cadetId: cadet.id, cadetName: cadet.fullName, dutyType, title: targetTitle, dutyDate: parsedDate.toISOString(), previousStatus: null, newStatus: 'ASSIGNED' }),
         },
       });
 
@@ -268,7 +299,7 @@ export const assignDuty = async (req: AuthRequest, res: Response): Promise<void>
         cadet: {
           ...duty.cadet,
           name: duty.cadet.fullName,
-          rank: 'CDT',
+          rank: duty.cadet.rank,
         },
       },
     });
@@ -289,36 +320,55 @@ export const updateDutyStatus = async (req: AuthRequest, res: Response): Promise
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!['COMPLETED', 'EXCUSED'].includes(status)) {
-      res.status(400).json({ success: false, message: 'Status must be COMPLETED or EXCUSED' });
+    if (!['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'EXCUSED'].includes(status)) {
+      res.status(400).json({ success: false, message: 'Invalid duty status' });
       return;
     }
 
-    const duty = await prisma.duty.update({
-      where: { id: String(id) },
-      data: { status },
-      include: {
-        cadet: {
-          select: { id: true, fullName: true, regimentalNumber: true, platoonName: true },
-        },
-        assignedBy: {
-          select: { fullName: true, role: true },
-        },
-      },
-    });
+    const existingDuty = await prisma.duty.findUnique({ where: { id: String(id) }, select: { id: true, assignedCadetId: true, status: true, dutyType: true, title: true, location: true } });
+    if (!existingDuty) {
+      res.status(404).json({ success: false, message: 'Duty not found' });
+      return;
+    }
+    const scopedCadetIds = await getOfficerCadetScope(req);
+    if (scopedCadetIds !== null && !scopedCadetIds.includes(existingDuty.assignedCadetId)) {
+      res.status(403).json({ success: false, message: 'This duty is outside your authorized scope' });
+      return;
+    }
 
-    if (status === 'COMPLETED') {
-      await prisma.timelineEvent.create({
-        data: {
-          cadetId: duty.assignedCadetId,
-          category: 'DUTY',
-          title: `Duty Completed: ${duty.dutyType.replace(/_/g, ' ')}`,
-          description: `Successfully performed duty: ${duty.title} at ${duty.location}. Verified by ${req.user.role}.`,
-          actorId: req.user.id,
-          actorRole: req.user.role,
+    const duty = await prisma.$transaction(async (tx) => {
+      const updated = await tx.duty.update({
+        where: { id: existingDuty.id },
+        data: { status },
+        include: {
+          cadet: { select: { id: true, fullName: true, regimentalNumber: true, platoonName: true, rank: true } },
+          assignedBy: { select: { fullName: true, role: true } },
         },
       });
-    }
+      await tx.auditLog.create({
+        data: {
+          actorId: req.user!.id,
+          actorName: req.user!.fullName,
+          action: 'DUTY_STATUS_CHANGED',
+          targetType: 'DUTY',
+          targetId: existingDuty.id,
+          details: JSON.stringify({ previousStatus: existingDuty.status, newStatus: status, cadetId: existingDuty.assignedCadetId }),
+        },
+      });
+      if (status === 'COMPLETED' || status === 'CANCELLED') {
+        await tx.timelineEvent.create({
+          data: {
+            cadetId: existingDuty.assignedCadetId,
+            category: 'DUTY',
+            title: `Duty ${status === 'COMPLETED' ? 'Completed' : 'Cancelled'}: ${existingDuty.dutyType.replace(/_/g, ' ')}`,
+            description: `${existingDuty.title} at ${existingDuty.location}. Recorded by ${req.user!.role} (${req.user!.fullName}).`,
+            actorId: req.user!.id,
+            actorRole: req.user!.role,
+          },
+        });
+      }
+      return updated;
+    });
 
     res.json({
       success: true,
@@ -329,7 +379,7 @@ export const updateDutyStatus = async (req: AuthRequest, res: Response): Promise
         cadet: {
           ...duty.cadet,
           name: duty.cadet.fullName,
-          rank: 'CDT',
+          rank: duty.cadet.rank,
         },
       },
     });

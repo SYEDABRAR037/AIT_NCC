@@ -7,7 +7,7 @@ import { Role, AccountStatus } from '@prisma/client';
 // 1. List Users with Search, Role, Status, and Platoon Filters
 export const listUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { search, role, status, platoon } = req.query;
+    const { search, role, status, platoon, year, rank, team, faceEnrolled, page, pageSize } = req.query;
 
     const whereClause: any = {};
 
@@ -19,12 +19,23 @@ export const listUsers = async (req: AuthRequest, res: Response): Promise<void> 
     }
 
     if (status) {
+      const allowedStatuses = Object.values(AccountStatus) as string[];
+      if (!allowedStatuses.includes(String(status))) {
+        res.status(400).json({ success: false, message: 'Invalid cadet status filter' });
+        return;
+      }
       whereClause.status = status as AccountStatus;
     }
 
     if (platoon) {
       whereClause.platoonName = platoon as string;
     }
+
+    if (year) whereClause.year = { contains: String(year), mode: 'insensitive' };
+    if (rank) whereClause.rank = String(rank);
+    if (team) whereClause.team = String(team);
+    if (faceEnrolled === 'true') whereClause.biometricTemplate = { isNot: null };
+    if (faceEnrolled === 'false') whereClause.biometricTemplate = { is: null };
 
     if (search) {
       const q = String(search).trim();
@@ -33,12 +44,21 @@ export const listUsers = async (req: AuthRequest, res: Response): Promise<void> 
         { regimentalNumber: { contains: q, mode: 'insensitive' } },
         { collegeRollNumber: { contains: q, mode: 'insensitive' } },
         { email: { contains: q, mode: 'insensitive' } },
+        { year: { contains: q, mode: 'insensitive' } },
+        { branch: { contains: q, mode: 'insensitive' } },
+        { platoonName: { contains: q, mode: 'insensitive' } },
+        { team: { contains: q, mode: 'insensitive' } },
+        { rank: { contains: q, mode: 'insensitive' } },
       ];
     }
 
-    const [users, totalActiveCadets] = await Promise.all([
+    const pageNumber = Math.max(1, Number.parseInt(String(page || '1'), 10) || 1);
+    const take = String(req.query.export || '') === 'csv' ? 20000 : Math.min(100, Math.max(1, Number.parseInt(String(pageSize || '50'), 10) || 50));
+    const [users, total, totalActiveCadets] = await Promise.all([
       prisma.user.findMany({
         where: whereClause,
+        skip: (pageNumber - 1) * take,
+        take,
         select: {
           id: true,
           fullName: true,
@@ -57,6 +77,7 @@ export const listUsers = async (req: AuthRequest, res: Response): Promise<void> 
           enrollmentDetails: true,
           role: true,
           status: true,
+          rank: true,
           dateOfJoining: true,
           createdAt: true,
           mentorAssignment: {
@@ -69,12 +90,13 @@ export const listUsers = async (req: AuthRequest, res: Response): Promise<void> 
         },
         orderBy: { createdAt: 'desc' },
       }),
+      prisma.user.count({ where: whereClause }),
       prisma.user.count({
         where: { role: Role.CADET, status: AccountStatus.ACTIVE },
       }),
     ]);
 
-    res.json({ success: true, count: users.length, totalActiveCadets, users });
+    res.json({ success: true, count: users.length, total, page: pageNumber, pageSize: take, totalPages: Math.ceil(total / take), totalActiveCadets, users });
   } catch (error) {
     console.error('listUsers error:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve unit personnel' });
@@ -435,17 +457,31 @@ export const decideCadetLeave = async (req: AuthRequest, res: Response): Promise
 };
 
 // 9. Camps Management: Create & Manage
-export const getAdminCamps = async (_req: AuthRequest, res: Response): Promise<void> => {
+export const getAdminCamps = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    const role = req.user?.role;
+    let visibleCadetIds: string[] | undefined;
+    if (role === 'CADET') visibleCadetIds = [req.user!.id];
+    else if (role === 'SENIOR') {
+      const assignments = await prisma.seniorAssignment.findMany({ where: { seniorId: req.user!.id }, select: { cadetId: true } });
+      visibleCadetIds = assignments.map((a) => a.cadetId);
+    } else if (role === 'PLATOON_SENIOR') {
+      const assignments = await prisma.platoonSeniorAssignment.findMany({ where: { platoonSeniorId: req.user!.id }, include: { platoon: { select: { name: true } } } });
+      const names = assignments.map((a) => a.platoon.name);
+      const cadets = names.length ? await prisma.user.findMany({ where: { role: Role.CADET, platoonName: { in: names } }, select: { id: true } }) : [];
+      visibleCadetIds = cadets.map((c) => c.id);
+    }
     const camps = await prisma.camp.findMany({
       include: {
         participants: {
+          ...(visibleCadetIds ? { where: { cadetId: { in: visibleCadetIds } } } : {}),
           include: {
             cadet: {
               select: { id: true, fullName: true, regimentalNumber: true, platoonName: true },
             },
           },
         },
+        documents: true,
       },
       orderBy: { startDate: 'desc' },
     });
@@ -458,7 +494,7 @@ export const getAdminCamps = async (_req: AuthRequest, res: Response): Promise<v
 
 export const createAdminCamp = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, campType, location, startDate, endDate, description, capacity, reportingTime, eligibility, instructions, requiredDocuments, assignedOfficers } = req.body;
+    const { name, campType, location, startDate, endDate, description, capacity, reportingTime, eligibility, instructions, requiredDocuments, assignedOfficers, status, reportingVenue, eligibleYears, targetPlatoon, targetTeam } = req.body;
 
     if (!name || !campType || !location || !startDate || !endDate) {
       res.status(400).json({ success: false, message: 'Missing mandatory camp fields' });
@@ -467,6 +503,11 @@ export const createAdminCamp = async (req: AuthRequest, res: Response): Promise<
 
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const allowedCampStatuses = ['DRAFT', 'OPEN', 'SELECTION_IN_PROGRESS', 'SELECTED', 'ONGOING', 'COMPLETED', 'CANCELLED'];
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start || (status && !allowedCampStatuses.includes(String(status)))) {
+      res.status(400).json({ success: false, message: 'Invalid camp dates or status' });
+      return;
+    }
 
     const camp = await prisma.$transaction(async (tx) => {
       const c = await tx.camp.create({
@@ -483,6 +524,11 @@ export const createAdminCamp = async (req: AuthRequest, res: Response): Promise<
           instructions: instructions ? String(instructions).trim() : null,
           requiredDocuments: requiredDocuments ? String(requiredDocuments).trim() : 'Medical Certificate, Indemnity Bond, College ID',
           assignedOfficers: assignedOfficers ? String(assignedOfficers).trim() : null,
+          status: status || 'OPEN',
+          reportingVenue: reportingVenue ? String(reportingVenue).trim() : null,
+          eligibleYears: eligibleYears ? String(eligibleYears).trim() : null,
+          targetPlatoon: targetPlatoon ? String(targetPlatoon).trim() : null,
+          targetTeam: targetTeam ? String(targetTeam).trim() : null,
         },
       });
 
@@ -495,7 +541,7 @@ export const createAdminCamp = async (req: AuthRequest, res: Response): Promise<
           eventDate: start,
           startTime: c.reportingTime || '06:00 hrs',
           location: c.location,
-          isPublic: true,
+          isPublic: (status || 'OPEN') !== 'DRAFT',
           status: 'PUBLISHED',
           referenceType: 'CAMP',
           referenceId: c.id,
@@ -542,6 +588,22 @@ export const applyForCamp = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
+    if (camp.status !== 'OPEN') {
+      res.status(409).json({ success: false, message: 'This camp is not open for applications' });
+      return;
+    }
+
+    const cadet = await prisma.user.findUnique({ where: { id: req.user.id }, select: { role: true, status: true, year: true, platoonName: true, team: true } });
+    if (!cadet || cadet.role !== Role.CADET || !['ACTIVE', 'APPROVED'].includes(cadet.status)) {
+      res.status(403).json({ success: false, message: 'Only active cadets can apply' });
+      return;
+    }
+    const eligibleYears = camp.eligibleYears?.split(',').map((year) => year.trim().toUpperCase()).filter(Boolean) || [];
+    if ((eligibleYears.length && !eligibleYears.some((year) => cadet.year.toUpperCase().includes(year))) || (camp.targetPlatoon && cadet.platoonName !== camp.targetPlatoon) || (camp.targetTeam && cadet.team !== camp.targetTeam)) {
+      res.status(403).json({ success: false, message: 'Your year, platoon, or team is not eligible for this camp' });
+      return;
+    }
+
     // Check existing application
     const existing = await prisma.campParticipant.findUnique({
       where: { campId_cadetId: { campId: camp.id, cadetId: req.user.id } },
@@ -552,12 +614,17 @@ export const applyForCamp = async (req: AuthRequest, res: Response): Promise<voi
       return;
     }
 
+    const currentSelections = await prisma.campParticipant.count({
+      where: { campId: camp.id, status: { in: ['APPLIED', 'RECOMMENDED', 'SELECTED', 'CONFIRMED', 'PARTICIPATED', 'COMPLETED'] } },
+    });
+    const applicationStatus = currentSelections >= camp.capacity ? 'WAITLISTED' : 'APPLIED';
+
     const participant = await prisma.$transaction(async (tx) => {
       const p = await tx.campParticipant.create({
         data: {
           campId: camp.id,
           cadetId: req.user!.id,
-          status: 'APPLIED',
+          status: applicationStatus,
         },
       });
 
@@ -565,8 +632,8 @@ export const applyForCamp = async (req: AuthRequest, res: Response): Promise<voi
         data: {
           cadetId: req.user!.id,
           category: 'CAMP',
-          title: `Camp Participation Application Filed`,
-          description: `Applied for ${camp.name} (${camp.campType}) at ${camp.location}.`,
+          title: applicationStatus === 'WAITLISTED' ? 'Camp Waiting List' : 'Camp Participation Application Filed',
+          description: `${applicationStatus === 'WAITLISTED' ? 'Placed on waiting list for' : 'Applied for'} ${camp.name} (${camp.campType}) at ${camp.location}.`,
           actorId: req.user!.id,
           actorRole: req.user!.role,
         },
@@ -577,7 +644,7 @@ export const applyForCamp = async (req: AuthRequest, res: Response): Promise<voi
 
     res.status(201).json({
       success: true,
-      message: `Successfully registered nomination for ${camp.name}. Current status: APPLIED (Awaiting Review).`,
+      message: applicationStatus === 'WAITLISTED' ? `Camp capacity has been reached. You are on the waiting list for ${camp.name}.` : `Successfully registered nomination for ${camp.name}. Current status: APPLIED (Awaiting Review).`,
       participant,
     });
   } catch (error) {
@@ -597,7 +664,7 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
     const { campId, cadetId } = req.params;
     const { status, remarks } = req.body;
 
-    const validStatuses = ['APPLIED', 'RECOMMENDED', 'SELECTED', 'CONFIRMED', 'PARTICIPATED', 'COMPLETED', 'REJECTED'];
+    const validStatuses = ['APPLIED', 'RECOMMENDED', 'SELECTED', 'WAITLISTED', 'CONFIRMED', 'PARTICIPATED', 'COMPLETED', 'REJECTED'];
     if (!validStatuses.includes(status)) {
       res.status(400).json({ success: false, message: 'Invalid camp participant status' });
       return;
@@ -607,6 +674,24 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
     if (!camp) {
       res.status(404).json({ success: false, message: 'Camp record not found' });
       return;
+    }
+
+    if (req.user.role === 'SENIOR') {
+      const assignment = await prisma.seniorAssignment.findUnique({ where: { cadetId: String(cadetId) }, select: { seniorId: true } });
+      if (assignment?.seniorId !== req.user.id) {
+        res.status(403).json({ success: false, message: 'Cadet is outside your assigned scope' });
+        return;
+      }
+    }
+    if (req.user.role === 'PLATOON_SENIOR') {
+      const [cadet, assignments] = await Promise.all([
+        prisma.user.findUnique({ where: { id: String(cadetId) }, select: { platoonName: true } }),
+        prisma.platoonSeniorAssignment.findMany({ where: { platoonSeniorId: req.user.id }, include: { platoon: { select: { name: true } } } }),
+      ]);
+      if (!cadet?.platoonName || !assignments.some((assignment) => assignment.platoon.name === cadet.platoonName)) {
+        res.status(403).json({ success: false, message: 'Cadet is outside your assigned platoon scope' });
+        return;
+      }
     }
 
     const updated = await prisma.$transaction(async (tx) => {
@@ -627,6 +712,7 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
           actorRole: req.user!.role,
         },
       });
+      await tx.auditLog.create({ data: { actorId: req.user!.id, actorName: req.user!.fullName, action: 'CAMP_PARTICIPANT_STATUS_UPDATED', targetType: 'CAMP_PARTICIPANT', targetId: p.id, details: `${camp.name}: ${p.cadet.fullName} -> ${status}` } });
 
       // Cross-Module: Notification to cadet
       await tx.notification.create({
@@ -649,6 +735,35 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
     console.error('updateCampParticipantStatus error:', error);
     res.status(500).json({ success: false, message: 'Failed to update camp participant status' });
   }
+};
+
+export const updateCampStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+  const statuses = ['DRAFT', 'OPEN', 'SELECTION_IN_PROGRESS', 'SELECTED', 'ONGOING', 'COMPLETED', 'CANCELLED'];
+  const { status } = req.body;
+  if (!req.user || req.user.role !== 'ADMIN_ANO') { res.status(403).json({ success: false, message: 'Admin access required' }); return; }
+  if (!statuses.includes(status)) { res.status(400).json({ success: false, message: 'Invalid camp status' }); return; }
+  try {
+    const camp = await prisma.$transaction(async (tx) => {
+      const updated = await tx.camp.update({ where: { id: String(req.params.id) }, data: { status } });
+      await tx.event.updateMany({ where: { referenceType: 'CAMP', referenceId: updated.id }, data: { isPublic: status !== 'DRAFT', status: status === 'CANCELLED' ? 'CANCELLED' : 'PUBLISHED' } });
+      await tx.auditLog.create({ data: { actorId: req.user!.id, actorName: req.user!.fullName, action: 'CAMP_STATUS_UPDATED', targetType: 'CAMP', targetId: updated.id, details: `${updated.name} status set to ${status}` } });
+      return updated;
+    });
+    res.json({ success: true, camp });
+  } catch { res.status(404).json({ success: false, message: 'Camp not found' }); }
+};
+
+export const addCampDocument = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user || req.user.role !== 'ADMIN_ANO') { res.status(403).json({ success: false, message: 'Admin access required' }); return; }
+  const title = String(req.body.title || '').trim();
+  let url: URL;
+  try { url = new URL(String(req.body.url || '')); } catch { res.status(400).json({ success: false, message: 'A valid document URL is required' }); return; }
+  if (!title || !['https:', 'http:'].includes(url.protocol)) { res.status(400).json({ success: false, message: 'A title and HTTP(S) URL are required' }); return; }
+  try {
+    const document = await prisma.campDocument.create({ data: { campId: String(req.params.id), title, url: url.toString() } });
+    await prisma.auditLog.create({ data: { actorId: req.user.id, actorName: req.user.fullName, action: 'CAMP_DOCUMENT_ADDED', targetType: 'CAMP', targetId: document.campId, details: `Document added: ${title}` } });
+    res.status(201).json({ success: true, document });
+  } catch { res.status(404).json({ success: false, message: 'Camp not found' }); }
 };
 
 // 10. Events Management: Create & Publish
