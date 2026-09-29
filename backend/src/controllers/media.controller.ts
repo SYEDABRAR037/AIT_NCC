@@ -5,15 +5,18 @@ import { AuthRequest } from '../middleware/auth.middleware';
 
 const ranks = ['SUO', 'JUO', 'CSM', 'CQMH', 'SGT', 'CPL', 'LCPL'];
 const allowedMime = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const allowedCategories = new Set(['Parade', 'Camp', 'Training', 'NCC Event', 'Competition', 'Trekking', 'Ceremony', 'Community Service', 'Other', 'NCC']);
 const validImageFile = (file: Express.Multer.File): boolean => {
   const bytes = file.buffer;
-  if (file.mimetype === 'image/jpeg') return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
-  if (file.mimetype === 'image/png') return bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
-  if (file.mimetype === 'image/webp') return bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
+  const extension = file.originalname.toLowerCase().split('.').pop();
+  if (file.mimetype === 'image/jpeg') return extension === 'jpg' || extension === 'jpeg' ? bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff : false;
+  if (file.mimetype === 'image/png') return extension === 'png' && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (file.mimetype === 'image/webp') return extension === 'webp' && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP';
   return false;
 };
 
 const photoUrl = (id: string) => `/api/public/gallery/${id}/image`;
+const managedPhotoUrl = (id: string) => `/api/gallery/${id}/image`;
 const rankUrl = (id: string) => `/api/public/rank-holders/${id}/image`;
 
 export const listPublicGallery = async (_req: Request, res: Response): Promise<void> => {
@@ -34,10 +37,18 @@ export const getGalleryImage = async (req: Request, res: Response): Promise<void
   res.send(Buffer.from(photo.image));
 };
 
+export const getManagedGalleryImage = async (req: AuthRequest, res: Response): Promise<void> => {
+  const photo = await prisma.galleryPhoto.findUnique({ where: { id: String(req.params.id) } });
+  if (!photo) { res.sendStatus(404); return; }
+  res.setHeader('Content-Type', photo.mimeType);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(Buffer.from(photo.image));
+};
+
 export const listManagedGallery = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const photos = await prisma.galleryPhoto.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true, title: true, category: true, altText: true, mimeType: true, isPublished: true, createdAt: true } });
-    res.json({ success: true, photos: photos.map((photo) => ({ ...photo, imageUrl: photoUrl(photo.id) })) });
+    res.json({ success: true, photos: photos.map((photo) => ({ ...photo, imageUrl: managedPhotoUrl(photo.id) })) });
   } catch { res.status(500).json({ success: false, message: 'Unable to load managed photos.' }); }
 };
 
@@ -45,12 +56,13 @@ export const createGalleryPhoto = async (req: AuthRequest, res: Response): Promi
   const file = req.file;
   const title = String(req.body.title || '').trim();
   const altText = String(req.body.altText || '').trim();
-  if (!file || !allowedMime.has(file.mimetype) || !validImageFile(file) || !title || !altText) {
+  const category = String(req.body.category || 'NCC');
+  if (!file || !allowedMime.has(file.mimetype) || !validImageFile(file) || !title || !altText || !allowedCategories.has(category)) {
     res.status(400).json({ success: false, message: 'Provide a JPEG, PNG, or WebP photo, title, and description.' }); return;
   }
   const id = randomUUID();
   await prisma.$transaction(async (tx) => {
-    await tx.galleryPhoto.create({ data: { id, title, category: String(req.body.category || 'NCC').slice(0, 80), altText, image: Uint8Array.from(file.buffer), mimeType: file.mimetype, isPublished: req.body.isPublished === 'true', createdById: req.user!.id } });
+    await tx.galleryPhoto.create({ data: { id, title, category, altText, image: Uint8Array.from(file.buffer), mimeType: file.mimetype, isPublished: req.body.isPublished === 'true', createdById: req.user!.id } });
     await tx.auditLog.create({ data: { actorId: req.user!.id, actorName: req.user!.fullName, action: 'GALLERY_PHOTO_CREATED', targetType: 'GALLERY_PHOTO', targetId: id, details: JSON.stringify({ title }) } });
   });
   res.status(201).json({ success: true, photo: { id, title, category: String(req.body.category || 'NCC'), altText, imageUrl: photoUrl(id), isPublished: req.body.isPublished === 'true' } });
@@ -62,9 +74,10 @@ export const updateGalleryPhoto = async (req: AuthRequest, res: Response): Promi
   if (!existing) { res.sendStatus(404); return; }
   const title = String(req.body.title || '').trim();
   const altText = String(req.body.altText || '').trim();
-  if (!title || !altText || (req.file && (!allowedMime.has(req.file.mimetype) || !validImageFile(req.file)))) { res.status(400).json({ success: false, message: 'Valid title, description, and JPEG/PNG/WebP photo are required.' }); return; }
+  const category = String(req.body.category || 'NCC');
+  if (!title || !altText || !allowedCategories.has(category) || (req.file && (!allowedMime.has(req.file.mimetype) || !validImageFile(req.file)))) { res.status(400).json({ success: false, message: 'Provide a valid title, category, and JPEG/PNG/WebP photo.' }); return; }
   await prisma.$transaction(async (tx) => {
-    await tx.galleryPhoto.update({ where: { id }, data: { title, altText, category: String(req.body.category || 'NCC').slice(0, 80), isPublished: req.body.isPublished === 'true', ...(req.file ? { image: Uint8Array.from(req.file.buffer), mimeType: req.file.mimetype } : {}) } });
+    await tx.galleryPhoto.update({ where: { id }, data: { title, altText, category, isPublished: req.body.isPublished === 'true', ...(req.file ? { image: Uint8Array.from(req.file.buffer), mimeType: req.file.mimetype } : {}) } });
     await tx.auditLog.create({ data: { actorId: req.user!.id, actorName: req.user!.fullName, action: 'GALLERY_PHOTO_UPDATED', targetType: 'GALLERY_PHOTO', targetId: id, details: JSON.stringify({ title }) } });
   });
   res.json({ success: true, message: 'Photo saved.' });

@@ -150,11 +150,35 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
     timing: '0600 - 0730 hrs',
     location: 'AIT Central Parade Grounds',
     focus: 'Squad drill, cadence alignment, and rifle drill',
-    targetPlatoon: 'Unit Contingent',
+    targetPlatoon: 'All Cadets',
     date: new Date().toISOString().split('T')[0],
   });
+  const [eligibleCadetCount, setEligibleCadetCount] = useState<number | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [eligibilityError, setEligibilityError] = useState(false);
   const [biometricCameraActive, setBiometricCameraActive] = useState(false);
   const [enrollCadetTarget, setEnrollCadetTarget] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!newAttendanceSessionModal) return;
+    let cancelled = false;
+    setEligibleCadetCount(null);
+    setEligibilityError(false);
+    setEligibilityLoading(true);
+    safeApiFetch('/api/attendance/sessions/eligibility-preview', {
+      method: 'POST',
+      body: JSON.stringify({ activity: attendanceForm.activity, date: attendanceForm.date, targetPlatoon: attendanceForm.targetPlatoon }),
+    }).then(({ ok, data }) => {
+      if (cancelled) return;
+      if (ok && data?.success && Number.isInteger(data.expectedCount) && data.expectedCount >= 0) {
+        setEligibleCadetCount(data.expectedCount);
+      } else {
+        setEligibilityError(true);
+      }
+    }).catch(() => { if (!cancelled) setEligibilityError(true); })
+      .finally(() => { if (!cancelled) setEligibilityLoading(false); });
+    return () => { cancelled = true; };
+  }, [newAttendanceSessionModal, attendanceForm.activity, attendanceForm.date, attendanceForm.targetPlatoon]);
   // Inline confirm state for accidental-change-prone dropdowns
   const [pendingAction, setPendingAction] = useState<{ userId: string; userName: string; type: 'role' | 'status' | 'platoon' | 'senior'; value: string } | null>(null);
 
@@ -522,6 +546,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
   const handleCreateAttendanceSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (eligibleCadetCount === null || eligibilityLoading || eligibilityError) return;
     try {
       const { ok, data } = await safeApiFetch('/api/attendance/sessions', {
         method: 'POST',
@@ -539,7 +564,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           timing: '0600 - 0730 hrs',
           location: 'AIT Central Parade Grounds',
           focus: 'Squad drill, cadence alignment, and rifle drill',
-          targetPlatoon: 'Unit Contingent',
+          targetPlatoon: 'All Cadets',
           date: new Date().toISOString().split('T')[0],
         });
         fetchAttendanceSessions();
@@ -1164,7 +1189,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'approvals', name: 'Central Approval Desk' },
             { id: 'inquiries', name: 'Official Inquiries' },
             { id: 'leave', name: 'Leave Sanctions' },
-            { id: 'attendance', name: 'Platoon Attendance & Biometrics' },
+            { id: 'attendance', name: 'Attendance Scanner' },
             { id: 'cadets', name: 'My Platoon Cadets' },
             { id: 'camps', name: 'Camps & Nominations' },
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
@@ -1183,7 +1208,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'approvals', name: 'Central Approval Desk' },
             { id: 'inquiries', name: 'Official Inquiries' },
             { id: 'leave', name: 'Leave Sanctions' },
-            { id: 'attendance', name: 'Squad Attendance & Biometrics' },
+            { id: 'attendance', name: 'Attendance Scanner' },
             { id: 'assigned', name: 'My Cadets' },
             { id: 'camps', name: 'Camps & Activities' },
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
@@ -4870,7 +4895,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>TRAINING ACTIVITY *</label>
                 <select
                   value={attendanceForm.activity}
-                  onChange={(e) => setAttendanceForm({ ...attendanceForm, activity: e.target.value })}
+                  onChange={(e) => setAttendanceForm((current) => ({ ...current, activity: e.target.value }))}
                   style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                 >
                   <option value="Morning Physical Training & Foot Drill">Morning Physical Training & Foot Drill</option>
@@ -4888,7 +4913,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     type="date"
                     required
                     value={attendanceForm.date}
-                    onChange={(e) => setAttendanceForm({ ...attendanceForm, date: e.target.value })}
+                    onChange={(e) => setAttendanceForm((current) => ({ ...current, date: e.target.value }))}
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   />
                 </div>
@@ -4910,7 +4935,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>TARGET MUSTER</label>
                   <select
                     value={attendanceForm.targetPlatoon}
-                    onChange={(e) => setAttendanceForm({ ...attendanceForm, targetPlatoon: e.target.value })}
+                    onChange={(e) => setAttendanceForm((current) => ({ ...current, targetPlatoon: e.target.value }))}
                     style={{ width: '100%', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--white-border)', fontSize: '0.88rem' }}
                   >
                     <option value="All Cadets">Entire Unit Muster (All Cadets)</option>
@@ -4930,7 +4955,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 </div>
               </div>
 
-              {/* Dynamic Database Expected Count Badge */}
               <div
                 style={{
                   backgroundColor: 'var(--navy-badge-bg)',
@@ -4943,9 +4967,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   fontSize: '0.82rem',
                 }}
               >
-                <span style={{ color: 'var(--navy-primary)', fontWeight: 600 }}>
-                  Expected Eligible Cadets (from Database):
-                </span>
+                <span style={{ color: 'var(--navy-primary)', fontWeight: 600 }}>Expected Eligible Cadets</span>
                 <span
                   style={{
                     backgroundColor: 'var(--navy-primary)',
@@ -4955,7 +4977,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     fontWeight: 700,
                   }}
                 >
-                  {usersList.filter((u) => u.role === 'CADET').length || 7} CADETS
+                  {eligibilityLoading ? 'Calculating eligible cadets...' : eligibilityError ? 'Unable to calculate eligible cadets.' : `${eligibleCadetCount ?? ''}${eligibleCadetCount === null ? '' : ' CADETS'}`}
                 </span>
               </div>
 
@@ -4964,6 +4986,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <button
                   type="submit"
                   className="btn-primary btn-sm"
+                  disabled={eligibilityLoading || eligibilityError || eligibleCadetCount === null}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                 >
                   <Camera size={14} />

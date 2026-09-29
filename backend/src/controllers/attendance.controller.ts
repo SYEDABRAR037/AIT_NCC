@@ -41,6 +41,55 @@ async function getAuthorizedCadetIds(
   return null;
 }
 
+async function getEligibleCadetsForMuster(role: string, userId: string, targetPlatoon: string, date: Date) {
+  const sessionDateStart = new Date(date);
+  sessionDateStart.setUTCHours(0, 0, 0, 0);
+  const sessionDateEnd = new Date(date);
+  sessionDateEnd.setUTCHours(23, 59, 59, 999);
+  const whereClause: any = {
+    role: 'CADET',
+    status: { in: ['APPROVED', 'ACTIVE'] },
+    leaves: { none: { status: 'APPROVED', startDate: { lte: sessionDateEnd }, endDate: { gte: sessionDateStart } } },
+  };
+
+  if (targetPlatoon && !['All Cadets', 'Unit Contingent'].includes(targetPlatoon)) {
+    whereClause.platoonName = targetPlatoon;
+  }
+  if (role === 'SENIOR') {
+    const authorizedIds = await getAuthorizedCadetIds(role, userId);
+    if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
+  }
+
+  return prisma.user.findMany({
+    where: whereClause,
+    select: { id: true, fullName: true, regimentalNumber: true, collegeRollNumber: true, platoonName: true, phone: true, biometricTemplate: { select: { id: true } } },
+  });
+}
+
+export const previewAttendanceEligibility = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user || !['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO'].includes(req.user.role)) {
+      res.status(403).json({ success: false, message: 'You are not authorized to calculate attendance eligibility.' });
+      return;
+    }
+    const { activity, date, targetPlatoon } = req.body;
+    if (!String(activity || '').trim() || !/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) {
+      res.status(400).json({ success: false, message: 'Select a training activity and valid parade date.' });
+      return;
+    }
+    const sessionDate = new Date(`${date}T12:00:00.000Z`);
+    if (Number.isNaN(sessionDate.getTime())) {
+      res.status(400).json({ success: false, message: 'Select a valid parade date.' });
+      return;
+    }
+    const cadets = await getEligibleCadetsForMuster(req.user.role, req.user.id, String(targetPlatoon || 'Unit Contingent'), sessionDate);
+    res.json({ success: true, expectedCount: cadets.length });
+  } catch (error) {
+    console.error('previewAttendanceEligibility error:', error);
+    res.status(500).json({ success: false, message: 'Unable to calculate eligible cadets.' });
+  }
+};
+
 // 1. Create an Attendance Session (Platoon Senior / Senior / Admin)
 export const createAttendanceSession = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -69,27 +118,8 @@ export const createAttendanceSession = async (req: AuthRequest, res: Response): 
     const effectivePlatoon = targetPlatoon || 'Unit Contingent';
     const effectiveTitle = title ? String(title).trim() : `${activity} — Parade Muster`;
 
-    // Determine eligible cadets dynamically from the real database (all active unit cadets)
-    const whereClause: any = { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } };
-
-    if (req.user.role === 'SENIOR') {
-      const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
-      if (authorizedIds !== null) {
-        whereClause.id = { in: authorizedIds };
-      }
-    }
-
-    const eligibleCadets = await prisma.user.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        fullName: true,
-        regimentalNumber: true,
-        collegeRollNumber: true,
-        platoonName: true,
-        biometricTemplate: { select: { id: true } },
-      },
-    });
+    // Recalculate from authenticated role and current database state; never accept a client count.
+    const eligibleCadets = await getEligibleCadetsForMuster(req.user.role, req.user.id, effectivePlatoon, sessionDate);
 
     const session = await prisma.trainingSession.create({
       data: {
@@ -857,20 +887,8 @@ export const endAttendanceSession = async (req: AuthRequest, res: Response): Pro
       hour12: false,
     });
 
-    // Query all eligible cadets for this session from DB
-    const whereClause: any = { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } };
-
-    const eligibleCadets = await prisma.user.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        fullName: true,
-        regimentalNumber: true,
-        collegeRollNumber: true,
-        platoonName: true,
-        phone: true,
-      },
-    });
+    // Reuse the same server-side muster calculation used when the session was created.
+    const eligibleCadets = await getEligibleCadetsForMuster(session.creatorRole, session.conductedBy, session.targetPlatoon || 'Unit Contingent', session.date);
 
     // Determine who was marked PRESENT
     const presentCadetIds = new Set(

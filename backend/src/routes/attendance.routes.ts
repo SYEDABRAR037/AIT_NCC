@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   createAttendanceSession,
+  previewAttendanceEligibility,
   getAttendanceSessions,
   getSessionAttendance,
   markAttendance,
@@ -30,6 +31,12 @@ router.post(
 );
 
 // Session creation: Platoon Senior, Senior, and Admin/ANO (Phase 7 Parity)
+router.post(
+  '/sessions/eligibility-preview',
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  previewAttendanceEligibility
+);
+
 router.post(
   '/sessions',
   requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),

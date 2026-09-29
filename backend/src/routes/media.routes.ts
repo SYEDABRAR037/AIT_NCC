@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { authenticateToken, requireRole } from '../middleware/auth.middleware';
-import { createGalleryPhoto, deleteGalleryPhoto, getGalleryImage, getInstitutionalInfo, getRankHolderImage, listManagedGallery, listPublicGallery, listPublicRankHolders, manageRankHolder, updateGalleryPhoto, updateInstitutionalInfo } from '../controllers/media.controller';
+import { createGalleryPhoto, deleteGalleryPhoto, getGalleryImage, getManagedGalleryImage, getInstitutionalInfo, getRankHolderImage, listManagedGallery, listPublicGallery, listPublicRankHolders, manageRankHolder, updateGalleryPhoto, updateInstitutionalInfo } from '../controllers/media.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } });
@@ -19,6 +19,7 @@ router.get('/public/rank-holders/:id/image', getRankHolderImage);
 router.get('/public/institutional-info', getInstitutionalInfo);
 
 router.get('/gallery', authenticateToken, requireRole([...mediaManagers]), listManagedGallery);
+router.get('/gallery/:id/image', authenticateToken, requireRole([...mediaManagers]), getManagedGalleryImage);
 router.post('/gallery', authenticateToken, requireRole([...mediaManagers]), parseImage, createGalleryPhoto);
 router.put('/gallery/:id', authenticateToken, requireRole([...mediaManagers]), parseImage, updateGalleryPhoto);
 router.delete('/gallery/:id', authenticateToken, requireRole([...mediaManagers]), deleteGalleryPhoto);

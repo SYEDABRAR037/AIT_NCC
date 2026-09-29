@@ -17,44 +17,30 @@ async function main() {
     });
   }
 
-  // Seed Institutional Accounts for All Roles & Statuses
+  // Privileged accounts are supplied by the deployment environment, never hardcoded in source.
+  const account = (prefix: string, role: 'ADMIN_ANO' | 'PLATOON_SENIOR' | 'SENIOR', year: string, branch: string, platoonName: string) => {
+    const value = (field: string) => {
+      const found = process.env[`${prefix}_${field}`]?.trim();
+      if (!found) throw new Error(`Missing required environment variable ${prefix}_${field}.`);
+      return found;
+    };
+    return {
+      fullName: value('NAME'),
+      regimentalNumber: value('REGIMENTAL_NUMBER'),
+      collegeRollNumber: value('COLLEGE_ROLL_NUMBER'),
+      email: value('EMAIL'),
+      plainPassword: value('PASSWORD'),
+      role,
+      status: 'ACTIVE' as const,
+      year,
+      branch,
+      platoonName,
+    };
+  };
   const testUsers = [
-    {
-      fullName: 'Lt. Col. Sanjeev Sharma (ANO)',
-      regimentalNumber: 'ANO/MH/2026/01',
-      collegeRollNumber: 'ANO001',
-      email: 'ano.admin@aitpune.edu.in',
-      plainPassword: 'AdminCommand@2026',
-      role: 'ADMIN_ANO' as const,
-      status: 'ACTIVE' as const,
-      year: 'FACULTY',
-      branch: 'Institutional Command',
-      platoonName: 'Senior Division',
-    },
-    {
-      fullName: 'SUO Vikramaditya Rathore',
-      regimentalNumber: 'MH23SDA100101',
-      collegeRollNumber: '23101',
-      email: 'platoon.senior@aitpune.edu.in',
-      plainPassword: 'PlatoonLead@2026',
-      role: 'PLATOON_SENIOR' as const,
-      status: 'ACTIVE' as const,
-      year: 'TE (3rd Year)',
-      branch: 'Computer Engineering',
-      platoonName: 'Senior Division',
-    },
-    {
-      fullName: 'SGT Ananya Deshmukh',
-      regimentalNumber: 'MH23SDA100202',
-      collegeRollNumber: '23102',
-      email: 'senior.cadet@aitpune.edu.in',
-      plainPassword: 'SeniorCadet@2026',
-      role: 'SENIOR' as const,
-      status: 'ACTIVE' as const,
-      year: 'TE (3rd Year)',
-      branch: 'Information Technology',
-      platoonName: 'Senior Wing',
-    },
+    account('NCC_SEED_ANO', 'ADMIN_ANO', 'FACULTY', 'Institutional Command', 'Senior Division'),
+    account('NCC_SEED_PLATOON_SENIOR', 'PLATOON_SENIOR', 'FACULTY', 'Institutional Command', 'Senior Division'),
+    account('NCC_SEED_SENIOR', 'SENIOR', 'FACULTY', 'Institutional Command', 'Senior Division'),
   ];
 
   for (const u of testUsers) {
