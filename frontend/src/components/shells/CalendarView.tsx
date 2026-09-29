@@ -266,7 +266,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-              <span className="badge-institutional">MASTER CALENDAR & OPERATIONS</span>
+              <span className="badge-institutional">CALENDAR</span>
               <span style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>
                 Live Training, Camps & Ceremonial Schedule
               </span>
@@ -286,7 +286,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
               Master Calendar
             </h1>
             <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
-              Unified command schedule synchronizing parades, weapons training, nationwide camps, and battalion guard duties.
+              Events and training dates.
             </p>
           </div>
 
@@ -446,7 +446,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
             <AlertCircle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
               <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
-                Operational Synchronization Alert
+                Calendar unavailable
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
             </div>
@@ -466,7 +466,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
             style={{ color: 'var(--navy-primary)', margin: '0 auto 1rem', display: 'block' }}
           />
           <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.9rem' }}>
-            Synchronizing master defense operational calendar...
+            Loading events...
           </p>
         </div>
       ) : filteredEvents.length === 0 ? (
@@ -476,7 +476,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
             No calendar events available.
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--navy-text-muted)', maxWidth: '480px', margin: '0 auto' }}>
-            There are currently no active operations or scheduled drills matching your selected stream.
+            No events found.
           </p>
         </div>
       ) : viewMode === 'month' ? (
@@ -759,7 +759,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ userRole, role }) =>
                       marginBottom: '0.85rem',
                     }}
                   >
-                    {ev.description || 'Official institutional event and assembly scheduled on NCC master roster.'}
+                    {ev.description || 'NCC event'}
                   </p>
                 </div>
 

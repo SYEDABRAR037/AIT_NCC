@@ -12,26 +12,20 @@ export const UnitIntroduction: React.FC = () => {
           </span>
           <h2 className="cinzel-title">Army Institute of Technology NCC Unit</h2>
           <p className="description">
-            Established at AIT Pune, our NCC detachment serves as an elite centre of training,
-            command, and military values for ward engineering students of Indian Army personnel.
+            NCC at AIT Pune gives cadets the opportunity to take part in training, camps, and community activities.
           </p>
         </div>
 
         <div className="grid-2" style={{ alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '1rem' }}>
-              Fostering Technical Leaders with Defence Ethos
+              NCC at AIT Pune
             </h3>
             <p style={{ marginBottom: '1rem', lineHeight: '1.7' }}>
-              Located in the historic military station of Pune, the Army Institute of Technology (AIT)
-              houses a premier NCC unit affiliated with the Maharashtra Directorate. Our cadets represent
-              disciplined engineering minds who combine academic excellence with high-standard drill,
-              firing, obstacle clearing, and adventure camps.
+              Army Institute of Technology in Pune has an NCC unit affiliated with the Maharashtra Directorate. Cadets take part in drill, firing, obstacle training, and camps.
             </p>
             <p style={{ marginBottom: '1.5rem', lineHeight: '1.7' }}>
-              The detachment functions under the direct command of the Associate NCC Officer (ANO) supported
-              by experienced military Drill Instructors (DI) deputed from active units, fostering direct
-              mentorship for cadet ranks across Junior and Senior divisions.
+              The unit is led by the Associate NCC Officer (ANO) and supported by Drill Instructors (DI).
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -75,11 +69,6 @@ export const UnitIntroduction: React.FC = () => {
                   <span style={{ color: 'var(--color-info-border)', fontSize: '0.85rem' }}>AIT DIGHI DETACHMENT</span>
                 </div>
               </div>
-
-              <p style={{ color: 'var(--color-border)', fontSize: '0.95rem', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-                "In these grounds, engineering precision meets regimented battlefield discipline.
-                Our cadets don the uniform with solemn pride and carry the torch of selfless military service."
-              </p>
 
               <div style={{ borderTop: '1px solid var(--navy-border)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
                 <div>

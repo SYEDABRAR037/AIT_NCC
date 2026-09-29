@@ -19,9 +19,6 @@ export const Footer: React.FC = () => {
                 <p className="ref-footer-unit">AIT Pune &bull; 2 MAH BN NCC</p>
               </div>
             </div>
-            <p className="ref-footer-desc">
-              Official Digital Command & Cadet Management Portal for the Army Institute of Technology (AIT) Pune NCC detachment, affiliated with 2 Maharashtra Battalion NCC, Pune Group.
-            </p>
           </div>
 
           {/* Col 2: Quick Links (Matching Reference) */}

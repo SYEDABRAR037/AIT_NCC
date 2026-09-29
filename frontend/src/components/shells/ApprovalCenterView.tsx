@@ -169,15 +169,12 @@ export const ApprovalCenterView: React.FC<ApprovalCenterViewProps> = ({
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
             <h2 style={{ fontSize: '1.5rem', color: 'var(--navy-primary)', margin: 0 }}>
-              Central Command Approval Center
+              Pending Approvals
             </h2>
             <span className="badge-institutional" style={{ background: 'var(--color-warning-soft)', color: 'var(--color-primary)', fontWeight: 800 }}>
               {totalPending} ACTIONABLE ITEMS PENDING
             </span>
           </div>
-          <p style={{ fontSize: '0.88rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
-            Consolidated officer command desk for cadet registrations, multi-tier leave sanctions, and regimental requests.
-          </p>
         </div>
 
         <button

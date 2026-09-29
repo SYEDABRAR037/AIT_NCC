@@ -38,7 +38,6 @@ export const MeetOurSeniors: React.FC = () => (
       <header className="meet-our-seniors-heading">
         <span className="meet-our-seniors-kicker">CADET LEADERSHIP</span>
         <h2 className="cinzel-title" id="meet-our-seniors-title">MEET OUR SENIORS</h2>
-        <p>Meet the NCC AIT Pune Seniors who help lead, coordinate and guide our cadets.</p>
       </header>
 
       {seniors.length > 0 ? (
@@ -49,7 +48,7 @@ export const MeetOurSeniors: React.FC = () => (
         </div>
       ) : (
         <p className="senior-profiles-empty" role="status">
-          Senior profiles will appear here when verified names, ranks and photos are provided.
+          Senior profiles coming soon.
         </p>
       )}
     </div>

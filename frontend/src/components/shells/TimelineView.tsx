@@ -187,9 +187,6 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
               <Clock size={24} style={{ color: 'var(--navy-primary)' }} />
               Activity Timeline
             </h1>
-            <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
-              Chronological immutable ledger tracking parade attendance, camps, sanctioned leaves, guard duties, and verified credentials.
-            </p>
           </div>
 
           <button
@@ -199,7 +196,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
             style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            <span>REFRESH STREAM</span>
+            <span>REFRESH</span>
           </button>
         </div>
 
@@ -314,7 +311,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
             <AlertTriangle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
               <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
-                Operational Synchronization Alert
+                Activity unavailable
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
             </div>
@@ -334,7 +331,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
             style={{ color: 'var(--navy-primary)', margin: '0 auto 1rem', display: 'block' }}
           />
           <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.9rem' }}>
-            Synchronizing activity records from defense ledger...
+            Loading activity...
           </p>
         </div>
       ) : filteredEvents.length === 0 ? (
@@ -345,14 +342,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
           </h3>
           <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', maxWidth: '520px', margin: '0 auto 0.5rem' }}>
             {searchTerm || categoryFilter !== 'ALL'
-              ? 'No activity matched your current filter criteria.'
-              : 'There are currently no NCC activities or institutional records to display.'}
+              ? 'No activity matches these filters.'
+              : 'No activity recorded yet.'}
           </p>
-          {!searchTerm && categoryFilter === 'ALL' && (
-            <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', maxWidth: '560px', margin: '0 auto', opacity: 0.85 }}>
-              New attendance, enquiries, approvals, leaves, camps, duties, certificates, and other authorized activities will appear here automatically when they occur.
-            </p>
-          )}
         </div>
       ) : (
         <div

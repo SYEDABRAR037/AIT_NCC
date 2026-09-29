@@ -315,7 +315,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
             <span className="badge-institutional" style={{ fontSize: '0.72rem', fontWeight: 800 }}>
-              OFFICIAL BATTALION EXPEDITIONS & CAMPS
+              CAMPS
             </span>
             <span style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)', fontWeight: 600 }}>
               CATC · NIC · RDC · TSC · BLC · AAC
@@ -323,11 +323,8 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
           </div>
           <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.35rem' }}>
             <Flag size={22} style={{ color: 'var(--navy-primary)' }} />
-            <span>Camps & Institutional Activities Command</span>
+            <span>Camps & Activities</span>
           </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', margin: 0, maxWidth: '750px' }}>
-            Manage nationwide camp applications, multi-tier participant nominations, eligibility audits, and completion records.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -337,7 +334,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
               className="btn-primary btn-sm"
               style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
             >
-              <Plus size={15} /> <span>COMMISSION NEW CAMP</span>
+              <Plus size={15} /> <span>NEW CAMP</span>
             </button>
           )}
           <button
@@ -552,7 +549,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
                   </div>
 
                   <p style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)', lineHeight: '1.5', margin: '0 0 1rem' }}>
-                    {camp.description || 'Official institutional training cadre covering firing, obstacle course, tactical night navigation, and team discipline.'}
+                    {camp.description || 'NCC camp'}
                   </p>
 
                   <div

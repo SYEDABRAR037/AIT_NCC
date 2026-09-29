@@ -58,9 +58,6 @@ export const GallerySection: React.FC = () => {
           <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             Cadet Training & Life in Action
           </h2>
-          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>
-            Authorized photographic record of parades, firing camps, national ceremonies, and obstacle drills.
-          </p>
         </div>
 
         {/* Category Filter Pills */}

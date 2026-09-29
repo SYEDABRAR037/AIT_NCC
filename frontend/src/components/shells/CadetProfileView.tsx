@@ -69,7 +69,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
   if (loading) {
     return (
       <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
-        <p style={{ color: 'var(--navy-text-muted)' }}>Loading verified cadet profile records...</p>
+        <p style={{ color: 'var(--navy-text-muted)' }}>Loading profile...</p>
       </div>
     );
   }

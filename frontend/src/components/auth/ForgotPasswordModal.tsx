@@ -595,7 +595,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 Password Reset Successfully!
               </h4>
               <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: '1.5' }}>
-                Your institutional credentials have been securely updated in the production database. You may now log in using your new password.
+                Your password has been updated. You can now log in.
               </p>
               <button
                 type="button"

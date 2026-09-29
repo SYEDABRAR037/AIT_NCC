@@ -36,20 +36,18 @@ export const Achievements: React.FC = () => {
           </span>
           <h2 className="cinzel-title">Unit Honours & Cadet Achievements</h2>
           <p className="description">
-            Celebrating extraordinary dedication, marksmanship, ceremonial drill awards,
-            and all-India camp selections earned by AIT NCC cadets.
+            Awards and selections earned by AIT NCC cadets.
           </p>
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--navy-text-muted)' }}>
-            Retrieving honour records...
+            Loading achievements...
           </div>
         ) : achievements.length === 0 ? (
           <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
             <Award size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-            <h4 style={{ color: 'var(--navy-primary)' }}>No public honours recorded yet</h4>
-            <p>Institutional achievements will appear upon official administrative verification.</p>
+            <h4 style={{ color: 'var(--navy-primary)' }}>No achievements yet</h4>
           </div>
         ) : (
           <div className="grid-2">

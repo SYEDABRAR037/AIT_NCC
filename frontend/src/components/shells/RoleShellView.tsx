@@ -1077,7 +1077,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           subtitle: 'Institutional Command & Administrative Sanction',
           badge: 'ANO COMMAND LEVEL',
           items: [
-            { id: 'overview', name: 'Command Overview' },
+            { id: 'overview', name: 'Overview' },
             { id: 'approvals', name: 'Central Approval Desk' },
             { id: 'inquiries', name: 'Official Inquiries' },
             { id: 'leave', name: 'Leave Sanctions' },
@@ -1140,8 +1140,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'camps', name: 'Camps & Activities' },
             { id: 'duties', name: 'My Assigned Duties' },
-            { id: 'attendance', name: 'My Attendance Record' },
-            { id: 'certificates', name: 'Digital Certificate Vault' },
+            { id: 'attendance', name: 'Attendance' },
+            { id: 'certificates', name: 'Certificates' },
             { id: 'leave', name: 'Leave Applications' },
             { id: 'notices', name: 'Unit Notices & Orders' },
           ],
@@ -1354,14 +1354,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             </button>
           ))}
 
-          <div style={{ marginTop: 'auto', padding: '1rem', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderRadius: '4px', border: '1px solid var(--navy-border)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-info-border)', marginBottom: '0.25rem' }}>
-              SECURITY POLICY
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--color-disabled)', lineHeight: '1.4' }}>
-              Camera for facial attendance is strictly restricted to Platoon Senior & Senior.
-            </div>
-          </div>
         </aside>
 
         {/* Content Area */}
@@ -1405,10 +1397,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Command Overview & Real-Time Statistics</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Institutional oversight of personnel strength, training camps, scheduled events, and operational audits.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Overview</h2>
                   </div>
                   <button onClick={() => { fetchAdminSummary(); fetchAdminAuditLogs(); }} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <RefreshCw size={14} />
@@ -1478,8 +1467,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <div className="institutional-card" style={{ marginBottom: '2rem', backgroundColor: 'var(--navy-primary)', color: 'var(--white-pure)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                      <h3 style={{ color: 'var(--white-pure)', fontSize: '1.2rem', marginBottom: '0.25rem' }}>Direct Command Actions</h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--color-info-border)' }}>Execute instant unit operations with audit logging</p>
+                      <h3 style={{ color: 'var(--white-pure)', fontSize: '1.2rem', marginBottom: '0.25rem' }}>Quick Actions</h3>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                       <button onClick={() => setNewCampModal(true)} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1871,7 +1859,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <Calendar size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
                     <h4 style={{ color: 'var(--navy-primary)' }}>No Events Scheduled</h4>
-                    <p>Click "Publish Event" to announce an upcoming parade or ceremony.</p>
                   </div>
                 ) : (
                   <div className="grid-2">
@@ -1929,7 +1916,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
                     <Bell size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
                     <h4 style={{ color: 'var(--navy-primary)' }}>No Notices Broadcasted</h4>
-                    <p>Click "Broadcast Notice" to publish an official circular.</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1976,13 +1962,10 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Security & Action Audit Logs</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Tamper-evident system trail for role modifications, approvals, camp creations, and sensitive administrative events.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Audit Logs</h2>
                   </div>
                   <button onClick={fetchAdminAuditLogs} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <RefreshCw size={14} /> <span>REFRESH AUDIT TRAIL</span>
+                    <RefreshCw size={14} /> <span>REFRESH</span>
                   </button>
                 </div>
 
@@ -2001,7 +1984,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       {adminAuditLogs.length === 0 ? (
                         <tr>
                           <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--navy-text-muted)' }}>
-                            No audit logs logged in current ledger.
+                            No audit logs yet.
                           </td>
                         </tr>
                       ) : (
@@ -2033,11 +2016,8 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
-                      Institutional Leave Sanction Command (Stage 3: ANO Final Authority)
+                      Leave Requests
                     </h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Multi-tier leave review desk. Review cadet applications endorsed through Senior Cadets and Platoon Seniors for final commanding sanction.
-                    </p>
                   </div>
                   <button
                     onClick={() => fetchLeaveApplications()}
@@ -2236,10 +2216,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Digital Certificate Vault & Issuance Command</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Issue authentic 'A', 'B', 'C' certificates and camp commendations with SHA-256 cryptographic verification hashes.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Certificates</h2>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button
@@ -2302,19 +2279,19 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       <CheckCircle size={20} style={{ color: 'var(--color-primary)' }} />
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.35rem' }}>SHA-256</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>100% tamper-evident verified</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Integrity checks enabled</div>
                   </div>
                 </div>
 
                 {/* Certificates Table */}
                 <div className="institutional-card" style={{ borderTop: '4px solid var(--navy-primary)' }}>
                   <h3 style={{ fontSize: '1.2rem', color: 'var(--navy-primary)', marginBottom: '1rem' }}>
-                    Master Institutional Certificate Register
+                    Certificates
                   </h3>
                   {allCertificates.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--navy-text-muted)' }}>
                       <Award size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-                      <p>No certificates issued yet. Click "ISSUE NEW CERTIFICATE" to award credentials to eligible cadets.</p>
+                      <p>No certificates issued yet.</p>
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
@@ -2400,8 +2377,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Senior Cadet Section Overview</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>Mentorship scope · Squad cadet supervision · Leave sanction authority</p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Senior Overview</h2>
                   </div>
                   <button onClick={() => { fetchSeniorCadets(); fetchPendingReviews(); fetchLeaveApplications(); }} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <RefreshCw size={14} /><span>REFRESH</span>
@@ -2435,18 +2411,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Pending senior endorsement</div>
                   </div>
                 </div>
-                <div className="institutional-card" style={{ backgroundColor: 'var(--navy-badge-bg)', border: '1px solid var(--navy-badge-border)' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <Shield size={20} style={{ color: 'var(--navy-primary)', marginTop: '0.1rem', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>SENIOR CADET AUTHORITY NOTICE</div>
-                      <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.6' }}>
-                        Your authority is limited to cadets strictly assigned to your squad. You may Forward or Hold cadet applications — only the ANO issues final approvals.
-                        Leave sanctions beyond FORWARD require ANO clearance.
-                      </p>
-                    </div>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -2461,7 +2425,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         Total Cadets: {assignedCadets.length}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
-                        Authorized mentorship scope &bull; Real database muster
                       </span>
                     </div>
                   </div>
@@ -2930,7 +2893,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         {attendanceSummaryList.length === 0 ? (
                           <tr>
                             <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--navy-text-muted)' }}>
-                              No attendance records are available yet.
+                              No attendance records yet.
                             </td>
                           </tr>
                         ) : (
@@ -2991,14 +2954,13 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Cadet Leadership Command Center</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>Cadet leadership command · Review authority · Leave management</p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Platoon Overview</h2>
                   </div>
                   <button onClick={() => { fetchPlatoonCadets(); fetchPendingReviews(); fetchLeaveApplications(); }} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <RefreshCw size={14} /><span>REFRESH</span>
                   </button>
                 </div>
-                <div className="grid-4" style={{ marginBottom: '2rem' }}>
+                <div className="grid-3" style={{ marginBottom: '2rem' }}>
                   <div className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Unit Cadet Strength</span>
@@ -3025,27 +2987,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Platoon leave requests</div>
                   </div>
-                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-success)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Auth Level</span>
-                      <Shield size={20} style={{ color: 'var(--color-success)' }} />
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>TIER 2</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Platoon command authority</div>
-                  </div>
-                </div>
-                <div className="institutional-card" style={{ backgroundColor: 'var(--navy-badge-bg)', border: '1px solid var(--navy-badge-border)' }}>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
-                    <Shield size={20} style={{ color: 'var(--navy-primary)', marginTop: '0.1rem', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>PLATOON SENIOR COMMAND AUTHORITY</div>
-                      <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.6' }}>
-                        As Platoon Senior, you exercise Tier-2 review authority over cadet applications in your platoon.
-                        You may Forward applications to ANO for final sanction, or Hold/Reject as required.
-                        Camera attendance is activated for your command level.
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
@@ -3061,7 +3002,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                         Total Cadets: {platoonCadets.length}
                       </span>
                       <span style={{ fontSize: '0.85rem', color: 'var(--navy-text-muted)' }}>
-                        Authorized platoon command scope &bull; Real database muster
                       </span>
                     </div>
                   </div>
@@ -3652,7 +3592,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       Welcome, {user?.fullName?.split(' ')[0] || 'Cadet'}
                     </h2>
                     <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Your NCC digital command portal — Leave, Notices, Profile & Records
+                      Manage leave, notices, and your profile.
                     </p>
                   </div>
                   <button onClick={() => { fetchMyLeaves(); fetchCadetNotices(); }} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -3718,7 +3658,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                       <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }}>ACCOUNT STATUS: {user?.status}</div>
                       <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.6' }}>
                         {user?.status === 'APPROVED' || user?.status === 'ACTIVE'
-                          ? 'Your NCC cadet account is fully active. You are cleared for all digital operations including leave applications and unit notice access.'
+                          ? 'Your account is active.'
                           : 'Your account is pending final clearance. Contact your Senior Cadet or Platoon Senior for status update.'}
                       </p>
                     </div>
@@ -3750,7 +3690,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
                     <FileText size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
                     <h4>No leave applications filed</h4>
                     <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-                      Click "Apply for Leave" to initiate an official application through the command chain.
+                      No leave requests yet.
                     </p>
                     <button onClick={() => setLeaveModal(true)} className="btn-primary btn-sm">APPLY FOR LEAVE</button>
                   </div>
@@ -3855,7 +3795,6 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', marginBottom: '0.5rem' }}>Unit Notices & Orders</h2>
                 <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginBottom: '1.5rem' }}>
-                  Official notices, orders, and announcements from your unit command.
                 </p>
                 {cadetNotices.length === 0 ? (
                   <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
@@ -3892,17 +3831,14 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>My Attendance & Parade Record</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Official institutional parade attendance ledger, muster verification, and certificate exam eligibility.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>My Attendance</h2>
                   </div>
                   <button
                     onClick={() => fetchMyAttendance()}
                     className="btn-secondary btn-sm"
                     style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                   >
-                    <RefreshCw size={14} /> <span>REFRESH LEDGER</span>
+                    <RefreshCw size={14} /> <span>REFRESH</span>
                   </button>
                 </div>
 
@@ -4051,10 +3987,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>
-                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Digital Certificate Vault</h2>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
-                      Official institutional certificates, camp credentials, and cryptographic tamper-evident verification ledger.
-                    </p>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Certificates</h2>
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button

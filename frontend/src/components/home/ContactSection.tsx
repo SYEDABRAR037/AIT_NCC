@@ -157,8 +157,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
               Institutional Inquiry Protocol
             </h3>
             <p style={{ marginBottom: '1.25rem', fontSize: '0.92rem', lineHeight: '1.6', color: 'var(--color-text-secondary)' }}>
-              For queries related to cadet verification, B/C Certificate exams, camp nominations, or
-              defence admissions, please submit through official institutional channels.
+              Use this form for cadet verification, certificate, camp, or admissions enquiries.
             </p>
 
             {/* Success Confirmation Banner */}
@@ -180,9 +179,6 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
                 <div style={{ fontSize: '0.88rem', color: 'var(--color-success)', marginBottom: '0.75rem' }}>
                   Inquiry ID: <strong style={{ letterSpacing: '0.05em', color: 'var(--navy-primary)' }}>{successResult.inquiryId}</strong>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', lineHeight: '1.5', margin: 0 }}>
-                  Your official inquiry has been permanently logged in the Command Center ledger. You can view the live thread, officer replies, and follow up inside your Cadet Panel.
-                </p>
                 <button
                   type="button"
                   onClick={() => setSuccessResult(null)}

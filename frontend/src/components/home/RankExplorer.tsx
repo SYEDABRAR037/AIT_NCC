@@ -44,7 +44,6 @@ export const RankExplorer: React.FC = () => {
       <div className="rank-explorer-heading">
         <span className="rank-explorer-kicker">CADET LEADERSHIP</span>
         <h3 id="rank-explorer-title">Rank &amp; Insignia Explorer</h3>
-        <p>Explore a general Army Wing cadet rank progression. Appointments and titles may vary by division and unit.</p>
       </div>
 
       <div className="rank-explorer-layout">
@@ -98,7 +97,7 @@ export const RankExplorer: React.FC = () => {
           </div>
         </div>
       </div>
-      <p className="rank-explorer-disclaimer">Insignia images are provided for learning and identification, not as a uniform-wear guide. Confirm current rank and insignia guidance with authorized NCC material. Wikimedia images are credited to Gnoeee or Pulkitindia5 under CC BY-SA 4.0.</p>
+      <p className="rank-explorer-disclaimer">Wikimedia image credits: Gnoeee and Pulkitindia5, CC BY-SA 4.0.</p>
     </section>
   );
 };

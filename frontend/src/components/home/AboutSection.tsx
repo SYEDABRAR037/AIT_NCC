@@ -12,8 +12,7 @@ export const AboutSection: React.FC = () => {
           </span>
           <h2 className="cinzel-title">About National Cadet Corps</h2>
           <p className="description">
-            The premier youth wing of the Indian Armed Forces, dedicated to character building,
-            camaraderie, discipline, and selfless service to the nation.
+            The NCC develops character, discipline, leadership, and a spirit of service among young people.
           </p>
         </div>
 
@@ -27,10 +26,7 @@ export const AboutSection: React.FC = () => {
               Origin & National Evolution
             </h3>
             <p style={{ marginBottom: '1rem', lineHeight: '1.7' }}>
-              The National Cadet Corps came into existence under the National Cadet Corps Act of 1948.
-              Rooted in the 'University Corps' created under the Indian Defence Act 1917, the NCC has grown
-              into the largest uniformed youth organization in the world, moulding young minds into patriotic,
-              disciplined, and responsible citizens of India.
+              The National Cadet Corps was established under the National Cadet Corps Act of 1948. Its roots go back to the University Corps, created under the Indian Defence Act of 1917. Today, the NCC is the world’s largest uniformed youth organization.
             </p>
             <p style={{ lineHeight: '1.7' }}>
               With its tricolor flag representing the Army (Red), Navy (Dark Blue), and Air Force (Light Blue)

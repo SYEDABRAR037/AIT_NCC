@@ -44,10 +44,7 @@ export const TrainingActivities: React.FC = () => {
             Military Syllabus
           </span>
           <h2 className="cinzel-title">Institutional Training Curriculum</h2>
-          <p className="description">
-            Comprehensive military curriculum delivered by deputed Indian Army Drill Instructors
-            and institutional officers to instil soldierly attributes.
-          </p>
+          <p className="description">Training led by NCC Drill Instructors and AIT officers.</p>
         </div>
 
         <div className="grid-3">

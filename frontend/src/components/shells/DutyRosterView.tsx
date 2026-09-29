@@ -287,9 +287,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-              <span className="badge-institutional">CEREMONIAL & SECURITY ROSTER</span>
+              <span className="badge-institutional">DUTIES</span>
               <span style={{ fontSize: '0.78rem', color: 'var(--navy-text-muted)' }}>
-                Official Battalion Duty Detail
               </span>
             </div>
             <h1
@@ -304,11 +303,8 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
               }}
             >
               <Award size={24} style={{ color: 'var(--navy-primary)' }} />
-              Duty & Ceremonial Detail
+              Duties
             </h1>
-            <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginTop: '0.35rem' }}>
-              Turnout orders, reporting times, protocol escort details, and performance audits for Guard of Honour and Sentry posts.
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -319,7 +315,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
                 style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               >
                 <Plus size={15} />
-                <span>ASSIGN DETAIL</span>
+                <span>ASSIGN DUTY</span>
               </button>
             )}
             <button
@@ -440,7 +436,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
             <AlertCircle size={22} style={{ color: 'var(--color-error)' }} />
             <div>
               <h4 style={{ color: 'var(--color-error)', fontWeight: 700, margin: 0, fontSize: '0.95rem' }}>
-                Operational Synchronization Alert
+                Duties unavailable
               </h4>
               <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem', margin: 0 }}>{error}</p>
             </div>
@@ -460,7 +456,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
             style={{ color: 'var(--navy-primary)', margin: '0 auto 1rem', display: 'block' }}
           />
           <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.9rem' }}>
-            Retrieving verified battalion duty assignments...
+            Loading duties...
           </p>
         </div>
       ) : filteredDuties.length === 0 ? (
@@ -470,7 +466,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
             NO DUTIES ASSIGNED
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--navy-text-muted)', maxWidth: '480px', margin: '0 auto' }}>
-            No duty or ceremonial assignments are currently available.
+            No duties assigned.
           </p>
         </div>
       ) : (

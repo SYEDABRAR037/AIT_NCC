@@ -11,7 +11,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
     {
       step: '01',
       title: 'Digital Application',
-      desc: 'Fill out institutional enrollment details, college roll number, regimental bio, and engineering branch.',
+      desc: 'Submit your college details and engineering branch.',
     },
     {
       step: '02',
@@ -21,7 +21,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
     {
       step: '03',
       title: 'Biometric Face Enrollment',
-      desc: 'Secure high-resolution biometric enrollment conducted by authorized Senior Cadets on the unit scanner.',
+      desc: 'Complete face registration with an authorized Senior Cadet.',
     },
     {
       step: '04',
@@ -36,7 +36,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
         <div className="section-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
           <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
             <UserCheck size={16} />
-            CADET ENROLLMENT ROADMAP
+            ENROLLMENT
           </span>
           <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             How to Join the AIT NCC Detachment
@@ -107,7 +107,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
               Ready to Join NCC?
             </h3>
             <p style={{ color: 'var(--color-border)', fontSize: '0.98rem', lineHeight: '1.6', margin: 0 }}>
-              Begin your cadet registration and become part of the NCC journey. Join the ranks of disciplined leaders and serve the nation with honor.
+              Register to join AIT NCC.
             </p>
           </div>
 

@@ -216,18 +216,9 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem' }}>
             <MessageSquare size={22} style={{ color: 'var(--navy-primary)' }} />
             <h2 style={{ fontSize: '1.35rem', color: 'var(--navy-primary)', margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800 }}>
-              {role === 'CADET' ? 'MY OFFICIAL INQUIRIES' : 'OFFICIAL INQUIRIES & COMMUNICATIONS DESK'}
+              {role === 'CADET' ? 'My Enquiries' : 'Enquiries'}
             </h2>
           </div>
-          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
-            {role === 'CADET'
-              ? 'Authoritative communication ledger with assigned mentors and command officers.'
-              : role === 'SENIOR'
-              ? 'Cadet inquiries from your assigned squads. Review, reply, or forward to Platoon Senior.'
-              : role === 'PLATOON_SENIOR'
-              ? 'Cadet inquiries from your platoon contingent. Review, reply, or escalate to Admin/ANO.'
-              : 'Institutional command inquiry ledger. Oversight across all platoons, response dispatch, and resolution.'}
-          </p>
         </div>
 
         <button
@@ -239,7 +230,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
           style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <RefreshCw size={14} className={loadingList ? 'spin' : ''} />
-          <span>REFRESH LEDGER</span>
+          <span>REFRESH</span>
         </button>
       </div>
 
@@ -313,7 +304,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
             <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
               {loadingList && (
                 <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
-                  Loading inquiry ledger...
+                  Loading enquiries...
                 </div>
               )}
 
@@ -426,7 +417,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                 SELECT AN OFFICIAL INQUIRY
               </strong>
               <p style={{ fontSize: '0.85rem', maxWidth: '380px', margin: '0 auto' }}>
-                Choose an inquiry from the ledger to view the complete communications thread, cadet credentials, and officer responses.
+                Select an enquiry to view the conversation.
               </p>
             </div>
           )}
@@ -631,7 +622,7 @@ export const InquiryDeskView: React.FC<InquiryDeskViewProps> = ({ role: propRole
                       required
                       placeholder={
                         isOfficer
-                          ? 'Write official response to cadet (saved permanently to command ledger)...'
+                          ? 'Write a response...'
                           : 'Write follow-up message to officer...'
                       }
                       value={replyMessage}

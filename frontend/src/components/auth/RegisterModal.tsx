@@ -298,7 +298,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       };
       const res = await registerCadet(payload);
       if (res.success) {
-        setSuccessMsg(res.message || 'Registration submitted successfully. Profile photo and face biometrics are permanently recorded in the institutional database. Application is under review.');
+        setSuccessMsg(res.message || 'Registration submitted. Your application is under review.');
       } else {
         setErrorMsg(res.message || 'Registration failed. Please check the entered fields.');
       }

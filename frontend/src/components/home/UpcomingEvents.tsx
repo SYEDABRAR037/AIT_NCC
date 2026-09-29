@@ -64,9 +64,6 @@ export const UpcomingEvents: React.FC = () => {
           <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             Activities & Training Camps
           </h2>
-          <p className="description" style={{ maxWidth: '680px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>
-            Official schedule of battalion drill parades, weapon firing exercises, and national flagship camps.
-          </p>
         </div>
 
         {/* Filter Tabs */}
@@ -123,7 +120,7 @@ export const UpcomingEvents: React.FC = () => {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-secondary)' }}>
-            Synchronizing operational schedule with database...
+            Loading activities...
           </div>
         ) : !hasItems ? (
           <div style={{
@@ -138,11 +135,8 @@ export const UpcomingEvents: React.FC = () => {
           }}>
             <Calendar size={40} style={{ color: 'var(--color-border)', margin: '0 auto 1rem' }} />
             <h4 style={{ color: 'var(--color-primary)', fontSize: '1.15rem', marginBottom: '0.5rem', fontWeight: 700 }}>
-              No upcoming public activities published yet
+              No upcoming activities
             </h4>
-            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', margin: 0 }}>
-              Official parade and camp orders will appear here once sanctioned by the Battalion Command.
-            </p>
           </div>
         ) : (
           <div className="grid-2" style={{ gap: '1.5rem' }}>

@@ -35,20 +35,16 @@ export const Announcements: React.FC = () => {
             Official Bulletins
           </span>
           <h2 className="cinzel-title">Announcements & Public Notices</h2>
-          <p className="description">
-            Published circulars, orders, and institutional announcements from the Command Desk.
-          </p>
         </div>
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--navy-text-muted)' }}>
-            Retrieving official gazette records...
+            Loading notices...
           </div>
         ) : notices.length === 0 ? (
           <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
             <FileText size={36} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-            <h4 style={{ color: 'var(--navy-primary)' }}>No active public notices published</h4>
-            <p>Check back for forthcoming parade notices and institutional announcements.</p>
+            <h4 style={{ color: 'var(--navy-primary)' }}>No notices yet</h4>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '900px', margin: '0 auto' }}>

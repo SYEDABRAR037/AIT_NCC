@@ -28,7 +28,7 @@ export const PublicStats: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Stats query error:', err);
-      setError('Live unit database synchronization pending');
+      setError('Unit statistics are unavailable.');
     } finally {
       setLoading(false);
     }
@@ -42,7 +42,7 @@ export const PublicStats: React.FC = () => {
     {
       label: 'Approved Cadets',
       value: stats?.totalApprovedCadets ?? 0,
-      subtext: 'Real-time verified active strength',
+      subtext: 'Active cadets',
       icon: Users,
     },
     {
@@ -77,15 +77,11 @@ export const PublicStats: React.FC = () => {
         <div className="section-header" style={{ marginBottom: '2.5rem' }}>
           <span className="sub-title" style={{ color: 'var(--color-info-border)' }}>
             <Activity size={16} />
-            Verified Unit Strength
+            AIT NCC
           </span>
           <h2 className="cinzel-title" style={{ color: 'var(--white-pure)' }}>
-            Public Unit Statistics
+            Unit Statistics
           </h2>
-          <p className="description" style={{ color: 'var(--color-border)' }}>
-            Directly connected to PostgreSQL database records. Institutional strength is calculated
-            dynamically from verified approvals without hardcoded estimates.
-          </p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
@@ -124,7 +120,7 @@ export const PublicStats: React.FC = () => {
           <span>PostgreSQL Active Sync</span>
           <button
             onClick={fetchStats}
-            title="Refresh database counts"
+            title="Refresh statistics"
             style={{ background: 'none', border: 'none', color: 'var(--color-info-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
           >
             <RefreshCw size={13} className={loading ? 'spinning' : ''} />

@@ -227,11 +227,8 @@ export const RequestCenterView: React.FC<RequestCenterViewProps> = ({ token: pro
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)', margin: 0 }}>
-            Central NCC Request Center
+            Requests
           </h2>
-          <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>
-            Submit official requests, track stage reviews, and inspect decision history.
-          </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -245,7 +242,7 @@ export const RequestCenterView: React.FC<RequestCenterViewProps> = ({ token: pro
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
           >
             <Plus size={15} />
-            <span>FILE NEW REQUEST</span>
+            <span>NEW REQUEST</span>
           </button>
         </div>
       </div>
@@ -254,17 +251,14 @@ export const RequestCenterView: React.FC<RequestCenterViewProps> = ({ token: pro
       {loading ? (
         <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
           <Clock size={32} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-          <p>Loading personal request records...</p>
+          <p>Loading requests...</p>
         </div>
       ) : requests.length === 0 ? (
         <div className="institutional-card" style={{ textAlign: 'center', padding: '3rem' }}>
           <FileText size={40} style={{ color: 'var(--navy-border)', margin: '0 auto 1rem' }} />
-          <h4 style={{ color: 'var(--navy-primary)' }}>No Requests on Record</h4>
-          <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)', maxWidth: '450px', margin: '0.5rem auto 1.5rem' }}>
-            You have not filed any official requests yet. You can submit leave, profile corrections, certificate verifications, or camp nominations.
-          </p>
+          <h4 style={{ color: 'var(--navy-primary)' }}>No requests yet</h4>
           <button onClick={() => setNewModalOpen(true)} className="btn-primary btn-sm">
-            File Your First Request
+            New Request
           </button>
         </div>
       ) : (
@@ -476,7 +470,7 @@ export const RequestCenterView: React.FC<RequestCenterViewProps> = ({ token: pro
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="State the exact particulars, regimental reason, and desired institutional action..."
+                  placeholder="Describe your request..."
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '4px', border: '1px solid var(--color-border)', fontSize: '0.9rem', resize: 'vertical' }}
