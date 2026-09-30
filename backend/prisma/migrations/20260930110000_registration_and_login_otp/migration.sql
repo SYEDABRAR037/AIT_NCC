@@ -1,10 +1,15 @@
+BEGIN;
+
 ALTER TABLE "User"
-  ADD COLUMN "emailVerified" BOOLEAN NOT NULL DEFAULT false,
-  ADD COLUMN "mobileVerified" BOOLEAN NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS "mobileVerified" BOOLEAN NOT NULL DEFAULT false;
 
-CREATE TYPE "OtpPurpose" AS ENUM ('REGISTRATION_EMAIL', 'REGISTRATION_MOBILE', 'LOGIN');
+DO $$ BEGIN
+  CREATE TYPE "OtpPurpose" AS ENUM ('REGISTRATION_EMAIL', 'REGISTRATION_MOBILE', 'LOGIN');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "OtpChallenge" (
+CREATE TABLE IF NOT EXISTS "OtpChallenge" (
   "id" TEXT NOT NULL,
   "purpose" "OtpPurpose" NOT NULL,
   "userId" TEXT,
@@ -21,7 +26,13 @@ CREATE TABLE "OtpChallenge" (
   CONSTRAINT "OtpChallenge_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "OtpChallenge_purpose_destination_createdAt_idx" ON "OtpChallenge"("purpose", "destination", "createdAt");
-CREATE INDEX "OtpChallenge_userId_purpose_expiresAt_idx" ON "OtpChallenge"("userId", "purpose", "expiresAt");
-CREATE INDEX "OtpChallenge_expiresAt_idx" ON "OtpChallenge"("expiresAt");
-ALTER TABLE "OtpChallenge" ADD CONSTRAINT "OtpChallenge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE INDEX IF NOT EXISTS "OtpChallenge_purpose_destination_createdAt_idx" ON "OtpChallenge"("purpose", "destination", "createdAt");
+CREATE INDEX IF NOT EXISTS "OtpChallenge_userId_purpose_expiresAt_idx" ON "OtpChallenge"("userId", "purpose", "expiresAt");
+CREATE INDEX IF NOT EXISTS "OtpChallenge_expiresAt_idx" ON "OtpChallenge"("expiresAt");
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'OtpChallenge_userId_fkey') THEN
+    ALTER TABLE "OtpChallenge" ADD CONSTRAINT "OtpChallenge_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+COMMIT;
