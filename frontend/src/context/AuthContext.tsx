@@ -20,7 +20,11 @@ interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string; status?: string; user?: UserProfile }>;
+  login: (identifier: string, password: string) => Promise<{ success: boolean; otpRequired?: boolean; challengeId?: string; destination?: string; expiresAt?: string; serverNow?: string; message?: string; status?: string; user?: UserProfile }>;
+  verifyLoginOtp: (challengeId: string, otp: string) => Promise<{ success: boolean; message?: string; user?: UserProfile }>;
+  requestRegistrationOtp: (channel: 'email' | 'mobile', destination: string, name: string) => Promise<any>;
+  verifyRegistrationOtp: (channel: 'email' | 'mobile', challengeId: string, otp: string) => Promise<any>;
+  resendAuthOtp: (challengeId: string, name?: string) => Promise<any>;
   registerCadet: (data: any) => Promise<{ success: boolean; message?: string; field?: string }>;
   logout: () => Promise<void>;
 }
@@ -84,7 +88,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const contentType = res.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        if (res.ok && data.success) {
+        if (res.ok && data.success && data.otpRequired) {
+          return { success: true, otpRequired: true, challengeId: data.challengeId, destination: data.destination, expiresAt: data.expiresAt, serverNow: data.serverNow, message: data.message };
+        } else if (res.ok && data.success) {
           localStorage.setItem('ncc_auth_token', data.token);
           localStorage.setItem('token', data.token);
           localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
@@ -108,6 +114,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Authentication server communication error:', err);
       return { success: false, message: 'Authentication service is unavailable. Please try again when connected.' };
     }
+  };
+
+  const verifyLoginOtp = async (challengeId: string, otp: string) => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/login/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challengeId, otp }) });
+      const data = await res.json();
+      if (!res.ok || !data.success) return { success: false, message: data.message || 'Code verification failed.' };
+      localStorage.setItem('ncc_auth_token', data.token);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
+      setToken(data.token); setUser(data.user);
+      return { success: true, message: data.message, user: data.user };
+    } catch { return { success: false, message: 'Authentication service is unavailable.' }; }
+  };
+
+  const requestRegistrationOtp = async (channel: 'email' | 'mobile', destination: string, name: string) => {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, destination, name }) });
+    const data = await res.json();
+    return { ...data, success: res.ok && data.success };
+  };
+
+  const verifyRegistrationOtp = async (channel: 'email' | 'mobile', challengeId: string, otp: string) => {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, challengeId, otp }) });
+    const data = await res.json();
+    return { ...data, success: res.ok && data.success };
+  };
+
+  const resendAuthOtp = async (challengeId: string, name?: string) => {
+    const res = await fetch(`${getApiBaseUrl()}/api/auth/otp/resend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challengeId, name }) });
+    const data = await res.json();
+    return { ...data, success: res.ok && data.success };
   };
 
   const registerCadet = async (formData: any) => {
@@ -171,6 +208,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         token,
         isLoading,
         login,
+        verifyLoginOtp,
+        requestRegistrationOtp,
+        verifyRegistrationOtp,
+        resendAuthOtp,
         registerCadet,
         logout,
       }}

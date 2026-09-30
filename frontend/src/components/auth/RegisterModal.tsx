@@ -3,6 +3,7 @@ import { X, UserPlus, Shield, Camera, AlertCircle, CheckCircle2 } from 'lucide-r
 import * as faceapi from '@vladmandic/face-api';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
+import { OTPVerification } from '../common/OTPVerification';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface RegisterModalProps {
 }
 
 export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose }) => {
-  const { registerCadet } = useAuth();
+  const { registerCadet, requestRegistrationOtp, verifyRegistrationOtp, resendAuthOtp } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     regimentalNumber: '',
@@ -43,6 +44,15 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [emailProofId, setEmailProofId] = useState('');
+  const [mobileProofId, setMobileProofId] = useState('');
+  const [verifiedEmail, setVerifiedEmail] = useState(false);
+  const [verifiedMobile, setVerifiedMobile] = useState(false);
+  const [activeOtp, setActiveOtp] = useState<{ channel: 'email' | 'mobile'; id: string; destination: string; expiresAt: string; serverNow: string } | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpSeconds, setOtpSeconds] = useState(0);
 
   const resetFormState = () => {
     setFormData({
@@ -66,6 +76,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setErrorMsg(null);
     setSuccessMsg(null);
     setCountdown(null);
+    setEmailProofId(''); setMobileProofId(''); setVerifiedEmail(false); setVerifiedMobile(false); setActiveOtp(null);
   };
 
   const handleCloseModal = () => {
@@ -250,7 +261,58 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((old) => ({ ...old, [name]: value }));
+    if (name === 'email') { setVerifiedEmail(false); setEmailProofId(''); if (activeOtp?.channel === 'email') setActiveOtp(null); }
+    if (name === 'phone') { setVerifiedMobile(false); setMobileProofId(''); if (activeOtp?.channel === 'mobile') setActiveOtp(null); }
+  };
+
+  React.useEffect(() => {
+    if (!activeOtp) return;
+    const update = () => {
+      const ttl = Math.max(0, Math.ceil((new Date(activeOtp.expiresAt).getTime() - new Date(activeOtp.serverNow).getTime()) / 1000));
+      setOtpSeconds(ttl);
+    };
+    update();
+    const timer = window.setInterval(() => setOtpSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    const cooldownTimer = window.setInterval(() => setOtpCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => { window.clearInterval(timer); window.clearInterval(cooldownTimer); };
+  }, [activeOtp?.expiresAt, activeOtp?.serverNow]);
+
+  const requestOtp = async (channel: 'email' | 'mobile') => {
+    setOtpError(null); setOtpLoading(true);
+    try {
+      const result = await requestRegistrationOtp(channel, channel === 'email' ? formData.email : formData.phone, formData.fullName);
+      if (!result.success) { setOtpError(result.message || 'Unable to send OTP. Please try again.'); return; }
+      setActiveOtp({ channel, id: result.challengeId, destination: result.destination, expiresAt: result.expiresAt, serverNow: result.serverNow });
+      setOtpCooldown(30);
+    } catch { setOtpError('Unable to send OTP. Please try again.'); }
+    finally { setOtpLoading(false); }
+  };
+
+  const verifyOtp = async (otp: string) => {
+    if (!activeOtp) return;
+    setOtpError(null); setOtpLoading(true);
+    try {
+      const result = await verifyRegistrationOtp(activeOtp.channel, activeOtp.id, otp);
+      if (!result.success) { setOtpError(result.message || 'Code verification failed.'); return; }
+      if (activeOtp.channel === 'email') { setEmailProofId(activeOtp.id); setVerifiedEmail(true); }
+      else { setMobileProofId(activeOtp.id); setVerifiedMobile(true); }
+      setActiveOtp(null);
+    } catch { setOtpError('Unable to verify code. Please try again.'); }
+    finally { setOtpLoading(false); }
+  };
+
+  const resendOtp = async () => {
+    if (!activeOtp) return false;
+    setOtpError(null); setOtpLoading(true);
+    try {
+      const result = await resendAuthOtp(activeOtp.id, formData.fullName);
+      if (!result.success) { setOtpError(result.message || 'Unable to resend OTP.'); return false; }
+      setActiveOtp({ ...activeOtp, expiresAt: result.expiresAt, serverNow: result.serverNow });
+      setOtpCooldown(30); return true;
+    } catch { setOtpError('Unable to resend OTP.'); return false; }
+    finally { setOtpLoading(false); }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,10 +348,17 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       return;
     }
 
+    if (!verifiedMobile || !verifiedEmail || !mobileProofId || !emailProofId) {
+      setErrorMsg('Verify your mobile number and email before submitting.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const payload: any = {
         ...formData,
+        mobileChallengeId: mobileProofId,
+        emailChallengeId: emailProofId,
         profilePhotoUrl: profilePhoto || faceSnapshot,
         profilePhoto: profilePhoto || faceSnapshot,
         photoSnapshot: faceSnapshot || profilePhoto,
@@ -507,20 +576,27 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                   onChange={handleChange}
                   style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
+                <button type="button" disabled={!formData.email || otpLoading || verifiedEmail} onClick={() => requestOtp('email')} className="btn-secondary" style={{ marginTop: '0.45rem' }}>
+                  {verifiedEmail ? '✓ Email Verified' : 'Verify Email'}
+                </button>
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.25rem' }} htmlFor="register-field-5">
-                  PHONE (WHERE PERMITTED)
+                  MOBILE NUMBER *
                 </label>
                 <input id="register-field-5"
                   type="tel"
                   name="phone"
+                  required
                   placeholder="+91 98765 43210"
                   value={formData.phone}
                   onChange={handleChange}
                   style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
+                <button type="button" disabled={!formData.phone || otpLoading || verifiedMobile} onClick={() => requestOtp('mobile')} className="btn-secondary" style={{ marginTop: '0.45rem' }}>
+                  {verifiedMobile ? '✓ Mobile Verified' : 'Verify Mobile'}
+                </button>
               </div>
 
               <div>
@@ -536,6 +612,28 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 />
               </div>
             </div>
+
+            {activeOtp && (
+              <OTPVerification
+                key={`${activeOtp.id}-${activeOtp.expiresAt}`}
+                destination={activeOtp.destination}
+                embedded
+                heading={`Verify ${activeOtp.channel === 'email' ? 'Email' : 'Mobile'}`}
+                instruction={`Enter the 6-digit code sent to ${activeOtp.destination}.`}
+                expiresInSeconds={otpSeconds}
+                verifyDisabled={otpSeconds <= 0}
+                onVerify={verifyOtp}
+                onResend={resendOtp}
+                loading={otpLoading}
+                error={otpError}
+                cooldown={otpCooldown}
+              />
+            )}
+            {otpError && !activeOtp && <p role="alert" style={{ color: 'var(--color-error)' }}>{otpError}</p>}
+            <p aria-live="polite" style={{ margin: 0, fontSize: '0.85rem', color: verifiedEmail && verifiedMobile ? 'var(--color-success)' : 'var(--color-muted)' }}>
+              {verifiedMobile ? '✓ Mobile verified' : 'Mobile verification required.'} {' '}
+              {verifiedEmail ? '✓ Email verified' : 'Email verification required.'}
+            </p>
 
             {/* Academic & Branch Allocation */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
@@ -823,13 +921,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 type="submit"
-                disabled={submitting || !faceDescriptor}
+                disabled={submitting || !faceDescriptor || !verifiedMobile || !verifiedEmail}
                 className="btn-primary"
                 style={{
-                  opacity: !faceDescriptor ? 0.65 : 1,
-                  cursor: !faceDescriptor ? 'not-allowed' : 'pointer',
+                  opacity: !faceDescriptor || !verifiedMobile || !verifiedEmail ? 0.65 : 1,
+                  cursor: !faceDescriptor || !verifiedMobile || !verifiedEmail ? 'not-allowed' : 'pointer',
                 }}
-                title={!faceDescriptor ? 'Biometric Face Registration is required before submitting application' : ''}
+                title={!faceDescriptor ? 'Biometric face registration is required' : !verifiedMobile || !verifiedEmail ? 'Verify your mobile number and email before submitting' : ''}
               >
                 <UserPlus size={16} />
                 <span>{submitting ? 'VALIDATING WITH DATABASE...' : 'SUBMIT APPLICATION'}</span>

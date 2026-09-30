@@ -7,11 +7,17 @@ import {
   resetPassword,
 } from '../controllers/recovery.controller';
 import { authenticateToken } from '../middleware/auth.middleware';
+import { requestRegistrationOtp, resendAuthOtp, verifyRegistrationOtp, verifyLoginOtp } from '../controllers/otpAuth.controller';
 
 const router = Router();
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/login/verify-otp', verifyLoginOtp);
+router.post('/registration/request-otp', requestRegistrationOtp);
+router.post('/registration/resend-otp', resendAuthOtp);
+router.post('/otp/resend', resendAuthOtp);
+router.post('/registration/verify-otp', verifyRegistrationOtp);
 router.post('/logout', logout);
 router.get('/me', authenticateToken, getMe);
 

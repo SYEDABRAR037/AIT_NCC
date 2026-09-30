@@ -468,6 +468,35 @@ class NotificationWorkerQueue {
 
 export const notificationQueueWorker = new NotificationWorkerQueue();
 
+// Authentication OTPs always go to the supplied verified number, never through
+// attendance test-mode routing or its simulation fallback.
+export const sendOtpSms = async (phone: string, message: string): Promise<boolean> => {
+  const { isValid, normalized } = normalizePhoneNumber(phone);
+  if (!isValid) return false;
+  const fast2smsApiKey = process.env.FAST2SMS_API_KEY;
+  if (fast2smsApiKey && fast2smsApiKey !== 'your_fast2sms_api_key') {
+    try {
+      const axios = await import('axios');
+      const result = await axios.default.post('https://www.fast2sms.com/dev/bulkV2', {
+        route: 'q', message, language: 'english', flash: 0,
+        numbers: normalized.replace(/^\+91/, '').replace(/^91/, ''),
+      }, { headers: { authorization: fast2smsApiKey, 'Content-Type': 'application/json' }, timeout: 10000 });
+      if (result.data?.return === true) return true;
+    } catch { /* Try configured Twilio provider. */ }
+  }
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const auth = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_FROM_NUMBER;
+  if (sid && auth && from && sid !== 'your_twilio_account_sid') {
+    try {
+      const twilio = await import('twilio');
+      await twilio.default(sid, auth).messages.create({ body: message, from, to: normalized });
+      return true;
+    } catch { return false; }
+  }
+  return false;
+};
+
 // =========================================================================
 // HIGH-LEVEL IDEMPOTENT NOTIFICATION DISPATCHERS
 // =========================================================================

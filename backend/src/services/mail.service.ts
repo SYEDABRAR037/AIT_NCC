@@ -4,6 +4,7 @@ interface SendOtpEmailParams {
   recipientEmail: string;
   cadetName: string;
   otp: string;
+  purpose?: 'recovery' | 'registration' | 'login';
 }
 
 let transporter: Transporter | null = null;
@@ -67,17 +68,19 @@ export const sendOtpEmail = async ({
   recipientEmail,
   cadetName,
   otp,
+  purpose = 'recovery',
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   const mailFrom = 'kashmirgaming033@gmail.com';
   const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 
   // Exact Subject required by Phase 12
-  const subject = 'NCC Account Recovery — One-Time Password (OTP)';
+  const action = purpose === 'registration' ? 'email verification' : purpose === 'login' ? 'login verification' : 'account recovery';
+  const subject = `NCC AIT Pune — ${purpose === 'registration' ? 'Verify your email' : purpose === 'login' ? 'Login verification code' : 'Account Recovery — One-Time Password (OTP)'}`;
 
   // Exact Body required by Phase 12
   const textContent = `Dear ${cadetName || 'Cadet'},
 
-Your NCC account recovery OTP is:
+Your NCC ${action} OTP is:
 
 ${otp}
 
@@ -85,7 +88,7 @@ This OTP is valid for 60 seconds only.
 
 Please do not share this OTP with anyone.
 
-If you did not request an account recovery, please ignore this email.
+If you did not request this code, please ignore this email.
 
 Regards,
 NCC AIT Pune
@@ -117,12 +120,12 @@ NCC Digital Command & Cadet Management System`;
   <div class="card">
     <div class="header">
       <h2>NCC AIT PUNE</h2>
-      <p>Official Account Recovery System</p>
+      <p>NCC AIT Pune Verification</p>
     </div>
     <div class="body">
       <div class="salutation">Dear ${cadetName || 'Cadet'},</div>
       <div class="intro">
-        Your NCC account recovery OTP is:
+        Your NCC ${action} OTP is:
       </div>
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
@@ -131,7 +134,7 @@ NCC Digital Command & Cadet Management System`;
       </div>
       <div class="notice">
         Please do not share this OTP with anyone.<br><br>
-        If you did not request an account recovery, please ignore this email.
+        If you did not request this code, please ignore this email.
       </div>
     </div>
     <div class="footer">

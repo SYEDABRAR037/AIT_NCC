@@ -450,14 +450,16 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
     }
 
     // Mark as verified
-    const verified = await prisma.passwordReset.updateMany({
-      where: {
-        id: resetRecord.id,
-        usedAt: null,
-        verifiedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      data: { verifiedAt: new Date() },
+    const verifiedAt = new Date();
+    const verified = await prisma.$transaction(async (tx) => {
+      const result = await tx.passwordReset.updateMany({
+        where: { id: resetRecord.id, usedAt: null, verifiedAt: null, expiresAt: { gt: verifiedAt } },
+        data: { verifiedAt },
+      });
+      if (result.count === 1) {
+        await tx.user.update({ where: { id: resetRecord.userId }, data: { emailVerified: true } });
+      }
+      return result;
     });
     if (verified.count !== 1) {
       res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please request a new one.' });

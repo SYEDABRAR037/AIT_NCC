@@ -47,6 +47,8 @@ model User {
   passwordHash       String
   role               Role          @default(CADET)
   status             AccountStatus @default(UNDER_REVIEW)
+  emailVerified      Boolean       @default(false)
+  mobileVerified     Boolean       @default(false)
   rank               String        @default("CDT")
   digitalIdToken     String?       @unique @default(uuid())
   createdAt          DateTime      @default(now())
@@ -75,6 +77,7 @@ model User {
   attendanceNotifications AttendanceNotification[]
   inquiryReplies      InquiryReply[]       @relation("UserInquiryReplies")
   passwordResets      PasswordReset[]
+  otpChallenges       OtpChallenge[]
   rankHistory         RankHistory[] @relation("CadetRankHistory")
   rankChanges         RankHistory[] @relation("RankChangedBy")
   notifications       Notification[]
@@ -661,5 +664,32 @@ model PasswordReset {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+enum OtpPurpose {
+  REGISTRATION_EMAIL
+  REGISTRATION_MOBILE
+  LOGIN
+}
+
+model OtpChallenge {
+  id             String     @id @default(uuid())
+  purpose        OtpPurpose
+  userId         String?
+  destination    String
+  otpHash        String?
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  proofExpiresAt DateTime?
+  consumedAt     DateTime?
+  attemptCount   Int        @default(0)
+  sendCount      Int        @default(1)
+  lastSentAt     DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([purpose, destination, createdAt])
+  @@index([userId, purpose, expiresAt])
   @@index([expiresAt])
 }

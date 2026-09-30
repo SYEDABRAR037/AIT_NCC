@@ -3,6 +3,9 @@ import './OTPVerification.css';
 
 interface OTPVerificationProps {
   destination: string;
+  heading?: string;
+  instruction?: string;
+  embedded?: boolean;
   length?: number;
   expiresInSeconds?: number;
   verifyDisabled?: boolean;
@@ -16,6 +19,9 @@ interface OTPVerificationProps {
 
 export const OTPVerification: React.FC<OTPVerificationProps> = ({
   destination,
+  heading = 'Verify Your Identity',
+  instruction,
+  embedded = false,
   length = 6,
   expiresInSeconds,
   verifyDisabled = false,
@@ -84,6 +90,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
     e.preventDefault();
     onVerify(otp.join(''));
   };
+  const Wrapper: any = embedded ? 'div' : 'form';
 
   return (
     <div className="otp-container">
@@ -93,8 +100,8 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         </button>
       )}
       <div className="otp-header">
-        <h2>Verify Your Identity</h2>
-        <p>If your details match an account, a {length}-digit code was sent to {destination}.</p>
+        <h2>{heading}</h2>
+        <p>{instruction || `If your details match an account, a ${length}-digit code was sent to ${destination}.`}</p>
         {expiresInSeconds !== undefined && (
           <p className="otp-expiry" aria-live="polite">
             {expiresInSeconds > 0 ? `OTP expires in ${expiresInSeconds}s` : 'OTP expired. Please request a new OTP.'}
@@ -102,7 +109,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="otp-form">
+      <Wrapper onSubmit={handleSubmit} className="otp-form">
         <div className="otp-inputs" onPaste={handlePaste} role="group" aria-label={`${length}-digit verification code`}>
           {otp.map((digit, index) => (
             <input
@@ -126,14 +133,15 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
 
         {error && <div className="otp-error" role="alert" aria-live="assertive">{error}</div>}
 
-        <button type="submit" className="otp-verify-button" disabled={loading || verifyDisabled || otp.join('').length < length}>
+        <button type={embedded ? 'button' : 'submit'} onClick={embedded ? () => onVerify(otp.join('')) : undefined} className="otp-verify-button" disabled={loading || verifyDisabled || otp.join('').length < length}>
           {loading ? 'Verifying OTP...' : 'Verify OTP'}
         </button>
-      </form>
+      </Wrapper>
 
       <div className="otp-resend">
         <p>Didn't receive the code?</p>
         <button
+          type="button"
           onClick={handleResend}
           disabled={loading || cooldown > 0}
           className="otp-resend-button"

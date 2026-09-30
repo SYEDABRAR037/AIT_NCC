@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { OtpPurpose } from '@prisma/client';
+import { startLoginOtp } from './otpAuth.controller';
+import { normalizePhoneNumber } from '../services/attendanceNotification.service';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -23,13 +26,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       photoSnapshot,
       faceDescriptor,
       qualityScore,
+      mobileChallengeId,
+      emailChallengeId,
     } = req.body;
 
     // 1. Required Field Validation
-    if (!fullName || !regimentalNumber || !collegeRollNumber || !email || !password) {
+    if (!fullName || !regimentalNumber || !collegeRollNumber || !email || !phone || !password) {
       res.status(400).json({
         success: false,
-        message: 'Missing mandatory registration fields: Full Name, Regimental No, Roll No, Email, Password.',
+        message: 'Missing mandatory registration fields: Full Name, Regimental No, Roll No, Email, Mobile, Password.',
       });
       return;
     }
@@ -47,6 +52,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedRegimental = regimentalNumber.trim().toUpperCase();
     const trimmedRoll = collegeRollNumber.trim().toUpperCase();
+    const normalizedPhone = normalizePhoneNumber(String(phone));
+    if (!normalizedPhone.isValid || !mobileChallengeId || !emailChallengeId) {
+      res.status(400).json({ success: false, message: 'Valid mobile and email verification are required before submitting the application.' });
+      return;
+    }
+    const now = new Date();
+    const [mobileProof, emailProof] = await Promise.all([
+      prisma.otpChallenge.findUnique({ where: { id: String(mobileChallengeId) } }),
+      prisma.otpChallenge.findUnique({ where: { id: String(emailChallengeId) } }),
+    ]);
+    if (!mobileProof || mobileProof.purpose !== OtpPurpose.REGISTRATION_MOBILE || mobileProof.destination !== normalizedPhone.normalized || !mobileProof.verifiedAt || !mobileProof.proofExpiresAt || mobileProof.proofExpiresAt <= now || mobileProof.consumedAt || !emailProof || emailProof.purpose !== OtpPurpose.REGISTRATION_EMAIL || emailProof.destination !== trimmedEmail || !emailProof.verifiedAt || !emailProof.proofExpiresAt || emailProof.proofExpiresAt <= now || emailProof.consumedAt) {
+      res.status(400).json({ success: false, message: 'Mobile and email verification are required before submitting the application.' });
+      return;
+    }
 
     // 3. Strict Duplicate Detection (Phase 11 & 14)
     const existingEmail = await prisma.user.findFirst({
@@ -95,13 +114,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // 5. Atomic Registration Transaction (Phase 8 & 12)
     const [newUser] = await prisma.$transaction(async (tx) => {
+      const mobileConsumed = await tx.otpChallenge.updateMany({ where: { id: mobileProof.id, purpose: OtpPurpose.REGISTRATION_MOBILE, verifiedAt: { not: null }, proofExpiresAt: { gt: now }, consumedAt: null }, data: { consumedAt: now } });
+      const emailConsumed = await tx.otpChallenge.updateMany({ where: { id: emailProof.id, purpose: OtpPurpose.REGISTRATION_EMAIL, verifiedAt: { not: null }, proofExpiresAt: { gt: now }, consumedAt: null }, data: { consumedAt: now } });
+      if (mobileConsumed.count !== 1 || emailConsumed.count !== 1) throw new Error('VERIFICATION_PROOF_INVALID');
       const user = await tx.user.create({
         data: {
           fullName: fullName.trim(),
           regimentalNumber: trimmedRegimental,
           collegeRollNumber: trimmedRoll,
           email: trimmedEmail,
-          phone: phone ? phone.trim() : null,
+          phone: normalizedPhone.normalized,
+          mobileVerified: true,
+          emailVerified: true,
           year: year || 'FE (1st Year)',
           branch: branch || 'Computer Engineering',
           platoonName: platoon || 'Senior Division',
@@ -138,6 +162,10 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       profilePhotoSaved: Boolean(newUser.profilePhotoUrl),
     });
   } catch (error: any) {
+    if (error?.message === 'VERIFICATION_PROOF_INVALID') {
+      res.status(400).json({ success: false, message: 'Mobile and email verification are required before submitting the application.' });
+      return;
+    }
     console.error('Registration error:', error);
 
     // Specific Prisma Unique Constraint Error mapping
@@ -207,6 +235,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         success: false,
         message: 'Invalid institutional credentials.',
       });
+      return;
+    }
+
+    if (user.role === 'CADET') {
+      if (user.regimentalNumber.toLowerCase() !== cleanIdentifier.toLowerCase()) {
+        res.status(401).json({ success: false, message: 'Use your regimental number to sign in.' });
+        return;
+      }
+      if (user.status !== 'ACTIVE') {
+        const statusMessage = user.status === 'UNDER_REVIEW' || user.status === 'ANO_REVIEW'
+          ? 'Your registration is currently under review.'
+          : user.status === 'REJECTED' ? 'Your registration has been rejected. Please contact the NCC administration.'
+            : user.status === 'HOLD' || user.status === 'RETURNED' ? 'Your registration is on hold or needs correction.'
+              : 'Your cadet account is not active.';
+        res.status(403).json({ success: false, status: user.status, message: statusMessage });
+        return;
+      }
+      await startLoginOtp(req, user, res);
       return;
     }
 
