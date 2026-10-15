@@ -8,6 +8,7 @@ import {
   getMyAttendanceHistory,
   getAttendanceSummary,
   bulkImportAttendance,
+  issueVerificationChallenge,
   verifyFaceAttendance,
   endAttendanceSession,
   getSessionAbsentList,
@@ -53,6 +54,13 @@ router.get(
   '/sessions/:sessionId',
   requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getSessionAttendance
+);
+
+// Issue single-use verification challenge token (required before face verification)
+router.get(
+  '/sessions/:sessionId/verification-challenge',
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
+  issueVerificationChallenge
 );
 
 // Live Face Verification (Platoon Senior, Senior, Admin/ANO, and Drill Instructor)

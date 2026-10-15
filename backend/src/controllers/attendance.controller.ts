@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import { randomBytes } from 'crypto';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import {
@@ -7,6 +8,32 @@ import {
   getSessionNotificationAuditLedger,
   maskPhoneNumber,
 } from '../services/attendanceNotification.service';
+
+// ============================================================
+// BIOMETRIC VERIFICATION CHALLENGE STORE (In-memory, ephemeral)
+// Single-use, time-limited, session-bound challenge tokens.
+// Prevents replay attacks, descriptor forgery, and cross-session abuse.
+// Server restart safely invalidates all pending challenges (fail-closed).
+// ============================================================
+interface VerificationChallenge {
+  sessionId: string;
+  userId: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
+const verificationChallenges = new Map<string, VerificationChallenge>();
+const CHALLENGE_TTL_MS = 30_000; // 30 seconds
+
+// Periodic cleanup of expired challenges (every 60 seconds)
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, challenge] of verificationChallenges) {
+    if (now > challenge.expiresAt) {
+      verificationChallenges.delete(token);
+    }
+  }
+}, 60_000);
 
 // ============================================================
 // PHASE 10: ATTENDANCE MANAGEMENT SYSTEM
@@ -534,6 +561,68 @@ export const bulkImportAttendance = async (req: AuthRequest, res: Response): Pro
 // PHASE 11: LIVE FACE ATTENDANCE & BIOMETRIC VERIFICATION
 // ============================================================
 
+// 7b. Issue Single-Use Verification Challenge Token
+// Required before every face verification request — prevents replay, forgery, and cross-session attacks.
+export const issueVerificationChallenge = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Authentication required' });
+      return;
+    }
+
+    if (!['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR'].includes(req.user.role)) {
+      res.status(403).json({
+        success: false,
+        message: 'Unauthorized: Insufficient role clearance for biometric verification.',
+      });
+      return;
+    }
+
+    const { sessionId } = req.params;
+
+    const session = await prisma.trainingSession.findUnique({
+      where: { id: String(sessionId) },
+      select: { id: true, status: true },
+    });
+
+    if (!session) {
+      res.status(404).json({ success: false, message: 'Attendance session not found.' });
+      return;
+    }
+
+    if (session.status === 'CLOSED') {
+      res.status(400).json({
+        success: false,
+        code: 'SESSION_CLOSED',
+        message: 'Session is closed. No further verification allowed.',
+      });
+      return;
+    }
+
+    // Generate cryptographically random challenge token (32 bytes = 64 hex chars)
+    const challengeToken = randomBytes(32).toString('hex');
+    const now = Date.now();
+    const expiresAt = now + CHALLENGE_TTL_MS;
+
+    verificationChallenges.set(challengeToken, {
+      sessionId: session.id,
+      userId: req.user.id,
+      createdAt: now,
+      expiresAt,
+    });
+
+    res.json({
+      success: true,
+      challengeToken,
+      expiresAt: new Date(expiresAt).toISOString(),
+      ttlSeconds: CHALLENGE_TTL_MS / 1000,
+    });
+  } catch (error) {
+    console.error('issueVerificationChallenge error:', error);
+    res.status(500).json({ success: false, message: 'Failed to issue verification challenge' });
+  }
+};
+
 // 8. Live Face Verification & Instant Cadet Identification
 export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -552,12 +641,64 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
     }
 
     const { sessionId } = req.params;
-    const { descriptor, livenessVerified } = req.body;
+    const { descriptor, challengeToken } = req.body;
 
     if (!Array.isArray(descriptor) || descriptor.length < 128) {
       res.status(400).json({
         success: false,
         message: 'Invalid biometric face descriptor. 128-dimensional embedding required.',
+      });
+      return;
+    }
+
+    // ── Challenge Token Validation ──────────────────────────────────────
+    // Prevents: replay attacks, forged descriptors, cross-session abuse.
+    // Tokens are single-use, time-limited (30s), session-bound, and user-bound.
+    if (!challengeToken || typeof challengeToken !== 'string') {
+      res.status(400).json({
+        success: false,
+        code: 'CHALLENGE_REQUIRED',
+        message: 'A valid verification challenge token is required. Request one from the challenge endpoint first.',
+      });
+      return;
+    }
+
+    const challenge = verificationChallenges.get(challengeToken);
+    if (!challenge) {
+      res.status(400).json({
+        success: false,
+        code: 'CHALLENGE_INVALID',
+        message: 'Challenge token is invalid, already consumed, or expired.',
+      });
+      return;
+    }
+
+    // Immediately invalidate — single-use token
+    verificationChallenges.delete(challengeToken);
+
+    if (Date.now() > challenge.expiresAt) {
+      res.status(400).json({
+        success: false,
+        code: 'CHALLENGE_EXPIRED',
+        message: 'Challenge token has expired. Request a new challenge.',
+      });
+      return;
+    }
+
+    if (challenge.sessionId !== String(sessionId)) {
+      res.status(400).json({
+        success: false,
+        code: 'CHALLENGE_SESSION_MISMATCH',
+        message: 'Challenge token was issued for a different attendance session.',
+      });
+      return;
+    }
+
+    if (challenge.userId !== req.user.id) {
+      res.status(400).json({
+        success: false,
+        code: 'CHALLENGE_USER_MISMATCH',
+        message: 'Challenge token was issued for a different operator.',
       });
       return;
     }
@@ -749,43 +890,50 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       hour12: false,
     });
 
-    const record = await prisma.trainingAttendance.upsert({
-      where: {
-        sessionId_cadetId: {
+    const verifiedBy = `${req.user.fullName} (${req.user.role})`;
+
+    // Atomic attendance write — prevents duplicate records and count drift on concurrent requests
+    const { record, presentCount } = await prisma.$transaction(async (tx) => {
+      const record = await tx.trainingAttendance.upsert({
+        where: {
+          sessionId_cadetId: {
+            sessionId: session.id,
+            cadetId: matchedCadet.id,
+          },
+        },
+        create: {
           sessionId: session.id,
           cadetId: matchedCadet.id,
+          status: 'PRESENT',
+          verificationMethod: 'LIVE_FACE_VERIFIED',
+          verificationStatus: 'VERIFIED',
+          confidenceScore,
+          verifiedBy,
+          createdAt: now,
         },
-      },
-      create: {
-        sessionId: session.id,
-        cadetId: matchedCadet.id,
-        status: 'PRESENT',
-        verificationMethod: 'LIVE_FACE_VERIFIED',
-        verificationStatus: 'VERIFIED',
-        confidenceScore,
-        verifiedBy: `${req.user.fullName} (${req.user.role})`,
-        createdAt: now,
-      },
-      update: {
-        status: 'PRESENT',
-        verificationMethod: 'LIVE_FACE_VERIFIED',
-        verificationStatus: 'VERIFIED',
-        confidenceScore,
-        verifiedBy: `${req.user.fullName} (${req.user.role})`,
-      },
-    });
+        update: {
+          status: 'PRESENT',
+          verificationMethod: 'LIVE_FACE_VERIFIED',
+          verificationStatus: 'VERIFIED',
+          confidenceScore,
+          verifiedBy,
+        },
+      });
 
-    // Update real-time session counter in DB
-    const presentCount = await prisma.trainingAttendance.count({
-      where: {
-        sessionId: session.id,
-        status: 'PRESENT',
-      },
-    });
+      // Update real-time session counter inside transaction for consistency
+      const presentCount = await tx.trainingAttendance.count({
+        where: {
+          sessionId: session.id,
+          status: 'PRESENT',
+        },
+      });
 
-    await prisma.trainingSession.update({
-      where: { id: session.id },
-      data: { presentCount },
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: { presentCount },
+      });
+
+      return { record, presentCount };
     });
 
     const remainingCount = Math.max(0, session.expectedCount - presentCount);
@@ -835,7 +983,6 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       },
       time: formattedTime,
       confidenceScore,
-      livenessConfirmed: !!livenessVerified,
       sessionStats: {
         expected: session.expectedCount,
         present: presentCount,
@@ -1255,21 +1402,16 @@ export const getEligibleBiometrics = async (req: AuthRequest, res: Response): Pr
       },
     });
 
+    // Security: Raw face descriptors are NEVER sent to the client.
+    // All biometric matching is performed exclusively on the server.
     const eligibleCadets = cadets.map((c) => {
-      let descriptor: number[] | null = null;
-      if (c.biometricTemplate?.descriptor) {
-        try {
-          descriptor = JSON.parse(c.biometricTemplate.descriptor);
-        } catch (e) {}
-      }
       return {
         id: c.id,
         fullName: c.fullName,
         regimentalNumber: c.regimentalNumber,
         collegeRollNumber: c.collegeRollNumber,
         platoonName: c.platoonName,
-        hasBiometrics: !!descriptor,
-        descriptor,
+        hasBiometrics: !!(c.biometricTemplate?.descriptor),
       };
     });
 

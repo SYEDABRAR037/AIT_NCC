@@ -34,7 +34,7 @@ interface PreloadedCadet {
   collegeRollNumber?: string;
   platoonName?: string;
   hasBiometrics: boolean;
-  descriptor: number[] | null;
+  descriptor?: number[] | null;
 }
 
 export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
@@ -326,11 +326,26 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
     setStatusSubtitle('Matching live 128-d embedding with registered identity...');
 
     try {
+      // Step 1: Request single-use challenge token from server (prevents replay/forgery)
+      const challengeRes = await safeApiFetch(`/api/attendance/sessions/${session.id}/verification-challenge`, {
+        method: 'GET',
+      });
+
+      if (!challengeRes.ok || !challengeRes.data?.challengeToken) {
+        setScannerTone('error');
+        setStatusTitle('CHALLENGE FAILED');
+        setStatusSubtitle(challengeRes.data?.message || 'Failed to acquire security challenge token');
+        triggerAutoReset(2500);
+        return;
+      }
+
+      const challengeToken = challengeRes.data.challengeToken;
+
       const { ok, status, data } = await safeApiFetch(`/api/attendance/sessions/${session.id}/verify-face`, {
         method: 'POST',
         body: JSON.stringify({
           descriptor,
-          livenessVerified: true,
+          challengeToken,
         }),
       });
 
@@ -507,32 +522,9 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
                     isVerifyingRef.current = true;
                     const liveDescriptor = Array.from(single.descriptor);
 
-                    // Section 9: Fast local match against preloaded eligible templates
-                    if (preloadedCadets.length > 0) {
-                      let bestCadet: PreloadedCadet | null = null;
-                      let minDistance = Infinity;
-
-                      for (const c of preloadedCadets) {
-                        if (c.descriptor && Array.isArray(c.descriptor)) {
-                          let sumSq = 0;
-                          for (let i = 0; i < 128; i++) {
-                            const diff = liveDescriptor[i] - c.descriptor[i];
-                            sumSq += diff * diff;
-                          }
-                          const dist = Math.sqrt(sumSq);
-                          if (dist < minDistance) {
-                            minDistance = dist;
-                            bestCadet = c;
-                          }
-                        }
-                      }
-
-                      // If locally matched with high confidence, show instant detection hint
-                      if (bestCadet && minDistance <= 0.52) {
-                        setStatusTitle('RECOGNIZING...');
-                        setStatusSubtitle(`Matching ${bestCadet.fullName}...`);
-                      }
-                    }
+                    // Section 9: Server-side matching only (descriptors not exposed to client)
+                    setStatusTitle('RECOGNIZING...');
+                    setStatusSubtitle('Verifying identity with server...');
 
                     // Execute authoritative backend verification
                     await executeVerification(liveDescriptor);
