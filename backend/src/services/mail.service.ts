@@ -64,14 +64,31 @@ export const verifyEmailService = async (): Promise<{ connected: boolean; messag
   }
 };
 
+export const resolveMailSender = (): { email: string; name: string } => {
+  const fromEmail = process.env.SMTP_FROM_EMAIL?.trim();
+  const smtpUser = process.env.SMTP_USER?.trim();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  let resolvedEmail = '';
+  if (fromEmail && emailRegex.test(fromEmail)) {
+    resolvedEmail = fromEmail;
+  } else if (smtpUser && emailRegex.test(smtpUser)) {
+    resolvedEmail = smtpUser;
+  } else {
+    throw new Error('Valid SMTP sender email (SMTP_FROM_EMAIL or SMTP_USER) must be configured.');
+  }
+
+  const name = process.env.SMTP_FROM_NAME?.trim() || 'Army Institute of Technology NCC';
+  return { email: resolvedEmail, name };
+};
+
 export const sendOtpEmail = async ({
   recipientEmail,
   cadetName,
   otp,
   purpose = 'recovery',
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  const mailFrom = 'kashmirgaming033@gmail.com';
-  const mailFromName = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
+  const { email: mailFrom, name: mailFromName } = resolveMailSender();
 
   // Exact Subject required by Phase 12
   const action = purpose === 'registration' ? 'email verification' : purpose === 'login' ? 'login verification' : 'account recovery';
