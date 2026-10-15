@@ -186,7 +186,30 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     return { statusCode: 429, headers, body: JSON.stringify({ success: false, message: 'Please wait before trying again.' }) };
   }
   if (!DATABASE_URL || !JWT_SECRET) {
-    return { statusCode: 503, headers, body: JSON.stringify({ success: false, message: 'Account recovery is temporarily unavailable.' }) };
+    try {
+      const backendBase = process.env.API_BASE_URL || 'https://ait-ncc.onrender.com';
+      const targetUrl = `${backendBase.replace(/\/$/, '')}/api/auth/recovery/${action}`;
+      const forwardRes = await fetch(targetUrl, {
+        method: event.httpMethod,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(event.headers['authorization'] ? { Authorization: event.headers['authorization'] } : {}),
+        },
+        body: event.httpMethod !== 'GET' && event.httpMethod !== 'HEAD' ? event.body : undefined,
+      });
+      const data = await forwardRes.text();
+      return {
+        statusCode: forwardRes.status,
+        headers: {
+          ...headers,
+          'Content-Type': forwardRes.headers.get('content-type') || 'application/json',
+        },
+        body: data,
+      };
+    } catch (relayErr) {
+      console.error('[NETLIFY RECOVERY] Relay to backend failed:', relayErr);
+      return { statusCode: 503, headers, body: JSON.stringify({ success: false, message: 'Account recovery is temporarily unavailable.' }) };
+    }
   }
 
   const pgClient = new Client({

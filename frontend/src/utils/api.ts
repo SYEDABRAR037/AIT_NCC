@@ -38,14 +38,6 @@ export const resolveApiUrl = (endpoint: string): string => {
   }
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
-  // If running on Netlify in production, route recovery endpoints directly to Netlify serverless function
-  if (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')) {
-    if (cleanEndpoint.startsWith('/api/auth/recovery/')) {
-      const action = cleanEndpoint.replace('/api/auth/recovery/', '');
-      return `/.netlify/functions/recovery?action=${action}`;
-    }
-  }
-
   const base = getApiBaseUrl();
   return `${base}${cleanEndpoint}`;
 };
