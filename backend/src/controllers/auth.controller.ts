@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { OtpPurpose } from '@prisma/client';
@@ -218,6 +217,23 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           { collegeRollNumber: { equals: cleanIdentifier, mode: 'insensitive' } },
         ],
       },
+      select: {
+        id: true,
+        fullName: true,
+        regimentalNumber: true,
+        collegeRollNumber: true,
+        email: true,
+        phone: true,
+        year: true,
+        branch: true,
+        platoonName: true,
+        role: true,
+        status: true,
+        profilePhotoUrl: true,
+        passwordHash: true,
+        emailVerified: true,
+        mobileVerified: true,
+      },
     });
 
     if (!user) {
@@ -239,6 +255,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     if (user.role === 'CADET') {
+      // Cadets must use regimental number as the login identifier
       if (user.regimentalNumber.toLowerCase() !== cleanIdentifier.toLowerCase()) {
         res.status(401).json({ success: false, message: 'Use your regimental number to sign in.' });
         return;
@@ -252,16 +269,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         res.status(403).json({ success: false, status: user.status, message: statusMessage });
         return;
       }
+      // DEF-01: Cadet OTP challenge (unchanged)
       await startLoginOtp(req, user, res);
       return;
     }
 
-    // Check Account Status Rules
+    // ── Officer roles: ADMIN_ANO, SENIOR, PLATOON_SENIOR, DRILL_INSTRUCTOR ──
+    // Status checks for officers
     if (user.status === 'UNDER_REVIEW' || user.status === 'ANO_REVIEW') {
       res.status(403).json({
         success: false,
         status: user.status,
-        message: 'Your registration is currently under review.',
+        message: 'Your account is currently under review.',
       });
       return;
     }
@@ -270,7 +289,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(403).json({
         success: false,
         status: 'REJECTED',
-        message: 'Your registration has been rejected. Please contact the NCC administration.',
+        message: 'Your account has been rejected. Please contact the NCC administration.',
       });
       return;
     }
@@ -279,7 +298,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(403).json({
         success: false,
         status: user.status,
-        message: 'Your registration has been returned or placed on hold pending institutional review.',
+        message: 'Your account is on hold pending institutional review.',
       });
       return;
     }
@@ -288,50 +307,18 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       res.status(403).json({
         success: false,
         status: user.status,
-        message: 'Your cadet account is inactive or passed out.',
+        message: 'Your account is inactive.',
       });
       return;
     }
 
-    // Generate Session JWT Token for ACTIVE or APPROVED users
-    const secret = process.env.JWT_SECRET!;
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        role: user.role,
-        status: user.status,
-      },
-      secret,
-      { expiresIn: '7d' }
-    );
-
-    // Set secure cookie
-    res.cookie('ncc_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    res.json({
-      success: true,
-      message: 'Authentication successful. Command clearance granted.',
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        regimentalNumber: user.regimentalNumber,
-        collegeRollNumber: user.collegeRollNumber,
-        email: user.email,
-        phone: user.phone,
-        year: user.year,
-        branch: user.branch,
-        platoonName: user.platoonName,
-        role: user.role,
-        status: user.status,
-        profilePhotoUrl: user.profilePhotoUrl,
-      },
-    });
+    // DEF-01: Officers also require OTP before a session is granted.
+    // startLoginOtp will prefer the verified mobile channel if available,
+    // otherwise falls back to email. Officers seeded without verified contacts
+    // are handled: startLoginOtp sends to email even when emailVerified is false,
+    // because officers' identity is pre-confirmed by the ANO during onboarding.
+    await startLoginOtp(req, user, res);
+    return;
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({

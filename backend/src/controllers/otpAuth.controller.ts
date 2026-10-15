@@ -124,8 +124,30 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
   try {
     if (limited(req, res, 'login-otp-verify', 30)) return;
     const id = String(req.body.challengeId || '');
-    const challenge = await prisma.otpChallenge.findUnique({ where: { id }, include: { user: true } });
-    if (!challenge || challenge.purpose !== OtpPurpose.LOGIN || challenge.consumedAt || !challenge.otpHash || challenge.expiresAt.getTime() <= Date.now() || !challenge.user || challenge.user.status !== 'ACTIVE') { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
+    const challenge = await prisma.otpChallenge.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            regimentalNumber: true,
+            collegeRollNumber: true,
+            email: true,
+            phone: true,
+            year: true,
+            branch: true,
+            platoonName: true,
+            role: true,
+            status: true,
+            profilePhotoUrl: true,
+          },
+        },
+      },
+    });
+    // DEF-01: allow ACTIVE (cadets) and APPROVED (officer accounts pre-activation)
+    const validStatuses = ['ACTIVE', 'APPROVED'];
+    if (!challenge || challenge.purpose !== OtpPurpose.LOGIN || challenge.consumedAt || !challenge.otpHash || challenge.expiresAt.getTime() <= Date.now() || !challenge.user || !validStatuses.includes(challenge.user.status)) { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) { res.status(503).json({ success: false, message: 'Login is temporarily unavailable.' }); return; }
     if (challenge.attemptCount >= 5) { res.status(429).json({ success: false, message: 'Too many incorrect attempts. Sign in again to request a new code.' }); return; }
@@ -144,12 +166,15 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
   } catch { res.status(500).json({ success: false, message: 'Unable to verify login code.' }); }
 };
 
-export const startLoginOtp = async (req: Request, user: { id: string; fullName: string; email: string; emailVerified: boolean; phone: string | null; mobileVerified: boolean }, res: Response): Promise<void> => {
+export const startLoginOtp = async (req: Request, user: { id: string; fullName: string; email: string; emailVerified: boolean; phone: string | null; mobileVerified: boolean; role?: string }, res: Response): Promise<void> => {
   if (limited(req, res, 'login-otp-request', 5)) return;
   if (!secret()) { res.status(503).json({ success: false, message: 'Login verification is temporarily unavailable.' }); return; }
   const useMobile = Boolean(user.phone && user.mobileVerified);
-  const useEmail = Boolean(user.email && user.emailVerified);
-  if (!useMobile && !useEmail) { res.status(403).json({ success: false, message: 'Verify your registered email through Forgot Password before signing in, or contact the NCC administration.' }); return; }
+  // Officers provisioned by ANO may not have gone through self-registration OTP, so their
+  // emailVerified flag may be false. Trust the email for non-CADET roles. (DEF-01)
+  const isOfficer = user.role && user.role !== 'CADET';
+  const useEmail = Boolean(user.email && (user.emailVerified || isOfficer));
+  if (!useMobile && !useEmail) { res.status(403).json({ success: false, message: 'No verified contact on record. Contact the NCC administration to update your account.' }); return; }
   const destination = useMobile ? normalizePhoneNumber(user.phone).normalized : user.email.toLowerCase();
   const channel = useMobile ? 'mobile' : 'email';
   const recentCount = await prisma.otpChallenge.count({ where: { purpose: OtpPurpose.LOGIN, destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
