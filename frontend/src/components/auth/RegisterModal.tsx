@@ -256,17 +256,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       cancelAnimationFrame(animFrame);
     };
   }, [cameraActive]);
-
-
-  if (!isOpen) return null;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((old) => ({ ...old, [name]: value }));
-    if (name === 'email') { setVerifiedEmail(false); setEmailProofId(''); if (activeOtp?.channel === 'email') setActiveOtp(null); }
-    if (name === 'phone') { setVerifiedMobile(false); setMobileProofId(''); if (activeOtp?.channel === 'mobile') setActiveOtp(null); }
-  };
-
+  // DEF-FIX: Moved above early return — Rules of Hooks require all hooks unconditionally.
   React.useEffect(() => {
     if (!activeOtp) return;
     const update = () => {
@@ -278,6 +268,16 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     const cooldownTimer = window.setInterval(() => setOtpCooldown((seconds) => Math.max(0, seconds - 1)), 1000);
     return () => { window.clearInterval(timer); window.clearInterval(cooldownTimer); };
   }, [activeOtp?.expiresAt, activeOtp?.serverNow]);
+
+  // All hooks above — early return safe here (Rules of Hooks satisfied)
+  if (!isOpen) return null;
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((old) => ({ ...old, [name]: value }));
+    if (name === 'email') { setVerifiedEmail(false); setEmailProofId(''); if (activeOtp?.channel === 'email') setActiveOtp(null); }
+    if (name === 'phone') { setVerifiedMobile(false); setMobileProofId(''); if (activeOtp?.channel === 'mobile') setActiveOtp(null); }
+  };
 
   const requestOtp = async (channel: 'email' | 'mobile') => {
     setOtpError(null); setOtpLoading(true);

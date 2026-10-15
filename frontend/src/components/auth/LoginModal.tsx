@@ -32,6 +32,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     }
   }, [isOpen, onClose]);
 
+  // DEF-FIX: Moved above early return — Rules of Hooks require all hooks to be called unconditionally.
+  React.useEffect(() => {
+    if (!loginOtp) return;
+    const ttl = Math.max(0, Math.ceil((new Date(loginOtp.expiresAt).getTime() - new Date(loginOtp.serverNow).getTime()) / 1000));
+    setOtpSeconds(ttl);
+    const timer = window.setInterval(() => setOtpSeconds((value) => Math.max(0, value - 1)), 1000);
+    const cooldown = window.setInterval(() => setOtpCooldown((value) => Math.max(0, value - 1)), 1000);
+    return () => { window.clearInterval(timer); window.clearInterval(cooldown); };
+  }, [loginOtp?.expiresAt, loginOtp?.serverNow]);
+
+  // All hooks above — early return is now safe (Rules of Hooks satisfied)
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,14 +68,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     }
   };
 
-  React.useEffect(() => {
-    if (!loginOtp) return;
-    const ttl = Math.max(0, Math.ceil((new Date(loginOtp.expiresAt).getTime() - new Date(loginOtp.serverNow).getTime()) / 1000));
-    setOtpSeconds(ttl);
-    const timer = window.setInterval(() => setOtpSeconds((value) => Math.max(0, value - 1)), 1000);
-    const cooldown = window.setInterval(() => setOtpCooldown((value) => Math.max(0, value - 1)), 1000);
-    return () => { window.clearInterval(timer); window.clearInterval(cooldown); };
-  }, [loginOtp?.expiresAt, loginOtp?.serverNow]);
 
   const handleLoginOtp = async (otp: string) => {
     if (!loginOtp) return;
