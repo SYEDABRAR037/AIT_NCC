@@ -439,6 +439,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   <input id="forgotpassword-field-1"
                     type="email"
                     required
+                    disabled={loading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="e.g. cadet.name@aitpune.edu.in"
@@ -448,6 +449,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       borderRadius: '4px',
                       border: '1px solid var(--white-border)',
                       fontSize: '0.92rem',
+                      opacity: loading ? 0.7 : 1,
                     }}
                   />
                   <Mail size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
@@ -462,6 +464,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                   <input id="forgotpassword-field-2"
                     type="text"
                     required
+                    disabled={loading}
                     value={regimentalNumber}
                     onChange={(e) => setRegimentalNumber(e.target.value.toUpperCase())}
                     placeholder="e.g. MH24SDA100303"
@@ -472,6 +475,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                       border: '1px solid var(--white-border)',
                       fontSize: '0.92rem',
                       textTransform: 'uppercase',
+                      opacity: loading ? 0.7 : 1,
                     }}
                   />
                   <Shield size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
@@ -484,7 +488,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 className="btn-primary"
                 style={{ width: '100%', marginTop: '0.5rem', padding: '0.75rem', fontWeight: 700 }}
               >
-                {loading ? 'VERIFYING IDENTIFIERS...' : 'CONFIRM & SEND OTP'}
+                {loading ? 'VERIFYING & DISPATCHING OTP...' : 'CONFIRM & SEND OTP'}
               </button>
 
               <button

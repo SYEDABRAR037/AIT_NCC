@@ -89,6 +89,12 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
           { regimentalNumber: { equals: cleanRegimental, mode: 'insensitive' } },
         ],
       },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        regimentalNumber: true,
+      },
     });
 
     if (!user) {
@@ -168,7 +174,8 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
 
       res.status(503).json({
         success: false,
-        message: 'Unable to send the verification email right now. Please try again.',
+        errorType: 'EMAIL_DISPATCH_FAILED',
+        message: 'The email service could not dispatch your verification code. Please verify your connection or try again in a few moments.',
       });
       return;
     }
@@ -317,7 +324,8 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
 
       res.status(503).json({
         success: false,
-        message: 'Unable to send the verification email right now. Please try again.',
+        errorType: 'EMAIL_DISPATCH_FAILED',
+        message: 'The email service could not dispatch your verification code. Please verify your connection or try again in a few moments.',
       });
       return;
     }

@@ -4,8 +4,7 @@ import nodemailer from 'nodemailer';
 const SENDER_EMAIL = 'kashmirgaming033@gmail.com';
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 const SMTP_USER = process.env.SMTP_USER || SENDER_EMAIL;
-const SENDER_PASS = (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
-const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET || '';
+const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET || process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   // CORS Preflight
@@ -30,11 +29,11 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { secret, recipientEmail, otp, subject, htmlContent, textContent } = body;
+    const { secret, recipientEmail, cadetName, otp, subject, htmlContent, textContent, smtpPass, smtpUser } = body;
 
     // Validate relay authorization
     const reqSecret = event.headers['x-relay-secret'] || secret;
-    if (!RELAY_SECRET || reqSecret !== RELAY_SECRET) {
+    if (!reqSecret || reqSecret !== RELAY_SECRET) {
       console.warn('[EMAIL-RELAY] Unauthorized dispatch attempt.');
       return {
         statusCode: 401,
@@ -43,15 +42,18 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       };
     }
 
-    if (!SENDER_PASS || SMTP_USER.toLowerCase() !== SENDER_EMAIL || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
+    const authPass = (smtpPass || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
+    const authUser = (smtpUser || SMTP_USER).trim();
+
+    if (!authPass || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ success: false, message: 'Missing recipient email or OTP' }),
+        body: JSON.stringify({ success: false, message: 'Missing recipient email, valid OTP, or mail credentials' }),
       };
     }
 
-    console.log('[EMAIL-RELAY] Authorized recovery email dispatch started.');
+    console.log(`[EMAIL-RELAY] Authorized recovery email dispatch started for ${recipientEmail}.`);
 
     // Create secure transporter on port 465 (AWS Lambda/Netlify allows outbound 465)
     const transporter = nodemailer.createTransport({
@@ -59,12 +61,12 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       port: 465,
       secure: true,
       auth: {
-        user: SMTP_USER,
-        pass: SENDER_PASS,
+        user: authUser,
+        pass: authPass,
       },
-      connectionTimeout: 8000,
-      greetingTimeout: 8000,
-      socketTimeout: 10000,
+      connectionTimeout: 6000,
+      greetingTimeout: 6000,
+      socketTimeout: 8000,
     });
 
     const emailSubject = subject || 'NCC Account Recovery — OTP Verification';

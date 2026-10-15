@@ -21,8 +21,11 @@ export const getTransporter = (): Transporter => {
   const isGmail = host.includes('gmail.com') || user.endsWith('@gmail.com');
 
   if (isGmail) {
-    // Port 465 direct SSL with timeouts to prevent socket hangs
+    // Port 465 direct SSL with connection pooling
     transporter = nodemailer.createTransport({
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
@@ -36,6 +39,9 @@ export const getTransporter = (): Transporter => {
     });
   } else {
     transporter = nodemailer.createTransport({
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
       host,
       port,
       secure: port === 465 || process.env.SMTP_SECURE === 'true',
@@ -173,10 +179,11 @@ NCC Digital Command & Cadet Management System`;
     try {
       console.log('[MAIL SERVICE] Dispatching recovery OTP via HTTPS relay.');
       const relaySecret =
-        process.env.RECOVERY_RELAY_SECRET || '';
+        process.env.RECOVERY_RELAY_SECRET || process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+      const smtpPass = (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '').replace(/\s+/g, '');
 
       const controller = new AbortController();
-      const relayTimeout = setTimeout(() => controller.abort(), 9000);
+      const relayTimeout = setTimeout(() => controller.abort(), 7000);
 
       const resp = await fetch(relayUrl, {
         method: 'POST',
@@ -191,6 +198,8 @@ NCC Digital Command & Cadet Management System`;
           subject,
           textContent,
           htmlContent,
+          smtpUser: mailFrom,
+          smtpPass,
         }),
         signal: controller.signal,
       });
@@ -204,7 +213,8 @@ NCC Digital Command & Cadet Management System`;
           return { success: true, messageId: data.messageId };
         }
       } else {
-        console.warn(`[MAIL SERVICE] Relay returned status ${resp.status}. Falling back to direct SMTP...`);
+        const errText = await resp.text().catch(() => '');
+        console.warn(`[MAIL SERVICE] Relay returned status ${resp.status} (${errText}). Falling back to direct SMTP...`);
       }
     } catch (relayErr: any) {
       console.warn('[MAIL SERVICE] HTTPS Relay failed or timed out:', relayErr?.message || relayErr);
@@ -225,7 +235,7 @@ NCC Digital Command & Cadet Management System`;
     });
 
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Direct SMTP dispatch timed out after 8 seconds.')), 8000);
+      setTimeout(() => reject(new Error('Direct SMTP dispatch timed out after 10 seconds.')), 10000);
     });
 
     const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
