@@ -68,8 +68,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
     status: 'online',
     system: 'NCC Digital Command & Cadet Management System',
     unit: 'Army Institute of Technology, Pune',
-    version: '2.0.6-attendance-media',
-    phase: 13,
+    version: '2.1.0-audit-fixes',
+    phase: 14,
     timestamp: new Date().toISOString(),
   });
 });
