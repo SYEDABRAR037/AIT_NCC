@@ -10,8 +10,7 @@ export interface UserProfile {
   phone?: string | null;
   year?: string;
   branch?: string;
-  platoonName?: string;
-  role: 'ADMIN_ANO' | 'PLATOON_SENIOR' | 'SENIOR' | 'CADET';
+  role: 'ADMIN_ANO' | 'PLATOON_SENIOR' | 'SENIOR' | 'CADET' | 'DRILL_INSTRUCTOR';
   status: 'UNDER_REVIEW' | 'APPROVED' | 'ACTIVE' | 'HOLD' | 'REJECTED' | 'INACTIVE' | 'PASSED_OUT';
   profilePhotoUrl?: string | null;
 }

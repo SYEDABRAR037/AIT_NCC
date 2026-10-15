@@ -54,7 +54,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ userRole, role }) =>
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const isOfficer = ['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO'].includes(effectiveRole);
+  const isOfficer = ['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR'].includes(effectiveRole);
 
   const getAuthToken = () => {
     return localStorage.getItem('ncc_auth_token') || localStorage.getItem('token');

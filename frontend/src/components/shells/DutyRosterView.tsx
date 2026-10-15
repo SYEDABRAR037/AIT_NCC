@@ -83,7 +83,7 @@ export const DutyRosterView: React.FC<DutyRosterViewProps> = ({ userRole, role }
   const [submittingDuty, setSubmittingDuty] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
-  const isOfficer = ['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO'].includes(effectiveRole);
+  const isOfficer = ['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR'].includes(effectiveRole);
 
   const fetchDuties = async () => {
     setLoading(true);

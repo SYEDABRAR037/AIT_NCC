@@ -907,6 +907,9 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       fetchAttendanceSessions();
       fetchAttendanceSummary();
       fetchCadetCertificates();
+    } else if (role === 'DRILL_INSTRUCTOR') {
+      fetchAttendanceSessions();
+      fetchAttendanceSummary();
     } else if (role === 'CADET') {
       fetchMyLeaves();
       fetchCadetNotices();
@@ -1215,6 +1218,18 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'certificates', name: 'My Certificates' },
             { id: 'media', name: 'Photo Archives' },
+          ],
+        };
+      case 'DRILL_INSTRUCTOR':
+        return {
+          title: 'Drill Instructor Command Panel',
+          subtitle: 'Parade Standards · Drill Attendance · Duty Details',
+          badge: 'DRILL INSTRUCTOR LEVEL',
+          items: [
+            { id: 'overview', name: 'Drill Section Overview' },
+            { id: 'attendance', name: 'Parade & Drill Attendance' },
+            { id: 'duties', name: 'Duty & Ceremonial Detail' },
+            { id: 'timeline', name: 'Unit Activity Timeline' },
           ],
         };
       case 'CADET':
@@ -2484,6 +2499,55 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               </div>
             )}
 
+            {/* DRILL INSTRUCTOR PANEL: OVERVIEW */}
+            {role === 'DRILL_INSTRUCTOR' && activeTab === 'overview' && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-primary)' }}>Drill Instructor Command Overview</h2>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--navy-text-muted)' }}>
+                      Parade training sessions, drill attendance verification, turnout inspection, and ceremonial duty roster.
+                    </p>
+                  </div>
+                  <button onClick={() => { fetchAttendanceSessions(); fetchAttendanceSummary(); }} className="btn-secondary btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <RefreshCw size={14} /><span>REFRESH</span>
+                  </button>
+                </div>
+                <div className="grid-3" style={{ marginBottom: '2rem' }}>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--navy-primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Parade Sessions</span>
+                      <Calendar size={20} style={{ color: 'var(--navy-primary)' }} />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--navy-primary)' }}>{attendanceSessions.length}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Recorded drill &amp; parade musters</div>
+                  </div>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Active Sessions</span>
+                      <Clock size={20} style={{ color: 'var(--color-primary)' }} />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      {attendanceSessions.filter(s => s.status === 'ACTIVE').length}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Ready for live face scanning</div>
+                  </div>
+                  <div className="institutional-card" style={{ borderLeft: '4px solid var(--color-accent)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--navy-text-muted)', textTransform: 'uppercase' }}>Unit Attendance</span>
+                      <Award size={20} style={{ color: 'var(--color-accent)' }} />
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-accent)' }}>
+                      {attendanceSummaryList.length > 0
+                        ? `${Math.round(attendanceSummaryList.reduce((acc, c) => acc + (c.stats?.percentage || 0), 0) / attendanceSummaryList.length)}%`
+                        : '—'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--navy-text-muted)', marginTop: '0.25rem' }}>Cadet parade average</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* 2. SENIOR PANEL: Assigned Cadets */}
             {/* ===== PHASE 7 — SENIOR CADET MANAGEMENT PANEL ===== */}
             {role === 'SENIOR' && activeTab === 'overview' && (
@@ -2743,7 +2807,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
               </div>
             )}
 
-            {role === 'SENIOR' && activeTab === 'attendance' && (
+            {(role === 'SENIOR' || role === 'DRILL_INSTRUCTOR') && activeTab === 'attendance' && (
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                   <div>

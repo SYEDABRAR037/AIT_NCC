@@ -47,11 +47,12 @@ export const Header: React.FC<HeaderProps> = ({
     { name: 'Contact', href: '#contact' },
   ];
 
-  // The 4 institutional roles
+  // The 5 institutional roles
   const roles = [
     { id: 'ADMIN_ANO', name: 'ANO / Admin Command' },
     { id: 'PLATOON_SENIOR', name: 'Platoon Senior' },
     { id: 'SENIOR', name: 'Senior Cadet' },
+    { id: 'DRILL_INSTRUCTOR', name: 'Drill Instructor' },
     { id: 'CADET', name: 'Cadet Portal' },
   ];
 

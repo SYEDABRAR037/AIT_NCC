@@ -18,8 +18,8 @@ router.get('/my', getMyDuties);
 // Officer routes
 router.get('/', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), getUnitDuties);
 router.get('/unit', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), getUnitDuties);
-router.get('/cadets', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), getAssignableCadets);
-router.post('/assign', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), assignDuty);
-router.patch('/:id/status', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), updateDutyStatus);
+router.get('/cadets', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), getAssignableCadets);
+router.post('/assign', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), assignDuty);
+router.patch('/:id/status', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), updateDutyStatus);
 
 export default router;

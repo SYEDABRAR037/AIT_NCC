@@ -17,7 +17,7 @@ router.get('/my', getMyTimeline);
 router.get('/cadet/:cadetId', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), getCadetTimeline);
 
 // Unit stream route: scoped to Admin (full unit), Platoon Senior (platoon cadets), and Senior (assigned cadets)
-router.get('/unit', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), getUnitTimeline);
-router.get('/all', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO']), getUnitTimeline);
+router.get('/unit', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), getUnitTimeline);
+router.get('/all', requireRole(['SENIOR', 'PLATOON_SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']), getUnitTimeline);
 
 export default router;

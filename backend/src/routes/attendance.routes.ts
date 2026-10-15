@@ -45,34 +45,34 @@ router.post(
 
 router.get(
   '/sessions',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getAttendanceSessions
 );
 
 router.get(
   '/sessions/:sessionId',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getSessionAttendance
 );
 
-// Live Face Verification (Platoon Senior, Senior, and Admin/ANO)
+// Live Face Verification (Platoon Senior, Senior, Admin/ANO, and Drill Instructor)
 router.post(
   '/sessions/:sessionId/verify-face',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   verifyFaceAttendance
 );
 
-// Pre-load Eligible Biometrics for fast local verification (Platoon Senior & Senior only)
+// Pre-load Eligible Biometrics for fast local verification (Platoon Senior, Senior, Admin/ANO, Drill Instructor)
 router.get(
   '/sessions/:sessionId/eligible-biometrics',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getEligibleBiometrics
 );
 
 // Real-Time Live Counter Stats — Expected / Present / Remaining (DB authoritative)
 router.get(
   '/sessions/:sessionId/live-stats',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getSessionLiveStats
 );
 
@@ -86,7 +86,7 @@ router.post(
 // Get Absent List for a session
 router.get(
   '/sessions/:sessionId/absent-list',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getSessionAbsentList
 );
 
@@ -110,10 +110,10 @@ router.get(
   getBiometricEnrollmentRoster
 );
 
-// Manual mark attendance fallback (Platoon Senior, Senior, Admin)
+// Manual mark attendance fallback (Platoon Senior, Senior, Admin, Drill Instructor)
 router.patch(
   '/sessions/:sessionId/mark',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   markAttendance
 );
 
@@ -124,10 +124,10 @@ router.get(
   getMyAttendanceHistory
 );
 
-// Platoon / Senior / Admin attendance summary
+// Platoon / Senior / Admin / DI attendance summary
 router.get(
   '/summary',
-  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
+  requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR']),
   getAttendanceSummary
 );
 
