@@ -24,6 +24,7 @@ interface VerificationChallenge {
 
 const verificationChallenges = new Map<string, VerificationChallenge>();
 const CHALLENGE_TTL_MS = 30_000; // 30 seconds
+const MAX_CHALLENGE_STORE_SIZE = 10_000; // Memory bound to prevent denial of service
 
 // Periodic cleanup of expired challenges (every 60 seconds)
 setInterval(() => {
@@ -50,7 +51,7 @@ async function getAuthorizedCadetIds(
   userId: string
 ): Promise<string[] | null> {
   // null means "no restriction — return all active cadets"
-  if (role === 'ADMIN_ANO' || role === 'PLATOON_SENIOR') return null;
+  if (role === 'ADMIN_ANO' || role === 'PLATOON_SENIOR' || role === 'DRILL_INSTRUCTOR') return null;
 
   if (role === 'SENIOR') {
     const assignments = await prisma.seniorAssignment.findMany({
@@ -283,6 +284,11 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    if (!['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR'].includes(req.user.role)) {
+      res.status(403).json({ success: false, message: 'Unauthorized: Insufficient role clearance to mark attendance.' });
+      return;
+    }
+
     const { sessionId } = req.params;
     const { cadetId, status } = req.body;
 
@@ -292,9 +298,30 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
+    // 1. Session Existence & Closed Session Validation
+    const session = await prisma.trainingSession.findUnique({
+      where: { id: String(sessionId) },
+      select: { id: true, title: true, activity: true, date: true, status: true, expectedCount: true },
+    });
+
+    if (!session) {
+      res.status(404).json({ success: false, message: 'Attendance session not found.' });
+      return;
+    }
+
+    if (session.status === 'CLOSED') {
+      res.status(400).json({
+        success: false,
+        code: 'SESSION_CLOSED',
+        message: 'This attendance session has ended and is CLOSED. No further attendance can be marked.',
+      });
+      return;
+    }
+
+    // 2. Cadet Eligibility Check
     const eligibleCadet = await prisma.user.findFirst({
       where: { id: String(cadetId), role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } },
-      select: { id: true },
+      select: { id: true, fullName: true, regimentalNumber: true, phone: true },
     });
     if (!eligibleCadet) {
       res.status(409).json({
@@ -305,52 +332,146 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
       return;
     }
 
-    // Upsert: create if not exists, update if exists
-    const record = await prisma.trainingAttendance.upsert({
+    // 3. Senior Mentor Squad Scope Authorization
+    if (req.user.role === 'SENIOR') {
+      const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+      if (authorizedIds !== null && !authorizedIds.includes(eligibleCadet.id)) {
+        res.status(403).json({
+          success: false,
+          code: 'NOT_ELIGIBLE',
+          message: 'Cadet is not assigned to your senior mentor squad.',
+        });
+        return;
+      }
+    }
+
+    // 4. Approved Leave Conflict Validation (Blocks conflicting PRESENT status)
+    if (status === 'PRESENT') {
+      const sessionDateStart = new Date(session.date);
+      sessionDateStart.setUTCHours(0, 0, 0, 0);
+      const sessionDateEnd = new Date(session.date);
+      sessionDateEnd.setUTCHours(23, 59, 59, 999);
+
+      const approvedLeave = await prisma.leave.findFirst({
+        where: {
+          cadetId: eligibleCadet.id,
+          status: 'APPROVED',
+          startDate: { lte: sessionDateEnd },
+          endDate: { gte: sessionDateStart },
+        },
+      });
+
+      if (approvedLeave) {
+        res.status(400).json({
+          success: false,
+          code: 'APPROVED_LEAVE',
+          cadet: {
+            id: eligibleCadet.id,
+            fullName: eligibleCadet.fullName,
+            regimentalNumber: eligibleCadet.regimentalNumber,
+            leaveReason: approvedLeave.reason,
+          },
+          message: 'Absent — Approved Leave. Cadet has an authorized leave sanction for this date.',
+        });
+        return;
+      }
+    }
+
+    // 5. Existing Attendance Lookup & Duplicate PRESENT Prevention
+    const existingAttendance = await prisma.trainingAttendance.findUnique({
       where: {
         sessionId_cadetId: {
-          sessionId: String(sessionId),
-          cadetId: String(cadetId),
+          sessionId: session.id,
+          cadetId: eligibleCadet.id,
         },
-      },
-      create: {
-        sessionId: String(sessionId),
-        cadetId: String(cadetId),
-        status,
-        verifiedBy: req.user.id,
-      },
-      update: {
-        status,
-        verifiedBy: req.user.id,
-      },
-      include: {
-        cadet: { select: { id: true, fullName: true, regimentalNumber: true, phone: true } },
       },
     });
 
-    // Database-First Rule: If marked PRESENT, trigger asynchronous SMS & WhatsApp notifications
-    if (status === 'PRESENT') {
-      const session = await prisma.trainingSession.findUnique({
-        where: { id: String(sessionId) },
-        select: { id: true, title: true, activity: true, date: true },
+    if (status === 'PRESENT' && existingAttendance && existingAttendance.status === 'PRESENT') {
+      res.status(409).json({
+        success: false,
+        code: 'ALREADY_MARKED',
+        duplicate: true,
+        message: `${eligibleCadet.fullName} is already marked PRESENT for this session.`,
+        cadet: {
+          id: eligibleCadet.id,
+          fullName: eligibleCadet.fullName,
+          regimentalNumber: eligibleCadet.regimentalNumber,
+        },
+        markedTime: new Date(existingAttendance.createdAt).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+        }),
+      });
+      return;
+    }
+
+    const verifiedBy = `${req.user.fullName} (${req.user.role})`;
+    const now = new Date();
+
+    // 6. Atomic Attendance Write & Session Counter Synchronization in $transaction
+    const { record, presentCount } = await prisma.$transaction(async (tx) => {
+      const record = await tx.trainingAttendance.upsert({
+        where: {
+          sessionId_cadetId: {
+            sessionId: session.id,
+            cadetId: eligibleCadet.id,
+          },
+        },
+        create: {
+          sessionId: session.id,
+          cadetId: eligibleCadet.id,
+          status,
+          verificationMethod: 'MANUAL_AUDITED',
+          verificationStatus: 'VERIFIED',
+          verifiedBy,
+          createdAt: now,
+        },
+        update: {
+          status,
+          verificationMethod: 'MANUAL_AUDITED',
+          verificationStatus: 'VERIFIED',
+          verifiedBy,
+        },
+        include: {
+          cadet: { select: { id: true, fullName: true, regimentalNumber: true, phone: true } },
+        },
       });
 
-      const now = new Date();
-      const dateStr = session ? new Date(session.date).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : now.toLocaleDateString();
-      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+      const presentCount = await tx.trainingAttendance.count({
+        where: {
+          sessionId: session.id,
+          status: 'PRESENT',
+        },
+      });
 
+      await tx.trainingSession.update({
+        where: { id: session.id },
+        data: { presentCount },
+      });
+
+      return { record, presentCount };
+    });
+
+    // 7. Side Effects: Notifications & Immutable Audit Logging
+    const dateFormatted = session.date ? new Date(session.date).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : now.toLocaleDateString();
+    const timeFormatted = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    if (status === 'PRESENT') {
       triggerPresentAttendanceNotifications({
         attendanceId: record.id,
-        sessionId: String(sessionId),
+        sessionId: session.id,
         cadet: {
-          id: record.cadet.id,
-          fullName: record.cadet.fullName,
-          phone: record.cadet.phone,
-          regimentalNumber: record.cadet.regimentalNumber,
+          id: eligibleCadet.id,
+          fullName: eligibleCadet.fullName,
+          phone: eligibleCadet.phone,
+          regimentalNumber: eligibleCadet.regimentalNumber,
         },
-        activityName: session?.activity || session?.title || 'Training Parade',
-        dateStr,
-        timeStr,
+        activityName: session.activity || session.title || 'Training Parade',
+        dateStr: dateFormatted,
+        timeStr: timeFormatted,
       }).catch((err) => console.error('[MARK ATTENDANCE NOTIFICATION ERROR]:', err));
 
       await prisma.auditLog.create({
@@ -360,7 +481,18 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
           action: 'ATTENDANCE_MARKED_PRESENT',
           targetType: 'TrainingAttendance',
           targetId: record.id,
-          details: `Manual override marked PRESENT for Cadet ${record.cadet.fullName} (${record.cadet.regimentalNumber}) in Session ${sessionId}`,
+          details: `Manual override marked PRESENT for Cadet ${eligibleCadet.fullName} (${eligibleCadet.regimentalNumber}) in Session ${session.id}`,
+        },
+      }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
+    } else {
+      await prisma.auditLog.create({
+        data: {
+          actorId: req.user.id,
+          actorName: req.user.fullName,
+          action: 'ATTENDANCE_STATUS_UPDATED',
+          targetType: 'TrainingAttendance',
+          targetId: record.id,
+          details: `Manual status updated to ${status} for Cadet ${eligibleCadet.fullName} (${eligibleCadet.regimentalNumber}) in Session ${session.id}`,
         },
       }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
     }
@@ -369,9 +501,19 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
       success: true,
       message: `Attendance marked as ${status} for ${record.cadet.fullName}`,
       record,
+      presentCount,
       notifications: status === 'PRESENT' ? { sms: 'QUEUED', whatsapp: 'QUEUED' } : undefined,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 'P2002' || error?.message?.includes('Unique constraint')) {
+      res.status(409).json({
+        success: false,
+        code: 'ALREADY_MARKED',
+        duplicate: true,
+        message: 'Attendance record was marked concurrently by another request.',
+      });
+      return;
+    }
     console.error('markAttendance error:', error);
     res.status(500).json({ success: false, message: 'Failed to mark attendance' });
   }
@@ -578,6 +720,22 @@ export const issueVerificationChallenge = async (req: AuthRequest, res: Response
       return;
     }
 
+    // ── DEFENSE AGAINST FORGED DESCRIPTOR & PRESENTATION ATTACKS ────────
+    // Browser-based FaceNet/face-api cannot provide a defensible presentation-attack
+    // defense (ISO/IEC 30107-3 compliant). Client-supplied descriptors and nonces
+    // cannot verify physical presence against 2D photos, videos, or synthetic vectors.
+    // Automatic biometric attendance is disabled by default.
+    // Authorized operators must use the audited manual attendance marking process.
+    if (process.env.ENABLE_BIOMETRIC_ATTENDANCE !== 'true') {
+      res.status(403).json({
+        success: false,
+        code: 'BIOMETRIC_AUTOMATION_DISABLED',
+        message:
+          'Automatic biometric face attendance is disabled pending hardware-backed presentation attack detection (ISO/IEC 30107-3). Please use the authorized, audited manual attendance workflow.',
+      });
+      return;
+    }
+
     const { sessionId } = req.params;
 
     const session = await prisma.trainingSession.findUnique({
@@ -597,6 +755,22 @@ export const issueVerificationChallenge = async (req: AuthRequest, res: Response
         message: 'Session is closed. No further verification allowed.',
       });
       return;
+    }
+
+    // DoS defense: bound challenge store size
+    if (verificationChallenges.size >= MAX_CHALLENGE_STORE_SIZE) {
+      const pruneNow = Date.now();
+      for (const [t, c] of verificationChallenges) {
+        if (pruneNow > c.expiresAt) verificationChallenges.delete(t);
+      }
+      if (verificationChallenges.size >= MAX_CHALLENGE_STORE_SIZE) {
+        res.status(429).json({
+          success: false,
+          code: 'RATE_LIMIT_EXCEEDED',
+          message: 'Too many concurrent verification challenges. Please retry shortly.',
+        });
+        return;
+      }
     }
 
     // Generate cryptographically random challenge token (32 bytes = 64 hex chars)
@@ -631,11 +805,27 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    // Only Platoon Senior and Senior have permission to verify live face attendance
-    if (!['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO'].includes(req.user.role)) {
+    // Authorized parade officers: Platoon Senior, Senior, Admin/ANO, Drill Instructor
+    if (!['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO', 'DRILL_INSTRUCTOR'].includes(req.user.role)) {
       res.status(403).json({
         success: false,
-        message: 'Unauthorized: Only Platoon Seniors and Seniors can operate live face attendance.',
+        message: 'Unauthorized: Insufficient role clearance for biometric verification.',
+      });
+      return;
+    }
+
+    // ── DEFENSE AGAINST FORGED DESCRIPTOR & PRESENTATION ATTACKS ────────
+    // Browser-based FaceNet/face-api cannot provide a defensible presentation-attack
+    // defense (ISO/IEC 30107-3 compliant). Client-supplied descriptors or challenge nonces
+    // cannot verify physical presence against 2D photos, videos, or synthetic vectors.
+    // Automatic biometric attendance is disabled by default.
+    // Operators must use the authorized, audited manual attendance marking process.
+    if (process.env.ENABLE_BIOMETRIC_ATTENDANCE !== 'true') {
+      res.status(403).json({
+        success: false,
+        code: 'BIOMETRIC_AUTOMATION_DISABLED',
+        message:
+          'Automatic biometric face attendance is disabled pending hardware-backed presentation attack detection (ISO/IEC 30107-3). Please use the authorized, audited manual attendance workflow.',
       });
       return;
     }
@@ -643,10 +833,15 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
     const { sessionId } = req.params;
     const { descriptor, challengeToken } = req.body;
 
-    if (!Array.isArray(descriptor) || descriptor.length < 128) {
+    if (
+      !Array.isArray(descriptor) ||
+      descriptor.length < 128 ||
+      !descriptor.every((val) => typeof val === 'number' && Number.isFinite(val))
+    ) {
       res.status(400).json({
         success: false,
-        message: 'Invalid biometric face descriptor. 128-dimensional embedding required.',
+        code: 'INVALID_DESCRIPTOR',
+        message: 'Invalid biometric face descriptor. 128-dimensional finite numeric embedding required.',
       });
       return;
     }
@@ -820,9 +1015,9 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
 
     // CHECK 2: APPROVED LEAVE
     const sessionDateStart = new Date(session.date);
-    sessionDateStart.setHours(0, 0, 0, 0);
+    sessionDateStart.setUTCHours(0, 0, 0, 0);
     const sessionDateEnd = new Date(session.date);
-    sessionDateEnd.setHours(23, 59, 59, 999);
+    sessionDateEnd.setUTCHours(23, 59, 59, 999);
 
     const approvedLeave = await prisma.leave.findFirst({
       where: {

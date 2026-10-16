@@ -93,8 +93,8 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
   const consecutiveFramesRef = useRef(0);
   const liveStatsPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Manual Fallback Quick-Check State (Low-light parade conditions)
-  const [manualListOpen, setManualListOpen] = useState(false);
+  // Manual Fallback Quick-Check State (Defaulted open when biometric automation is disabled)
+  const [manualListOpen, setManualListOpen] = useState(true);
   const [manualSearch, setManualSearch] = useState('');
   const [manualMarkingId, setManualMarkingId] = useState<string | null>(null);
   const [manualSuccessMsg, setManualSuccessMsg] = useState<string | null>(null);
@@ -217,9 +217,10 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
         }
 
         if (isMounted) {
-          setStatusTitle('LOOK INTO CAMERA');
-          setStatusSubtitle('Automatically scanning for cadet...');
+          setStatusTitle('AUDITED ATTENDANCE CHECK');
+          setStatusSubtitle('Automatic scanning disabled for presentation attack defense. Use Audited Manual Parade Check below.');
           setScannerTone('idle');
+          setManualListOpen(true);
         }
       } catch (err) {
         console.error('Model load error:', err);
@@ -332,10 +333,18 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
       });
 
       if (!challengeRes.ok || !challengeRes.data?.challengeToken) {
-        setScannerTone('error');
-        setStatusTitle('CHALLENGE FAILED');
-        setStatusSubtitle(challengeRes.data?.message || 'Failed to acquire security challenge token');
-        triggerAutoReset(2500);
+        if (challengeRes.data?.code === 'BIOMETRIC_AUTOMATION_DISABLED') {
+          setScannerTone('warning');
+          setStatusTitle('BIOMETRIC SCANNING DISABLED');
+          setStatusSubtitle('Automatic face attendance disabled. Use Audited Manual Parade Check below.');
+          setManualListOpen(true);
+          triggerAutoReset(4000);
+        } else {
+          setScannerTone('error');
+          setStatusTitle('CHALLENGE FAILED');
+          setStatusSubtitle(challengeRes.data?.message || 'Failed to acquire security challenge token');
+          triggerAutoReset(2500);
+        }
         return;
       }
 
@@ -433,6 +442,13 @@ export const FaceAttendanceModal: React.FC<FaceAttendanceModalProps> = ({
         });
 
         triggerAutoReset(2500);
+      } else if (data?.code === 'BIOMETRIC_AUTOMATION_DISABLED') {
+        // ⚠️ 5. AUTOMATIC BIOMETRIC ATTENDANCE DISABLED
+        setScannerTone('warning');
+        setStatusTitle('BIOMETRIC SCANNING DISABLED');
+        setStatusSubtitle('Automatic face attendance disabled. Use Audited Manual Parade Check below.');
+        setManualListOpen(true);
+        triggerAutoReset(4000);
       } else {
         // ❌ 5. FACE NOT VERIFIED / UNREGISTERED
         setScannerTone('error');
