@@ -26,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _token != null && _currentUser != null;
+  bool get isDemo => _token != null && _token!.startsWith('DEMO_');
 
   bool get otpRequired => _otpRequired;
   String? get challengeId => _challengeId;
@@ -190,6 +191,16 @@ class AuthProvider extends ChangeNotifier {
     _otpRequired = false;
     _challengeId = null;
     _maskedDestination = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  // Test Harness / Interactive Demo Session
+  void setSessionForDemo({required UserModel user, required String demoToken}) {
+    _currentUser = user;
+    _token = demoToken;
+    _isLoading = false;
+    _otpRequired = false;
     _errorMessage = null;
     notifyListeners();
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/attendance_record_model.dart';
 import '../providers/attendance_provider.dart';
 
@@ -19,6 +20,14 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      AuthProvider? auth;
+      try {
+        auth = Provider.of<AuthProvider>(context, listen: false);
+      } catch (_) {}
+      if (auth?.isDemo ?? false) {
+        // Safe isolation: Demo sessions use isolated sample data; avoid sending unauthenticated dummy tokens
+        return;
+      }
       final provider = Provider.of<AttendanceProvider>(context, listen: false);
       if (provider.stats == null) {
         provider.fetchAttendanceHistory();
@@ -28,6 +37,14 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AuthProvider? auth;
+    try {
+      auth = context.watch<AuthProvider>();
+    } catch (_) {}
+    if (auth?.isDemo ?? false) {
+      return _buildDemoPresentation(auth?.currentUser);
+    }
+
     final provider = context.watch<AttendanceProvider>();
 
     if (provider.isLoading && provider.stats == null) {
@@ -175,27 +192,38 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
   }
 
   Widget _buildFilterBar() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: ['ALL', 'PRESENT', 'EXCUSED', 'ABSENT'].map((filter) {
-          final isSelected = _selectedFilter == filter;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: ChoiceChip(
-              label: Text(filter),
-              selected: isSelected,
-              onSelected: (_) => setState(() => _selectedFilter = filter),
-              selectedColor: AppColors.navyPrimary,
-              labelStyle: TextStyle(
-                color: isSelected ? AppColors.white : AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: ['ALL', 'PRESENT', 'EXCUSED', 'ABSENT'].map((filter) {
+                final isSelected = _selectedFilter == filter;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text(filter),
+                    selected: isSelected,
+                    onSelected: (_) => setState(() => _selectedFilter = filter),
+                    selectedColor: AppColors.navyPrimary,
+                    labelStyle: TextStyle(
+                      color: isSelected ? AppColors.white : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
-          );
-        }).toList(),
-      ),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(left: 4.0),
+          child: Icon(Icons.arrow_forward_ios, size: 10, color: AppColors.textMuted),
+        ),
+      ],
     );
   }
 
@@ -301,6 +329,127 @@ class _AttendanceHistoryScreenState extends State<AttendanceHistoryScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDemoPresentation(dynamic user) {
+    final demoStats = AttendanceStats(
+      total: 24,
+      present: 22,
+      excused: 1,
+      absent: 1,
+      percentage: 92,
+    );
+
+    final demoRecords = [
+      AttendanceRecordModel(
+        id: 'rec-demo-1',
+        sessionTitle: 'Command Drill & Weapon Training',
+        date: DateTime.parse('2026-10-18T06:00:00Z'),
+        status: 'PRESENT',
+        activity: 'WEAPON_TRAINING',
+        location: 'AIT Obstacle Ground',
+        timing: '06:00 - 08:30 AM',
+      ),
+      AttendanceRecordModel(
+        id: 'rec-demo-2',
+        sessionTitle: 'Obstacle Course & Physical Conditioning',
+        date: DateTime.parse('2026-10-11T06:00:00Z'),
+        status: 'PRESENT',
+        activity: 'DRILL',
+        location: 'AIT Obstacle Course',
+        timing: '06:00 - 08:00 AM',
+      ),
+      AttendanceRecordModel(
+        id: 'rec-demo-3',
+        sessionTitle: 'Ceremonial Parade Rehearsal',
+        date: DateTime.parse('2026-10-04T06:00:00Z'),
+        status: 'EXCUSED',
+        activity: 'CEREMONIAL',
+        location: 'Main Parade Ground',
+        timing: '06:00 - 08:30 AM',
+      ),
+      AttendanceRecordModel(
+        id: 'rec-demo-4',
+        sessionTitle: 'Military Theory & National Security',
+        date: DateTime.parse('2026-09-27T08:00:00Z'),
+        status: 'PRESENT',
+        activity: 'THEORY',
+        location: 'Command Lecture Hall',
+        timing: '08:00 - 10:00 AM',
+      ),
+      AttendanceRecordModel(
+        id: 'rec-demo-5',
+        sessionTitle: 'Field Navigation & Map Reading',
+        date: DateTime.parse('2026-09-20T06:00:00Z'),
+        status: 'ABSENT',
+        activity: 'FIELD_CRAFT',
+        location: 'Firing Range Outskirts',
+        timing: '06:00 - 09:00 AM',
+      ),
+    ];
+
+    final filteredDemoRecords = demoRecords.filter((r) {
+      if (_selectedFilter == 'PRESENT') return r.isPresent;
+      if (_selectedFilter == 'ABSENT') return r.isAbsent;
+      if (_selectedFilter == 'EXCUSED') return r.isExcused;
+      return true;
+    }).toList();
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.gold, width: 1.5),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, color: AppColors.navyPrimary, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DEMO PRESENTATION MODE',
+                        style: TextStyle(
+                          color: AppColors.navyPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        'Sample drill muster preview. Live muster recording untouched.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildSummaryHeader(demoStats),
+          const SizedBox(height: 16),
+          _buildFilterBar(),
+          const SizedBox(height: 16),
+          if (filteredDemoRecords.isEmpty)
+            _buildEmptyState()
+          else
+            ...filteredDemoRecords.map((record) => _buildRecordCard(record)),
+        ],
       ),
     );
   }

@@ -73,5 +73,51 @@ void main() {
       expect(auth.challengeId, isNull);
       expect(auth.maskedDestination, isNull);
     });
+
+    test('Demo session isolation: isDemo flag and logout cleanup', () async {
+      final auth = AuthProvider();
+      expect(auth.isDemo, isFalse);
+
+      auth.setSessionForDemo(
+        user: UserModel(
+          id: 'demo-1',
+          fullName: 'Demo Cadet',
+          regimentalNumber: 'MH/22/SDA/1001',
+          email: 'demo@aitpune.edu.in',
+          role: 'CADET',
+          status: 'ACTIVE',
+        ),
+        demoToken: 'DEMO_CADET_TOKEN',
+      );
+
+      expect(auth.isDemo, isTrue);
+      expect(auth.isAuthenticated, isTrue);
+      expect(auth.token, 'DEMO_CADET_TOKEN');
+
+      // Logout strictly clears demo state
+      await auth.logout();
+      expect(auth.isDemo, isFalse);
+      expect(auth.isAuthenticated, isFalse);
+      expect(auth.token, isNull);
+      expect(auth.currentUser, isNull);
+    });
+
+    test('Real tokens do not trigger isDemo flag', () {
+      final auth = AuthProvider();
+      auth.setSessionForDemo(
+        user: UserModel(
+          id: 'real-1',
+          fullName: 'Real Cadet',
+          regimentalNumber: 'MH/22/SDA/9999',
+          email: 'real@aitpune.edu.in',
+          role: 'CADET',
+          status: 'ACTIVE',
+        ),
+        demoToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.realjwttoken',
+      );
+
+      expect(auth.isDemo, isFalse);
+      expect(auth.isAuthenticated, isTrue);
+    });
   });
 }

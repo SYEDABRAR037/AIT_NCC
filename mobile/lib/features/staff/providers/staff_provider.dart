@@ -90,9 +90,9 @@ class StaffProvider extends ChangeNotifier {
       final response = await _api.get(ApiConstants.staffPendingApprovals, requiresAuth: true);
 
       if (response.success && response.rawJson != null) {
-        if (response.rawJson!['pendingApplications'] is List) {
-          final list = response.rawJson!['pendingApplications'] as List;
-          _pendingApprovals = list.map((item) => PendingApprovalModel.fromJson(item as Map<String, dynamic>)).toList();
+        final dynamic appsList = response.rawJson!['applications'] ?? response.rawJson!['pendingApplications'];
+        if (appsList is List) {
+          _pendingApprovals = appsList.map((item) => PendingApprovalModel.fromJson(item as Map<String, dynamic>)).toList();
         }
         _isLoadingApprovals = false;
         notifyListeners();

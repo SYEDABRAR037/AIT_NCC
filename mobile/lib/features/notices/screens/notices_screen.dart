@@ -107,27 +107,38 @@ class _NoticesScreenState extends State<NoticesScreen> {
           const SizedBox(height: 12),
 
           // Category Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: ['ALL', 'URGENT', 'ROUTINE_ORDER', 'TRAINING_CIRCULAR', 'GENERAL'].map((cat) {
-                final isSelected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(cat.replaceAll('_', ' ')),
-                    selected: isSelected,
-                    onSelected: (_) => setState(() => _selectedCategory = cat),
-                    selectedColor: AppColors.navyPrimary,
-                    labelStyle: TextStyle(
-                      color: isSelected ? AppColors.white : AppColors.textPrimary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: ['ALL', 'URGENT', 'ROUTINE_ORDER', 'TRAINING_CIRCULAR', 'GENERAL'].map((cat) {
+                      final isSelected = _selectedCategory == cat;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(cat.replaceAll('_', ' ')),
+                          selected: isSelected,
+                          onSelected: (_) => setState(() => _selectedCategory = cat),
+                          selectedColor: AppColors.navyPrimary,
+                          labelStyle: TextStyle(
+                            color: isSelected ? AppColors.white : AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(left: 4.0),
+                child: Icon(Icons.arrow_forward_ios, size: 10, color: AppColors.textMuted),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
 

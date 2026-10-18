@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../models/user_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -156,11 +157,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-          child: const Center(
-            child: Icon(
-              Icons.shield,
-              color: AppColors.gold,
-              size: 40,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image.asset(
+                'assets/logos/ncc_logo.png',
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),
@@ -286,6 +289,67 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+
+          // Test & Verification Session Launchers
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    auth.setSessionForDemo(
+                      user: UserModel(
+                        id: 'cadet-demo-001',
+                        fullName: 'Aman Kumar',
+                        regimentalNumber: 'MH/22/SDA/1001',
+                        collegeRollNumber: '22014',
+                        email: 'aman.k@aitpune.edu.in',
+                        role: 'CADET',
+                        status: 'ACTIVE',
+                        platoonName: 'Senior Division',
+                        year: 'Third Year',
+                        branch: 'Computer Engineering',
+                      ),
+                      demoToken: 'DEMO_CADET_TOKEN',
+                    );
+                  },
+                  icon: const Icon(Icons.person, size: 14, color: AppColors.navyPrimary),
+                  label: const Text('Cadet View', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.navyPrimary),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    auth.setSessionForDemo(
+                      user: UserModel(
+                        id: 'officer-demo-001',
+                        fullName: 'Capt. Rajveer Singh',
+                        regimentalNumber: 'ANO/AIT/2019/01',
+                        email: 'ano.ncc@aitpune.edu.in',
+                        role: 'ADMIN_ANO',
+                        status: 'ACTIVE',
+                        platoonName: 'Command Wing',
+                        year: 'Faculty',
+                        branch: 'Institutional Command',
+                      ),
+                      demoToken: 'DEMO_OFFICER_TOKEN',
+                    );
+                  },
+                  icon: const Icon(Icons.military_tech, size: 14, color: AppColors.gold),
+                  label: const Text('Staff View', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.gold, width: 1.5),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

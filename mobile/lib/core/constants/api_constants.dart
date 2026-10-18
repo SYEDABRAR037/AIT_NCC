@@ -49,8 +49,8 @@ class ApiConstants {
   static String get staffAttendanceSessions => '$activeBaseUrl/attendance/sessions';
   static String staffSessionDetails(String sessionId) => '$activeBaseUrl/attendance/sessions/$sessionId';
   static String staffMarkAttendance(String sessionId) => '$activeBaseUrl/attendance/sessions/$sessionId/mark';
-  static String get staffPendingApprovals => '$activeBaseUrl/review/pending';
-  static String staffReviewAction(String cadetId) => '$activeBaseUrl/review/$cadetId/action';
+  static String get staffPendingApprovals => '$activeBaseUrl/reviews/pending';
+  static String staffReviewAction(String cadetId) => '$activeBaseUrl/reviews/$cadetId/action';
 
   static String get activeUrl => activeBaseUrl;
 }

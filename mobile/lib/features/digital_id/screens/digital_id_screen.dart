@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/digital_id_model.dart';
 import '../providers/digital_id_provider.dart';
 
@@ -17,6 +18,14 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      AuthProvider? auth;
+      try {
+        auth = Provider.of<AuthProvider>(context, listen: false);
+      } catch (_) {}
+      if (auth?.isDemo ?? false) {
+        // Safe isolation: Demo sessions use explicit local presentation without sending dummy tokens to backend
+        return;
+      }
       final provider = Provider.of<DigitalIdProvider>(context, listen: false);
       if (provider.digitalId == null) {
         provider.fetchDigitalId();
@@ -26,6 +35,14 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AuthProvider? auth;
+    try {
+      auth = context.watch<AuthProvider>();
+    } catch (_) {}
+    if (auth?.isDemo ?? false) {
+      return _buildDemoPresentation(auth?.currentUser);
+    }
+
     final provider = context.watch<DigitalIdProvider>();
 
     if (provider.isLoading && provider.digitalId == null) {
@@ -347,6 +364,71 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoPresentation(dynamic user) {
+    final sampleCadet = DigitalIdModel(
+      id: user?.id ?? 'cadet-demo-001',
+      fullName: user?.fullName ?? 'Aman Kumar',
+      rank: 'CDT',
+      regimentalNumber: user?.regimentalNumber ?? 'MH/22/SDA/1001',
+      collegeRollNumber: user?.collegeRollNumber ?? '22014',
+      year: user?.year ?? 'Third Year',
+      platoonName: user?.platoonName ?? 'Senior Division',
+      team: 'Alpha Section',
+      status: 'ACTIVE',
+      token: 'DEMO-PREVIEW-SAMPLE-TOKEN',
+    );
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.gold, width: 1.5),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, color: AppColors.navyPrimary, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'DEMO PRESENTATION MODE',
+                        style: TextStyle(
+                          color: AppColors.navyPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        'Sample Digital ID preview. Live API calls bypassed to preserve backend test isolation.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildIdCard(sampleCadet),
+          const SizedBox(height: 20),
+          _buildSecurityNotice(sampleCadet),
         ],
       ),
     );

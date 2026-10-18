@@ -12,6 +12,8 @@ import 'package:mobile/features/digital_id/screens/digital_id_screen.dart';
 import 'package:mobile/features/notices/models/notice_model.dart';
 import 'package:mobile/features/notices/providers/notice_provider.dart';
 import 'package:mobile/features/notices/screens/notices_screen.dart';
+import 'package:mobile/features/auth/providers/auth_provider.dart';
+import 'package:mobile/features/auth/models/user_model.dart';
 
 class PreloadedDigitalIdProvider extends DigitalIdProvider {
   PreloadedDigitalIdProvider() {
@@ -240,6 +242,68 @@ void main() {
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Training Schedule Notice'), findsOneWidget);
       expect(find.text('Morning parade muster at 0600 hrs.'), findsOneWidget);
+    });
+
+    testWidgets('DigitalIdScreen renders explicitly labeled demo presentation in demo mode', (WidgetTester tester) async {
+      final auth = AuthProvider();
+      auth.setSessionForDemo(
+        user: UserModel(
+          id: 'cadet-demo-001',
+          fullName: 'Aman Kumar',
+          regimentalNumber: 'MH/22/SDA/1001',
+          email: 'aman.k@aitpune.edu.in',
+          role: 'CADET',
+          status: 'ACTIVE',
+        ),
+        demoToken: 'DEMO_CADET_TOKEN',
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: auth),
+            ChangeNotifierProvider<DigitalIdProvider>(create: (_) => DigitalIdProvider()),
+          ],
+          child: const MaterialApp(home: Scaffold(body: DigitalIdScreen())),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('DEMO PRESENTATION MODE'), findsOneWidget);
+      expect(find.text('Sample Digital ID preview. Live API calls bypassed to preserve backend test isolation.'), findsOneWidget);
+      expect(find.text('Aman Kumar'), findsOneWidget);
+      expect(find.text('MH/22/SDA/1001'), findsOneWidget);
+    });
+
+    testWidgets('AttendanceHistoryScreen renders explicitly labeled demo presentation in demo mode', (WidgetTester tester) async {
+      final auth = AuthProvider();
+      auth.setSessionForDemo(
+        user: UserModel(
+          id: 'cadet-demo-001',
+          fullName: 'Aman Kumar',
+          regimentalNumber: 'MH/22/SDA/1001',
+          email: 'aman.k@aitpune.edu.in',
+          role: 'CADET',
+          status: 'ACTIVE',
+        ),
+        demoToken: 'DEMO_CADET_TOKEN',
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthProvider>.value(value: auth),
+            ChangeNotifierProvider<AttendanceProvider>(create: (_) => AttendanceProvider()),
+          ],
+          child: const MaterialApp(home: Scaffold(body: AttendanceHistoryScreen())),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('DEMO PRESENTATION MODE'), findsOneWidget);
+      expect(find.text('Sample drill muster preview. Live muster recording untouched.'), findsOneWidget);
+      expect(find.text('92%'), findsOneWidget);
+      expect(find.text('Command Drill & Weapon Training'), findsOneWidget);
     });
   });
 }
