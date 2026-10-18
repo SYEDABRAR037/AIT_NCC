@@ -9,9 +9,10 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node src/../prisma/seed.ts",
-    "test": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
+    "test": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
     "test:biometric": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
-    "test:isolation": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts"
+    "test:isolation": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts",
+    "test:public": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

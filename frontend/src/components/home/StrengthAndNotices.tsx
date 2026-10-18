@@ -5,6 +5,8 @@ import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 interface StatsData {
   totalApprovedCadets: number;
   platoonsCount: number;
+  battalionsCount?: number;
+  companiesCount?: number;
   upcomingEventsCount: number;
   campsCount: number;
   activitiesCount: number;
@@ -69,11 +71,27 @@ export const StrengthAndNotices: React.FC = () => {
     return 'ref-badge-general';
   };
 
-  // Real database numbers with 0 fallback
-  const totalCadetsDisplay = loadingStats ? '...' : (stats?.totalApprovedCadets ? `${stats.totalApprovedCadets}+` : '0');
-  const companiesDisplay = '0';
-  const battalionsDisplay = '0';
-  const activitiesDisplay = loadingStats ? '...' : (stats?.activitiesCount || stats?.upcomingEventsCount ? `${(stats?.activitiesCount || 0) + (stats?.upcomingEventsCount || 0)}+` : '0');
+  // Database-driven numbers from verified unit statistics
+  const totalCadetsDisplay = loadingStats
+    ? '...'
+    : stats?.totalApprovedCadets !== undefined
+    ? String(stats.totalApprovedCadets)
+    : '—';
+  const companiesDisplay = loadingStats
+    ? '...'
+    : stats?.companiesCount !== undefined
+    ? String(stats.companiesCount)
+    : '—';
+  const battalionsDisplay = loadingStats
+    ? '...'
+    : stats?.battalionsCount !== undefined
+    ? String(stats.battalionsCount)
+    : '—';
+  const activitiesDisplay = loadingStats
+    ? '...'
+    : stats?.activitiesCount !== undefined || stats?.upcomingEventsCount !== undefined || stats?.campsCount !== undefined
+    ? String((stats?.activitiesCount || 0) + (stats?.upcomingEventsCount || 0) + (stats?.campsCount || 0))
+    : '—';
 
   return (
     <section id="notices" className="ref-strength-notices-section" aria-label="Our Strength and Latest Notices">

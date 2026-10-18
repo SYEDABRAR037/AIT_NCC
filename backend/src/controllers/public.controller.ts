@@ -23,11 +23,28 @@ export const getPublicStats = async (_req: Request, res: Response): Promise<void
       where: { isPublic: true },
     });
 
+    // Query distinct battalions and companies associated with active unit personnel
+    const battalions = await prisma.user.findMany({
+      where: { status: { in: ['APPROVED', 'ACTIVE'] } },
+      select: { battalion: true },
+      distinct: ['battalion'],
+    });
+    const companies = await prisma.user.findMany({
+      where: { status: { in: ['APPROVED', 'ACTIVE'] } },
+      select: { company: true },
+      distinct: ['company'],
+    });
+
+    const battalionsCount = battalions.filter((b) => Boolean(b.battalion)).length;
+    const companiesCount = companies.filter((c) => Boolean(c.company)).length;
+
     res.json({
       success: true,
       stats: {
         totalApprovedCadets: approvedCadets,
         platoonsCount: platoons,
+        battalionsCount,
+        companiesCount,
         upcomingEventsCount: upcomingEvents,
         campsCount: totalCamps,
         activitiesCount: totalActivities,
