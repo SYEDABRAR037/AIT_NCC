@@ -94,6 +94,11 @@ export const sendOtpEmail = async ({
   otp,
   purpose = 'recovery',
 }: SendOtpEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+  // Fail-closed test isolation: prevent any external HTTP relay or SMTP call during tests
+  if (process.env.NODE_ENV === 'test' || process.env.PURE_MOCK_TEST === 'true') {
+    return { success: true, messageId: `mock-email-${Date.now()}` };
+  }
+
   const { email: mailFrom, name: mailFromName } = resolveMailSender();
 
   // Exact Subject required by Phase 12

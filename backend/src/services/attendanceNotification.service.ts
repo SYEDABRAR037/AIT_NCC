@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../db';
 
 export type NotificationEventType = 'ATTENDANCE_MARKED_PRESENT' | 'ATTENDANCE_MARKED_ABSENT';
 export type NotificationChannel = 'SMS' | 'WHATSAPP';
@@ -295,6 +293,10 @@ class NotificationWorkerQueue {
       console.log(`  Cadet Profile Phone: ${maskPhoneNumber(phone)}`);
     }
 
+    if (process.env.NODE_ENV === 'test' || process.env.PURE_MOCK_TEST === 'true') {
+      return { success: true, providerMessageId: `MOCK_SMS_${Date.now()}` };
+    }
+
     const fast2smsApiKey = process.env.FAST2SMS_API_KEY;
     const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
@@ -390,6 +392,10 @@ class NotificationWorkerQueue {
       console.log(`  Cadet Profile Phone: ${maskPhoneNumber(phone)}`);
     }
 
+    if (process.env.NODE_ENV === 'test' || process.env.PURE_MOCK_TEST === 'true') {
+      return { success: true, providerMessageId: `MOCK_WA_${Date.now()}` };
+    }
+
     const msg91AuthKey = process.env.MSG91_AUTH_KEY;
     const msg91WhatsAppSrc = process.env.MSG91_WHATSAPP_SRC;       // Your registered WhatsApp sender number
     const msg91TemplateId = process.env.MSG91_WHATSAPP_TEMPLATE_ID; // Template ID from MSG91 dashboard
@@ -471,6 +477,10 @@ export const notificationQueueWorker = new NotificationWorkerQueue();
 // Authentication OTPs always go to the supplied verified number, never through
 // attendance test-mode routing or its simulation fallback.
 export const sendOtpSms = async (phone: string, message: string): Promise<boolean> => {
+  if (process.env.NODE_ENV === 'test' || process.env.PURE_MOCK_TEST === 'true') {
+    return true;
+  }
+
   const { isValid, normalized } = normalizePhoneNumber(phone);
   if (!isValid) return false;
   const fast2smsApiKey = process.env.FAST2SMS_API_KEY;

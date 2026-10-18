@@ -1,5 +1,7 @@
+import './test-isolation-guard';
 import assert from 'assert';
 import { prisma } from '../db';
+import * as attendanceNotificationService from '../services/attendanceNotification.service';
 import {
   issueVerificationChallenge,
   verifyFaceAttendance,
@@ -48,6 +50,26 @@ async function runTestSuite() {
     };
   }
 
+  // Preserve and mock notification service boundary
+  const originalTriggerPresent = attendanceNotificationService.triggerPresentAttendanceNotifications;
+  const originalTriggerAbsent = attendanceNotificationService.triggerAbsentAttendanceNotifications;
+  const originalQueueNotification = (attendanceNotificationService as any).queueAttendanceNotification;
+
+  (attendanceNotificationService as any).triggerPresentAttendanceNotifications = async () => ({
+    smsQueued: true,
+    whatsappQueued: true,
+  });
+  (attendanceNotificationService as any).triggerAbsentAttendanceNotifications = async () => ({
+    smsQueued: true,
+    whatsappQueued: true,
+  });
+  if (originalQueueNotification) {
+    (attendanceNotificationService as any).queueAttendanceNotification = async () => ({
+      success: true,
+      status: 'QUEUED',
+    });
+  }
+
   // Preserve original Prisma methods
   const originalSessionFindUnique = prisma.trainingSession.findUnique;
   const originalUserFindMany = prisma.user.findMany;
@@ -58,9 +80,33 @@ async function runTestSuite() {
   const originalSeniorAssignmentFindMany = prisma.seniorAssignment.findMany;
   const originalAuditLogCreate = prisma.auditLog.create;
   const originalAttendanceNotificationCreate = (prisma as any).attendanceNotification?.create;
+
+  // Global write mocks: ensure no real database write can escape in any test
+  const auditLogsRecorded: any[] = [];
+  (prisma.auditLog as any).create = async (args: any) => {
+    auditLogsRecorded.push(args);
+    return {
+      id: `mock-audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      actorId: args?.data?.actorId || 'mock-actor',
+      action: args?.data?.action || 'MANUAL_ATTENDANCE_OVERRIDE',
+      targetId: args?.data?.targetId || 'mock-target',
+      details: args?.data?.details || '{}',
+      createdAt: new Date(),
+    };
+  };
+
   if ((prisma as any).attendanceNotification) {
-    (prisma as any).attendanceNotification.create = async () => ({ id: 'mock-notif-id' });
+    (prisma as any).attendanceNotification.create = async (args: any) => ({
+      id: `mock-notif-${Date.now()}`,
+      ...(args?.data || {}),
+      createdAt: new Date(),
+    });
   }
+
+  // Default in-memory mocks for read models used during authentication/scope checks
+  (prisma.seniorAssignment as any).findMany = async () => [];
+  (prisma.biometricTemplate as any).findMany = async () => [];
+
   const originalTransaction = prisma.$transaction;
 
   console.log('---------------------------------------------------------------');
@@ -1019,6 +1065,13 @@ async function runTestSuite() {
     recordResult('Manual Test 27: Side effect safety', false, err.message);
   }
 
+  // Restore notification boundary mocks
+  (attendanceNotificationService as any).triggerPresentAttendanceNotifications = originalTriggerPresent;
+  (attendanceNotificationService as any).triggerAbsentAttendanceNotifications = originalTriggerAbsent;
+  if (originalQueueNotification) {
+    (attendanceNotificationService as any).queueAttendanceNotification = originalQueueNotification;
+  }
+
   // Restore environment & Prisma mocks
   delete process.env.ENABLE_BIOMETRIC_ATTENDANCE;
   (prisma.trainingSession as any).findUnique = originalSessionFindUnique;
@@ -1040,6 +1093,8 @@ async function runTestSuite() {
 
   if (failed > 0) {
     process.exit(1);
+  } else {
+    process.exit(0);
   }
 }
 
