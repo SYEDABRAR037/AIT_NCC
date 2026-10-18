@@ -27,6 +27,7 @@ import {
   Copy,
   Download,
   Trash2,
+  Menu,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { FaceAttendanceModal } from '../attendance/FaceAttendanceModal';
@@ -54,6 +55,18 @@ interface RoleShellViewProps {
 export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome }) => {
   const { user, token, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setMobileMenuOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Admin Data State
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -1259,7 +1272,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
   const meta = getRoleMeta();
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: 'var(--white-surface)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100dvh', backgroundColor: 'var(--white-surface)', display: 'flex', flexDirection: 'column' }}>
       {/* Top Command Bar */}
       <div
         style={{
@@ -1401,6 +1414,19 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             )}
           </div>
 
+          {isMobile && (
+            <button
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="btn-secondary btn-sm"
+              aria-label="Toggle Operational Sections Menu"
+              aria-expanded={mobileMenuOpen}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.4rem 0.6rem' }}
+            >
+              <Menu size={15} />
+              <span>SECTIONS</span>
+            </button>
+          )}
+
           <span className="badge-dark" style={{ background: 'var(--color-primary)' }}>
             {meta.badge}
           </span>
@@ -1429,27 +1455,49 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
       </div>
 
       {/* Main Layout: Sidebar + Content */}
-      <div style={{ display: 'flex', flex: 1, minHeight: 'calc(100vh - 70px)' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 'calc(100dvh - 70px)', position: 'relative' }}>
         {/* Navy Sidebar */}
         <aside
           style={{
-            width: '260px',
+            width: isMobile ? '100%' : '260px',
+            position: isMobile ? 'fixed' : 'relative',
+            top: isMobile ? '70px' : undefined,
+            left: 0,
+            right: isMobile ? 0 : undefined,
+            bottom: isMobile ? 0 : undefined,
+            zIndex: isMobile ? 1100 : undefined,
             backgroundColor: 'var(--navy-dark)',
-            borderRight: '1px solid var(--navy-border)',
+            borderRight: isMobile ? 'none' : '1px solid var(--navy-border)',
+            borderBottom: isMobile ? '1px solid var(--navy-border)' : 'none',
             padding: '1.5rem 1rem',
-            display: 'flex',
+            display: isMobile && !mobileMenuOpen ? 'none' : 'flex',
             flexDirection: 'column',
             gap: '0.5rem',
             flexShrink: 0,
+            overflowY: isMobile ? 'auto' : undefined,
           }}
         >
-          <div style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.1em', color: 'var(--color-disabled)', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>
-            OPERATIONAL SECTIONS
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', paddingLeft: '0.5rem' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, letterSpacing: '0.1em', color: 'var(--color-disabled)' }}>
+              OPERATIONAL SECTIONS
+            </span>
+            {isMobile && (
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--white-pure)', cursor: 'pointer', padding: '0.2rem' }}
+                aria-label="Close Navigation Menu"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
           {meta.items.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (isMobile) setMobileMenuOpen(false);
+              }}
               style={{
                 width: '100%',
                 display: 'flex',
@@ -1475,7 +1523,17 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
         </aside>
 
         {/* Content Area */}
-        <main id="role-main-content" tabIndex={-1} style={{ flex: 1, padding: '2rem', backgroundColor: 'var(--white-surface)', overflowX: 'auto' }}>
+        <main
+          id="role-main-content"
+          tabIndex={-1}
+          style={{
+            flex: 1,
+            padding: isMobile ? '1rem 0.75rem' : '2rem',
+            backgroundColor: 'var(--white-surface)',
+            overflowX: 'auto',
+            minWidth: 0,
+          }}
+        >
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
             {activeTab === 'overview' && <PendingActionsView onOpen={setActiveTab} />}
             {activeTab === 'digital-id' && role === 'CADET' && <DigitalIdView token={token} />}
