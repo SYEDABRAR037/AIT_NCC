@@ -1,7 +1,9 @@
 import { Response } from 'express';
 import { prisma } from '../db';
+import { canTransitionInquiryStatusAtStage } from '../services/workflowPolicy';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
+import { normalizeHttpUrl } from '../services/httpUrl';
 
 // Generate unique Request Number: REQ-2026-XXXX
 const generateRequestNumber = async (): Promise<string> => {
@@ -41,6 +43,14 @@ export const submitRequest = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    const normalizedSupportingDocUrl = supportingDocUrl == null || supportingDocUrl === ''
+      ? null
+      : normalizeHttpUrl(supportingDocUrl);
+    if (supportingDocUrl != null && supportingDocUrl !== '' && !normalizedSupportingDocUrl) {
+      res.status(400).json({ success: false, message: 'Supporting document must be a valid HTTP or HTTPS URL.' });
+      return;
+    }
+
     const requestNumber = await generateRequestNumber();
 
     // Determine initial reviewer role
@@ -62,7 +72,7 @@ export const submitRequest = async (req: AuthRequest, res: Response): Promise<vo
           priority: priority || 'NORMAL',
           status: 'SUBMITTED',
           currentReviewerRole: initialReviewerRole,
-          supportingDocUrl: supportingDocUrl ? String(supportingDocUrl).trim() : null,
+          supportingDocUrl: normalizedSupportingDocUrl,
           metadata: metadata ? JSON.stringify(metadata) : null,
         },
       });
@@ -603,15 +613,20 @@ export const getInquiryList = async (req: AuthRequest, res: Response): Promise<v
         { cadetId: req.user.id },
       ];
     } else if (req.user.role === 'PLATOON_SENIOR') {
-      const platoonCadets = await prisma.user.findMany({
-        where: { platoonName: req.user.platoonName },
-        select: { id: true },
-      });
+      const platoonCadets = req.user.platoonName
+        ? await prisma.user.findMany({
+            where: { platoonName: req.user.platoonName, role: Role.CADET },
+            select: { id: true },
+          })
+        : [];
       const cadetIds = platoonCadets.map((c) => c.id);
       whereClause.OR = [
         { cadetId: { in: cadetIds } },
         { cadetId: req.user.id },
       ];
+    } else if (req.user.role === 'DRILL_INSTRUCTOR') {
+      // Drill instructors may follow their own official inquiry, not cadet threads.
+      whereClause.cadetId = req.user.id;
     }
     // ADMIN_ANO sees all inquiries
 
@@ -771,6 +786,11 @@ export const getInquiryThread = async (req: AuthRequest, res: Response): Promise
       }
     }
 
+    if (req.user.role === 'DRILL_INSTRUCTOR' && inquiry.cadetId !== req.user.id) {
+      res.status(403).json({ success: false, message: 'Drill instructors may only access their own inquiry threads.' });
+      return;
+    }
+
     res.json({
       success: true,
       inquiry,
@@ -844,6 +864,11 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
       }
     }
 
+    if (req.user.role === 'DRILL_INSTRUCTOR' && inquiry.cadetId !== req.user.id) {
+      res.status(403).json({ success: false, message: 'Drill instructors may only reply to their own inquiry threads.' });
+      return;
+    }
+
     const isCadet = req.user.role === 'CADET';
     const nextStatus = isCadet ? 'UNDER_REVIEW' : 'REPLIED';
 
@@ -868,14 +893,17 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
         },
       });
 
-      await tx.request.update({
-        where: { id: inquiry.id },
+      const claimed = await tx.request.updateMany({
+        where: { id: inquiry.id, status: inquiry.status, updatedAt: inquiry.updatedAt },
         data: {
           status: nextStatus,
           currentReviewerId: isCadet ? inquiry.currentReviewerId : req.user!.id,
           updatedAt: new Date(),
         },
       });
+      if (claimed.count !== 1) {
+        throw Object.assign(new Error('Inquiry changed concurrently. Refresh the thread and try again.'), { statusCode: 409 });
+      }
 
       await tx.requestHistoryRecord.create({
         data: {
@@ -947,7 +975,8 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
 
   } catch (error) {
     console.error('replyToInquiry error:', error);
-    res.status(500).json({ success: false, message: 'Failed to record reply' });
+    const statusCode = (error as { statusCode?: number })?.statusCode || 500;
+    res.status(statusCode).json({ success: false, message: statusCode === 409 ? 'Inquiry changed concurrently. Refresh the thread and try again.' : 'Failed to record reply' });
   }
 };
 
@@ -965,7 +994,7 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
     }
 
     const { id } = req.params;
-    const { status, remarks, forwardToRole } = req.body;
+    const { status, remarks } = req.body;
 
     const validStatuses = ['SUBMITTED', 'UNDER_REVIEW', 'REPLIED', 'FORWARDED', 'RESOLVED', 'CLOSED'];
     if (!validStatuses.includes(status)) {
@@ -986,22 +1015,51 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    if (inquiry.status === 'CLOSED') {
+      res.status(409).json({ success: false, message: 'Closed inquiries cannot be reopened through this endpoint.' });
+      return;
+    }
+
+    if (!canTransitionInquiryStatusAtStage(req.user.role, inquiry.currentReviewerRole, status, req.user.id, inquiry.cadetId)) {
+      res.status(403).json({ success: false, message: 'Status transition is not permitted for your current reviewer stage.' });
+      return;
+    }
+
+    if (req.user.role === 'SENIOR') {
+      const assignment = await prisma.seniorAssignment.findFirst({
+        where: { seniorId: req.user.id, cadetId: inquiry.cadetId },
+      });
+      if (!assignment && inquiry.currentReviewerId !== req.user.id) {
+        res.status(403).json({ success: false, message: 'Inquiry is outside your current assigned review scope.' });
+        return;
+      }
+    } else if (req.user.role === 'PLATOON_SENIOR') {
+      if (inquiry.cadet.platoonName !== req.user.platoonName) {
+        res.status(403).json({ success: false, message: 'Inquiry is outside your current platoon review scope.' });
+        return;
+      }
+    }
+
     let nextReviewerRole: Role | null = inquiry.currentReviewerRole;
     if (status === 'FORWARDED') {
       if (req.user.role === 'SENIOR') {
         nextReviewerRole = Role.PLATOON_SENIOR;
       } else if (req.user.role === 'PLATOON_SENIOR') {
         nextReviewerRole = Role.ADMIN_ANO;
-      } else if (forwardToRole) {
-        nextReviewerRole = forwardToRole;
       }
     } else if (status === 'RESOLVED' || status === 'CLOSED') {
       nextReviewerRole = null;
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.request.update({
-        where: { id: inquiry.id },
+      const claimed = await tx.request.updateMany({
+        where: {
+          id: inquiry.id,
+          status: inquiry.status,
+          currentReviewerRole: inquiry.currentReviewerRole,
+          currentReviewerId: inquiry.currentReviewerId,
+          updatedAt: inquiry.updatedAt,
+        },
         data: {
           status,
           currentReviewerRole: nextReviewerRole,
@@ -1009,6 +1067,10 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
           updatedAt: new Date(),
         },
       });
+      if (claimed.count !== 1) {
+        throw Object.assign(new Error('Inquiry changed concurrently. Refresh the thread and try again.'), { statusCode: 409 });
+      }
+      const u = await tx.request.findUnique({ where: { id: inquiry.id } });
 
       await tx.requestHistoryRecord.create({
         data: {
@@ -1051,6 +1113,7 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
     });
   } catch (error) {
     console.error('updateInquiryStatus error:', error);
-    res.status(500).json({ success: false, message: 'Failed to update inquiry status' });
+    const statusCode = (error as { statusCode?: number })?.statusCode || 500;
+    res.status(statusCode).json({ success: false, message: statusCode === 409 ? 'Inquiry changed concurrently. Refresh the thread and try again.' : 'Failed to update inquiry status' });
   }
 };

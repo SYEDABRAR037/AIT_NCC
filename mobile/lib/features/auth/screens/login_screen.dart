@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../models/user_model.dart';
+import 'password_recovery_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -92,12 +94,14 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.navyDark,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Header & Insignia
                 _buildHeader(),
                 const SizedBox(height: 28),
@@ -110,9 +114,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
-                    child: auth.otpRequired
-                        ? _buildOtpForm(auth)
-                        : _buildCredentialsForm(auth),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (auth.errorMessage != null) ...[
+                          Semantics(
+                            liveRegion: true,
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.errorLight,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                auth.errorMessage!,
+                                style: const TextStyle(color: AppColors.error),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        auth.otpRequired ? _buildOtpForm(auth) : _buildCredentialsForm(auth),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -131,7 +156,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -239,6 +265,7 @@ class _LoginScreenState extends State<LoginScreen> {
               labelText: 'Security Password',
               prefixIcon: const Icon(Icons.lock_outline, color: AppColors.navyPrimary),
               suffixIcon: IconButton(
+                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
                   color: AppColors.textSecondary,
@@ -266,6 +293,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   )
                 : const Text('AUTHENTICATE SESSION'),
           ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: auth.isLoading
+                  ? null
+                  : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(builder: (_) => const PasswordRecoveryScreen()),
+                      ),
+              child: const Text('Forgot password?'),
+            ),
+          ),
           const SizedBox(height: 16),
 
           // Notice
@@ -292,7 +330,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Test & Verification Session Launchers
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'DEMO PRESENTATION MODE · OFFLINE SAMPLE DATA',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.35),
+            ),
+          ),
           Row(
             children: [
               Expanded(
@@ -300,11 +345,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: () {
                     auth.setSessionForDemo(
                       user: UserModel(
-                        id: 'cadet-demo-001',
-                        fullName: 'Aman Kumar',
-                        regimentalNumber: 'MH/22/SDA/1001',
-                        collegeRollNumber: '22014',
-                        email: 'aman.k@aitpune.edu.in',
+                        id: 'demo-cadet-001',
+                        fullName: 'Demo Cadet',
+                        regimentalNumber: 'DEMO/CADET/001',
+                        collegeRollNumber: 'DEMO-ROLL-001',
+                        email: 'demo-cadet@example.invalid',
                         role: 'CADET',
                         status: 'ACTIVE',
                         platoonName: 'Senior Division',
@@ -315,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                   icon: const Icon(Icons.person, size: 14, color: AppColors.navyPrimary),
-                  label: const Text('Cadet View', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
+                  label: const Text('Demo Cadet', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.navyPrimary),
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -329,9 +374,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     auth.setSessionForDemo(
                       user: UserModel(
                         id: 'officer-demo-001',
-                        fullName: 'Capt. Rajveer Singh',
-                        regimentalNumber: 'ANO/AIT/2019/01',
-                        email: 'ano.ncc@aitpune.edu.in',
+                        fullName: 'Demo Staff',
+                        regimentalNumber: 'DEMO/STAFF/001',
+                        email: 'demo-staff@example.invalid',
                         role: 'ADMIN_ANO',
                         status: 'ACTIVE',
                         platoonName: 'Command Wing',
@@ -342,7 +387,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     );
                   },
                   icon: const Icon(Icons.military_tech, size: 14, color: AppColors.gold),
-                  label: const Text('Staff View', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
+                  label: const Text('Demo Staff', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: AppColors.gold, width: 1.5),
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -401,8 +446,10 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: _otpController,
           keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           maxLength: 6,
           textAlign: TextAlign.center,
+          autofillHints: const [AutofillHints.oneTimeCode],
           style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,

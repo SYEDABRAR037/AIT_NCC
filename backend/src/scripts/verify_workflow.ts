@@ -1,4 +1,5 @@
-const BASE_URL = process.env.TEST_API_URL || 'http://localhost:5050';
+import { assertIsolatedTestApi, requireIsolatedTestApiUrl } from '../testScriptSafety';
+const BASE_URL = requireIsolatedTestApiUrl();
 const seniorEmail = process.env.TEST_SENIOR_EMAIL;
 const seniorPassword = process.env.TEST_SENIOR_PASSWORD;
 const platoonSeniorEmail = process.env.TEST_PLATOON_SENIOR_EMAIL;
@@ -10,6 +11,7 @@ if (![seniorEmail, seniorPassword, platoonSeniorEmail, platoonSeniorPassword, an
 }
 
 async function main() {
+  await assertIsolatedTestApi(BASE_URL);
   console.log('=== STARTING 18-PHASE CADET APPROVAL & VISIBILITY VERIFICATION ===\n');
 
   // 1. Log in reviewers

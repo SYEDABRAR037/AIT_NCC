@@ -1,43 +1,31 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { generateAuthenticAnswer, ChatMessage } from '../services/aiAssistant.service';
+import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 
 const router = Router();
 
-// In-memory sliding window rate limiter: 10 requests per 60 seconds per IP (DEF-04)
-const aiRequestBuckets = new Map<string, number[]>();
+// Process-local fallback: deployment-wide enforcement requires a shared store.
+const aiRequestBuckets = new ProcessLocalRateLimitStore(10_000);
 
-const aiRateLimiter = (req: Request, res: Response, next: NextFunction): void => {
+const aiRateLimiter = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   const ip = (req.ip || req.socket.remoteAddress || 'unknown').toString();
-  const now = Date.now();
   const windowMs = 60 * 1000; // 1 minute
   const maxRequests = 10;
+  let result;
+  try {
+    result = await aiRequestBuckets.consume(ip, maxRequests, windowMs);
+  } catch {
+    res.status(503).json({ success: false, message: 'Request protection is temporarily unavailable.' });
+    return;
+  }
 
-  const timestamps = (aiRequestBuckets.get(ip) || []).filter((time) => now - time < windowMs);
-
-  if (timestamps.length >= maxRequests) {
-    const oldestTimestamp = timestamps[0];
-    const retryAfterSec = Math.max(1, Math.ceil((oldestTimestamp + windowMs - now) / 1000));
-    res.setHeader('Retry-After', retryAfterSec.toString());
+  if (result.limited) {
+    res.setHeader('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
     res.status(429).json({
       success: false,
       message: 'Too many requests. Please wait a moment before asking again.',
     });
     return;
-  }
-
-  timestamps.push(now);
-  aiRequestBuckets.set(ip, timestamps);
-
-  // Periodic memory cleanup if bucket gets large
-  if (aiRequestBuckets.size > 2000) {
-    for (const [key, times] of aiRequestBuckets.entries()) {
-      const active = times.filter((t) => now - t < windowMs);
-      if (active.length === 0) {
-        aiRequestBuckets.delete(key);
-      } else {
-        aiRequestBuckets.set(key, active);
-      }
-    }
   }
 
   next();

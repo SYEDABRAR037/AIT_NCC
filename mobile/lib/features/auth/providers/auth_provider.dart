@@ -6,8 +6,12 @@ import '../../../core/services/secure_storage_service.dart';
 import '../models/user_model.dart';
 
 class AuthProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
-  final SecureStorageService _storage = SecureStorageService();
+  AuthProvider({ApiService? api, SecureStorageService? storage})
+      : _api = api ?? ApiService(),
+        _storage = storage ?? SecureStorageService();
+
+  final ApiService _api;
+  final SecureStorageService _storage;
 
   UserModel? _currentUser;
   String? _token;
@@ -19,6 +23,11 @@ class AuthProvider extends ChangeNotifier {
   String? _challengeId;
   String? _maskedDestination;
   DateTime? _otpExpiresAt;
+
+  String? _recoveryId;
+  String? _recoveryMaskedEmail;
+  DateTime? _recoveryExpiresAt;
+  String? _recoveryResetToken;
 
   // Getters
   UserModel? get currentUser => _currentUser;
@@ -32,9 +41,14 @@ class AuthProvider extends ChangeNotifier {
   String? get challengeId => _challengeId;
   String? get maskedDestination => _maskedDestination;
   DateTime? get otpExpiresAt => _otpExpiresAt;
+  String? get recoveryId => _recoveryId;
+  String? get recoveryMaskedEmail => _recoveryMaskedEmail;
+  DateTime? get recoveryExpiresAt => _recoveryExpiresAt;
+  bool get recoveryOtpVerified => _recoveryResetToken != null;
 
   // Restore authenticated session from secure storage
   Future<void> initAuth() async {
+    ApiService.setDemoMode(false);
     _isLoading = true;
     notifyListeners();
 
@@ -130,11 +144,12 @@ class AuthProvider extends ChangeNotifier {
         final userJson = response.rawJson!['user'];
 
         if (token != null && userJson is Map<String, dynamic>) {
-          _token = token;
-          _currentUser = UserModel.fromJson(userJson);
-
+          final user = UserModel.fromJson(userJson);
+          // Persist securely before exposing the authenticated state. Storage errors fail closed.
+          await _storage.saveUserJson(jsonEncode(user.toJson()));
           await _storage.saveToken(token);
-          await _storage.saveUserJson(jsonEncode(_currentUser!.toJson()));
+          _token = token;
+          _currentUser = user;
 
           _otpRequired = false;
           _challengeId = null;
@@ -172,6 +187,173 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Starts account recovery only when the backend confirms OTP dispatch.
+  Future<bool> requestPasswordRecovery({
+    required String email,
+    required String regimentalNumber,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _clearRecoveryState();
+    notifyListeners();
+    try {
+      final response = await _api.post(
+        ApiConstants.recoveryRequestOtp,
+        body: {
+          'email': email.trim(),
+          'regimentalNumber': regimentalNumber.trim(),
+        },
+        requiresAuth: false,
+      );
+      final payload = response.rawJson;
+      final recoveryId = payload?['recoveryId']?.toString();
+      if (response.success &&
+          payload?['challengeAccepted'] == true &&
+          recoveryId != null &&
+          recoveryId.isNotEmpty) {
+        _recoveryId = recoveryId;
+        _recoveryMaskedEmail = payload?['maskedEmail']?.toString();
+        _recoveryExpiresAt = DateTime.tryParse(payload?['expiresAt']?.toString() ?? '');
+        return true;
+      }
+      _errorMessage = response.message ??
+          'The server could not confirm code delivery. Check the details or try again later.';
+      return false;
+    } catch (_) {
+      _errorMessage = 'Could not reach the recovery service. Check your connection and try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resendPasswordRecoveryOtp() async {
+    final recoveryId = _recoveryId;
+    if (recoveryId == null) {
+      _errorMessage = 'Start a new recovery request before asking for another code.';
+      notifyListeners();
+      return false;
+    }
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final response = await _api.post(
+        ApiConstants.recoveryResendOtp,
+        body: {'recoveryId': recoveryId},
+        requiresAuth: false,
+      );
+      final payload = response.rawJson;
+      final nextRecoveryId = payload?['recoveryId']?.toString();
+      if (response.success &&
+          payload?['challengeAccepted'] == true &&
+          nextRecoveryId != null &&
+          nextRecoveryId.isNotEmpty) {
+        _recoveryId = nextRecoveryId;
+        _recoveryMaskedEmail = payload?['maskedEmail']?.toString();
+        _recoveryExpiresAt = DateTime.tryParse(payload?['expiresAt']?.toString() ?? '');
+        _recoveryResetToken = null;
+        return true;
+      }
+      _errorMessage = response.message ?? 'The server did not confirm a new code.';
+      return false;
+    } catch (_) {
+      _errorMessage = 'Could not reach the recovery service. Try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyPasswordRecoveryOtp(String otp) async {
+    final recoveryId = _recoveryId;
+    if (recoveryId == null) {
+      _errorMessage = 'Start a new recovery request before verifying a code.';
+      notifyListeners();
+      return false;
+    }
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final response = await _api.post(
+        ApiConstants.recoveryVerifyOtp,
+        body: {'recoveryId': recoveryId, 'otp': otp.trim()},
+        requiresAuth: false,
+      );
+      final payload = response.rawJson;
+      final resetToken = payload?['resetToken']?.toString();
+      if (response.success &&
+          payload?['verified'] == true &&
+          resetToken != null &&
+          resetToken.isNotEmpty) {
+        _recoveryResetToken = resetToken;
+        return true;
+      }
+      _errorMessage = response.message ?? 'The verification code was not accepted.';
+      return false;
+    } catch (_) {
+      _errorMessage = 'Could not reach the verification service. Try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resetPassword({
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final resetToken = _recoveryResetToken;
+    if (resetToken == null) {
+      _errorMessage = 'Verify the code before setting a new password.';
+      notifyListeners();
+      return false;
+    }
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final response = await _api.post(
+        ApiConstants.recoveryResetPassword,
+        body: {
+          'resetToken': resetToken,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+        requiresAuth: false,
+      );
+      if (response.success && response.rawJson?['success'] == true) {
+        _clearRecoveryState();
+        return true;
+      }
+      _errorMessage = response.message ?? 'The server did not confirm the password change.';
+      return false;
+    } catch (_) {
+      _errorMessage = 'Could not reach the password service. Try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void clearPasswordRecovery() {
+    _clearRecoveryState();
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _clearRecoveryState() {
+    _recoveryId = null;
+    _recoveryMaskedEmail = null;
+    _recoveryExpiresAt = null;
+    _recoveryResetToken = null;
+  }
+
   void cancelOtp() {
     _otpRequired = false;
     _challengeId = null;
@@ -185,6 +367,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _api.post(ApiConstants.logout, requiresAuth: true);
     } catch (_) {}
+    ApiService.setDemoMode(false);
     await _storage.clearAll();
     _token = null;
     _currentUser = null;
@@ -197,6 +380,7 @@ class AuthProvider extends ChangeNotifier {
 
   // Test Harness / Interactive Demo Session
   void setSessionForDemo({required UserModel user, required String demoToken}) {
+    ApiService.setDemoMode(demoToken.startsWith('DEMO_'));
     _currentUser = user;
     _token = demoToken;
     _isLoading = false;

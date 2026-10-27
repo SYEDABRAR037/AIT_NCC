@@ -30,6 +30,9 @@ class _CampsScreenState extends State<CampsScreen> {
     final provider = context.watch<CampProvider>();
     final auth = context.watch<AuthProvider>();
     final currentUserId = auth.currentUser?.id ?? '';
+    final role = auth.currentUser?.role;
+    final canApply = role == 'CADET';
+    final canManage = role == 'SENIOR' || role == 'PLATOON_SENIOR' || role == 'ADMIN_ANO';
 
     return Scaffold(
       appBar: AppBar(
@@ -43,6 +46,8 @@ class _CampsScreenState extends State<CampsScreen> {
       ),
       body: provider.isLoading && provider.camps.isEmpty
           ? const Center(child: CircularProgressIndicator(color: AppColors.navyPrimary))
+          : provider.errorMessage != null && provider.camps.isEmpty
+              ? _buildLoadError(provider)
           : RefreshIndicator(
               onRefresh: () => provider.fetchCamps(),
               color: AppColors.navyPrimary,
@@ -51,13 +56,13 @@ class _CampsScreenState extends State<CampsScreen> {
                   : ListView.builder(
                       padding: const EdgeInsets.all(16.0),
                       itemCount: provider.camps.length,
-                      itemBuilder: (ctx, i) => _buildCampCard(provider.camps[i], provider, currentUserId),
+                      itemBuilder: (ctx, i) => _buildCampCard(provider.camps[i], provider, currentUserId, role ?? '', canApply, canManage),
                     ),
             ),
     );
   }
 
-  Widget _buildCampCard(CampModel camp, CampProvider provider, String currentUserId) {
+  Widget _buildCampCard(CampModel camp, CampProvider provider, String currentUserId, String role, bool canApply, bool canManage) {
     final startFmt = DateFormat('dd MMM yyyy').format(camp.startDate);
     final endFmt = DateFormat('dd MMM yyyy').format(camp.endDate);
     final registrationStatus = camp.cadetRegistrationStatus(currentUserId);
@@ -157,7 +162,7 @@ class _CampsScreenState extends State<CampsScreen> {
                   ],
                 ),
               )
-            else
+            else if (canApply && camp.status == 'OPEN')
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(40),
@@ -166,10 +171,71 @@ class _CampsScreenState extends State<CampsScreen> {
                 label: const Text('APPLY FOR NOMINATION', style: TextStyle(fontSize: 12)),
                 onPressed: () => _confirmNomination(camp, provider),
               ),
+            if (canManage && camp.participants.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text('Nomination progression', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.navyPrimary)),
+              const SizedBox(height: 6),
+              ...camp.participants.map((participant) => _participantRow(camp, participant, provider, role)),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  List<String> _allowedParticipantStatuses(String role) => switch (role) {
+        'SENIOR' => const ['RECOMMENDED', 'WAITLISTED', 'REJECTED'],
+        'PLATOON_SENIOR' => const ['SELECTED', 'WAITLISTED', 'REJECTED'],
+        'ADMIN_ANO' => const ['CONFIRMED', 'PARTICIPATED', 'COMPLETED', 'REJECTED'],
+        _ => const [],
+      };
+
+  Widget _participantRow(CampModel camp, CampParticipantModel participant, CampProvider provider, String role) {
+    final statuses = _allowedParticipantStatuses(role);
+    final selected = statuses.contains(participant.status) ? participant.status : null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(participant.cadetName ?? 'Cadet', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('${participant.cadetRegimentalNumber ?? ''}${participant.cadetPlatoon == null ? '' : ' • ${participant.cadetPlatoon}'}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                Text(participant.status, style: const TextStyle(fontSize: 11, color: AppColors.navyPrimary)),
+              ],
+            ),
+          ),
+          DropdownButton<String>(
+            value: selected,
+            hint: const Text('Update'),
+            items: statuses.map((status) => DropdownMenuItem(value: status, child: Text(status))).toList(),
+            onChanged: (status) {
+              if (status != null && status != participant.status) {
+                _updateParticipant(camp, participant, status, provider);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateParticipant(CampModel camp, CampParticipantModel participant, String status, CampProvider provider) async {
+    final success = await provider.updateParticipantStatus(
+      campId: camp.id,
+      cadetId: participant.cadetId,
+      status: status,
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Nomination updated to $status.' : (provider.errorMessage ?? 'Nomination update failed.')),
+          backgroundColor: success ? AppColors.success : AppColors.error,
+        ),
+      );
+    }
   }
 
   void _confirmNomination(CampModel camp, CampProvider provider) {
@@ -187,7 +253,7 @@ class _CampsScreenState extends State<CampsScreen> {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(success ? 'Nomination request submitted.' : 'Failed to apply for camp.'),
+                    content: Text(success ? 'Nomination request submitted.' : (provider.errorMessage ?? 'Failed to apply for camp.')),
                     backgroundColor: success ? AppColors.success : AppColors.error,
                   ),
                 );
@@ -224,4 +290,22 @@ class _CampsScreenState extends State<CampsScreen> {
       ),
     );
   }
+
+  Widget _buildLoadError(CampProvider provider) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(provider.errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: provider.fetchCamps,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
 }

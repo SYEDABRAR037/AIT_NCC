@@ -4,7 +4,9 @@ import '../../../core/services/api_service.dart';
 import '../models/camp_model.dart';
 
 class CampProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  CampProvider({ApiService? api}) : _api = api ?? ApiService();
+
+  final ApiService _api;
 
   List<CampModel> _camps = [];
   bool _isLoading = false;
@@ -42,6 +44,7 @@ class CampProvider extends ChangeNotifier {
   }
 
   Future<bool> applyForCamp(String campId) async {
+    _errorMessage = null;
     try {
       final response = await _api.post(
         ApiConstants.campApply(campId),
@@ -52,9 +55,35 @@ class CampProvider extends ChangeNotifier {
         await fetchCamps();
         return true;
       }
+      _errorMessage = response.message ?? 'Failed to apply for camp.';
       return false;
-    } catch (_) {
+    } catch (e) {
+      _errorMessage = 'Network error while applying for camp: $e';
       return false;
     }
+  }
+
+  Future<bool> updateParticipantStatus({
+    required String campId,
+    required String cadetId,
+    required String status,
+    String? remarks,
+  }) async {
+    _errorMessage = null;
+    try {
+      final response = await _api.patch(
+        '${ApiConstants.camps}/${Uri.encodeComponent(campId)}/participants/${Uri.encodeComponent(cadetId)}',
+        body: {'status': status, if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim()},
+      );
+      if (response.success) {
+        await fetchCamps();
+        return true;
+      }
+      _errorMessage = response.message ?? 'Unable to update camp nomination.';
+    } catch (e) {
+      _errorMessage = 'Unable to update camp nomination: $e';
+    }
+    notifyListeners();
+    return false;
   }
 }

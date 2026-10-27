@@ -570,6 +570,9 @@ async function runTestSuite() {
       status: 'APPROVED',
       reason: 'Medical Leave',
     });
+    // This synthetic Senior must be assigned to the cadet so the test reaches
+    // the approved-leave policy instead of correctly failing the scope guard.
+    (prisma.seniorAssignment as any).findMany = async () => [{ cadetId: 'cadet-leave-id' }];
 
     const verifyReq: any = {
       params: { sessionId: 'session-leave' },
@@ -619,6 +622,8 @@ async function runTestSuite() {
       cadetId: 'cadet-dup-id',
       status: 'PRESENT',
     });
+    // Model an authorized Senior/cadet assignment and exercise duplicate logic.
+    (prisma.seniorAssignment as any).findMany = async () => [{ cadetId: 'cadet-dup-id' }];
 
     const verifyReq: any = {
       params: { sessionId: 'session-duplicate' },

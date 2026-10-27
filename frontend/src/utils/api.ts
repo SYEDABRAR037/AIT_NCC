@@ -3,33 +3,22 @@
  * Handles base URL resolution (VITE_API_BASE_URL / Netlify proxy / Localhost Vite dev)
  * and guards against HTML doctype error pages (e.g. Netlify 404 / 500 HTML responses).
  */
+import { resolveApiBaseUrl } from './apiBaseUrl.mjs';
 
 export const getApiBaseUrl = (): string => {
-  // 1. Runtime override (e.g. set in console or settings: localStorage.setItem('ncc_api_base_url', 'https://...'))
+  // Build-time config must win so a stale browser override cannot pin old API deployments.
+  const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  let savedBase = '';
   try {
-    const savedBase = localStorage.getItem('ncc_api_base_url');
-    if (savedBase && typeof savedBase === 'string' && savedBase.trim().length > 0) {
-      return savedBase.trim().replace(/\/$/, '');
-    }
+    savedBase = localStorage.getItem('ncc_api_base_url') || '';
   } catch {}
 
-  // 2. Build-time environment variable injected by Vite / Netlify
-  const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
-    return envUrl.trim().replace(/\/$/, '');
-  }
-
-  // 3. Global window variable if injected by host HTML
-  if (typeof window !== 'undefined' && (window as any).__NCC_API_BASE_URL__) {
-    return String((window as any).__NCC_API_BASE_URL__).trim().replace(/\/$/, '');
-  }
-
-  // 4. In production deployed on Netlify, connect directly to production command server
-  if (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app')) {
-    return 'https://ait-ncc.onrender.com';
-  }
-
-  return '';
+  return resolveApiBaseUrl({
+    envUrl,
+    savedBase,
+    windowBase: typeof window !== 'undefined' ? (window as any).__NCC_API_BASE_URL__ : '',
+    hostname: typeof window !== 'undefined' ? window.location.hostname : '',
+  });
 };
 
 export const resolveApiUrl = (endpoint: string): string => {

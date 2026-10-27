@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/features/auth/providers/auth_provider.dart';
+import 'package:mobile/features/auth/models/user_model.dart';
 import 'package:mobile/features/camps/models/camp_model.dart';
 import 'package:mobile/features/camps/providers/camp_provider.dart';
 import 'package:mobile/features/camps/screens/camps_screen.dart';
@@ -158,10 +159,25 @@ void main() {
 
   group('Service Workflows Screen Widget Tests', () {
     testWidgets('LeaveScreen renders leave list and floating apply button', (WidgetTester tester) async {
+      final auth = AuthProvider();
+      auth.setSessionForDemo(
+        user: UserModel(
+          id: 'cadet-test',
+          fullName: 'Synthetic Cadet',
+          regimentalNumber: 'TEST-001',
+          email: 'cadet@example.invalid',
+          role: 'CADET',
+          status: 'ACTIVE',
+        ),
+        demoToken: 'DEMO_TEST_TOKEN',
+      );
       await tester.pumpWidget(
         MaterialApp(
-          home: ChangeNotifierProvider<LeaveProvider>(
-            create: (_) => PreloadedLeaveProvider(),
+          home: MultiProvider(
+            providers: [
+              ChangeNotifierProvider<AuthProvider>.value(value: auth),
+              ChangeNotifierProvider<LeaveProvider>(create: (_) => PreloadedLeaveProvider()),
+            ],
             child: const LeaveScreen(),
           ),
         ),

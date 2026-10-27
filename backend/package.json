@@ -4,15 +4,17 @@
   "description": "Backend service for NCC Digital Command System",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "node dist/start.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/start.ts",
     "build": "prisma generate && tsc",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node src/../prisma/seed.ts",
-    "test": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
+    "test": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/script-database-safety.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts && NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
     "test:biometric": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/biometric-security.test.ts",
     "test:isolation": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/test-isolation-regression.test.ts",
-    "test:public": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts"
+    "test:public": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/public-routes.test.ts",
+    "test:runtime-config": "NODE_ENV=test PURE_MOCK_TEST=true ts-node src/__tests__/runtime-config.test.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

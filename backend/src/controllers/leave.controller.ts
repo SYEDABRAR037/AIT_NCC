@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { notifyLeaveDecision } from '../services/notification.service';
+import { canReviewLeaveAtStage } from '../services/workflowPolicy';
 
 // 1. Cadet submits a leave application
 export const submitLeave = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -229,6 +230,8 @@ export const getLeavesForReview = async (req: AuthRequest, res: Response): Promi
 
       if (cadetIds.length > 0) {
         whereClause.cadetId = { in: cadetIds };
+      } else {
+        whereClause.cadetId = { in: [] };
       }
     } else if (req.user.role === 'PLATOON_SENIOR') {
       // Platoon Senior sees platoon cadets' leaves
@@ -238,9 +241,9 @@ export const getLeavesForReview = async (req: AuthRequest, res: Response): Promi
           select: { id: true },
         });
         const cadetIds = platoonCadets.map((c) => c.id);
-        if (cadetIds.length > 0) {
-          whereClause.cadetId = { in: cadetIds };
-        }
+        whereClause.cadetId = { in: cadetIds };
+      } else {
+        whereClause.cadetId = { in: [] };
       }
     }
     // Admin, ANO, and DI see all leaves across all platoons
@@ -314,6 +317,29 @@ export const processLeaveAction = async (req: AuthRequest, res: Response): Promi
 
     if (!leave) {
       res.status(404).json({ success: false, message: 'Leave application not found' });
+      return;
+    }
+
+    if (!canReviewLeaveAtStage(req.user.role, leave.status)) {
+      res.status(403).json({ success: false, message: 'Clearance denied: Role cannot process leave review.' });
+      return;
+    }
+
+    if (req.user.role === 'SENIOR') {
+      const assignments = await prisma.seniorAssignment.findMany({
+        where: { seniorId: req.user.id },
+        select: { cadetId: true },
+      });
+      const assigned = assignments.some((assignment) => assignment.cadetId === leave.cadetId);
+      const fallbackPlatoonScope = assignments.length === 0 &&
+        !!req.user.platoonName && leave.cadet.platoonName === req.user.platoonName;
+      if (!assigned && !fallbackPlatoonScope) {
+        res.status(403).json({ success: false, message: 'Leave is outside your assigned squad scope.' });
+        return;
+      }
+    } else if (req.user.role === 'PLATOON_SENIOR' &&
+      (!req.user.platoonName || leave.cadet.platoonName !== req.user.platoonName)) {
+      res.status(403).json({ success: false, message: 'Leave is outside your authorized platoon scope.' });
       return;
     }
 

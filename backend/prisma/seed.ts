@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createExplicitUtilityPrismaClient } from '../src/scriptPrisma';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const prisma = createExplicitUtilityPrismaClient('seed');
 
 async function main() {
   // Ensure default unit cadet wings exist in database

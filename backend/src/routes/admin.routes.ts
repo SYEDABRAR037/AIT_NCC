@@ -6,6 +6,7 @@ import {
   transferCadetPlatoon,
   assignCadetToSenior,
   assignPlatoonSenior,
+  assignDrillInstructor,
   getAdminDashboardSummary,
   getAdminLeaves,
   decideCadetLeave,
@@ -43,6 +44,7 @@ router.patch('/users/:id/status', updateUserStatus);
 router.patch('/users/:id/platoon', transferCadetPlatoon);
 router.post('/assignments/senior', assignCadetToSenior);
 router.post('/assignments/platoon-senior', assignPlatoonSenior);
+router.post('/assignments/drill-instructor', assignDrillInstructor);
 
 router.get('/leaves', getAdminLeaves);
 router.patch('/leaves/:id/decision', decideCadetLeave);

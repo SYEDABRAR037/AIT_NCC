@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeExternalUrl } from '../../utils/safeExternalUrl';
 import {
   FileText,
   Plus,
@@ -339,10 +340,10 @@ export const RequestCenterView: React.FC<RequestCenterViewProps> = ({ token: pro
                 {renderNotingSheetStepper(req)}
 
                 {/* Supporting Document Link */}
-                {req.supportingDocUrl && (
+                {safeExternalUrl(req.supportingDocUrl) && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-accent)', marginBottom: '0.75rem' }}>
                     Attachment / Supporting Document:{' '}
-                    <a href={req.supportingDocUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
+                    <a href={safeExternalUrl(req.supportingDocUrl)!} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>
                       View Uploaded Document
                     </a>
                   </div>

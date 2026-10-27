@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/leave_model.dart';
 import '../providers/leave_provider.dart';
 
@@ -27,6 +28,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<LeaveProvider>();
+    final role = context.watch<AuthProvider>().currentUser?.role;
+    final canApply = role == 'CADET' || role == 'SENIOR' || role == 'PLATOON_SENIOR';
 
     return Scaffold(
       appBar: AppBar(
@@ -38,15 +41,17 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: canApply ? FloatingActionButton.extended(
         backgroundColor: AppColors.navyPrimary,
         foregroundColor: AppColors.white,
         icon: const Icon(Icons.add),
         label: const Text('APPLY LEAVE', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.5)),
         onPressed: () => _openApplyLeaveDialog(context, provider),
-      ),
+      ) : null,
       body: provider.isLoading && provider.leaves.isEmpty
           ? const Center(child: CircularProgressIndicator(color: AppColors.navyPrimary))
+          : provider.errorMessage != null && provider.leaves.isEmpty
+              ? _buildLoadError(provider)
           : RefreshIndicator(
               onRefresh: () => provider.fetchLeaves(),
               color: AppColors.navyPrimary,
@@ -177,9 +182,17 @@ class _LeaveScreenState extends State<LeaveScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('No')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              provider.cancelLeave(leaveId);
+              final success = await provider.cancelLeave(leaveId);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'Leave request cancelled.' : (provider.errorMessage ?? 'Failed to cancel leave request.')),
+                    backgroundColor: success ? AppColors.success : AppColors.error,
+                  ),
+                );
+              }
             },
             child: const Text('Cancel Application'),
           ),
@@ -344,4 +357,22 @@ class _LeaveScreenState extends State<LeaveScreen> {
       ),
     );
   }
+
+  Widget _buildLoadError(LeaveProvider provider) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(provider.errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: provider.fetchLeaves,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
 }

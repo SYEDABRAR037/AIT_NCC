@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import '../src/testScriptBootstrap';
+import { createDisposableTestPrismaClient } from '../src/scriptPrisma';
 import bcrypt from 'bcryptjs';
 import {
   triggerPresentAttendanceNotifications,
@@ -8,7 +9,7 @@ import {
   DESIGNATED_ATTENDANCE_TEST_RECIPIENT
 } from '../src/services/attendanceNotification.service';
 
-const prisma = new PrismaClient();
+const prisma = createDisposableTestPrismaClient();
 
 async function run() {
   console.log('================================================================');

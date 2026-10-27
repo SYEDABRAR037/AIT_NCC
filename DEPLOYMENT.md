@@ -81,13 +81,13 @@ Create a `.env.production` file at the root:
 
 ```env
 # Database
-POSTGRES_USER=ncc_admin
-POSTGRES_PASSWORD=MilitaryGradeSecurePassword2026!
+POSTGRES_USER=<SET_A_UNIQUE_DATABASE_USERNAME>
+POSTGRES_PASSWORD=<SET_A_UNIQUE_RANDOM_DATABASE_PASSWORD>
 POSTGRES_DB=ncc_command_db
-DATABASE_URL=postgresql://ncc_admin:MilitaryGradeSecurePassword2026!@db:5432/ncc_command_db?schema=public
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public
 
 # Security & Sessions
-JWT_SECRET=super_secret_institutional_jwt_token_key_ait_2mah_bn_2026
+JWT_SECRET=<GENERATE_A_UNIQUE_RANDOM_SECRET_AND_STORE_OUTSIDE_GIT>
 NODE_ENV=production
 PORT=5050
 CORS_ORIGIN=https://ncc.aitpune.edu.in,http://localhost:3000
@@ -135,7 +135,7 @@ Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=5050
-Environment=DATABASE_URL=postgresql://ncc_admin:MilitarySecure2026!@localhost:5432/ncc_command_db?schema=public
+Environment=DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public
 
 [Install]
 WantedBy=multi-user.target

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeExternalUrl } from '../../utils/safeExternalUrl';
 import {
   Flag,
   MapPin,
@@ -637,7 +638,7 @@ export const CampsActivitiesView: React.FC<CampsActivitiesViewProps> = ({ userRo
               <div style={{ fontSize: '0.82rem' }}><strong>Reporting:</strong> {selectedCamp.reportingTime || '—'} · {selectedCamp.reportingVenue || selectedCamp.location}<br /><strong>Eligible:</strong> {selectedCamp.eligibleYears || 'All years'} {selectedCamp.targetPlatoon ? `· ${selectedCamp.targetPlatoon}` : ''} {selectedCamp.targetTeam ? `· ${selectedCamp.targetTeam}` : ''}</div>
               <section style={{ borderTop: '1px solid var(--white-border)', paddingTop: '0.65rem' }}>
                 <strong style={{ fontSize: '0.84rem' }}>Camp Documents</strong>
-                {(selectedCamp.documents || []).map((doc) => <div key={doc.id}><a href={doc.url} target="_blank" rel="noreferrer">{doc.title}</a></div>)}
+                {(selectedCamp.documents || []).map((doc) => <div key={doc.id}>{safeExternalUrl(doc.url) ? <a href={safeExternalUrl(doc.url)!} target="_blank" rel="noopener noreferrer">{doc.title}</a> : doc.title}</div>)}
                 {isAdmin && <form onSubmit={handleAddDocument} style={{ display: 'grid', gap: '0.4rem', marginTop: '0.5rem' }}>
                   <input required placeholder="Document title" value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} />
                   <input required type="url" placeholder="https://…" value={documentUrl} onChange={(event) => setDocumentUrl(event.target.value)} />

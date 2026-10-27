@@ -5,23 +5,25 @@ import { OtpPurpose } from '@prisma/client';
 import { prisma } from '../db';
 import { normalizePhoneNumber, sendOtpSms } from '../services/attendanceNotification.service';
 import { sendOtpEmail } from '../services/mail.service';
+import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 
 const TTL_MS = 60_000;
 const PROOF_TTL_MS = 15 * 60_000;
 const RESEND_WAIT_MS = 30_000;
-const requestBuckets = new Map<string, number[]>();
+const requestBuckets = new ProcessLocalRateLimitStore(10_000);
 const secret = () => process.env.OTP_SECRET || process.env.JWT_SECRET || '';
 const hashOtp = (id: string, otp: string) => crypto.createHmac('sha256', secret()).update(`${id}:${otp}`).digest('hex');
 const safeEqual = (a: string, b: string) => {
   const left = Buffer.from(a, 'hex'); const right = Buffer.from(b, 'hex');
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
-const limited = (req: Request, res: Response, key: string, max = 8): boolean => {
+const limited = async (req: Request, res: Response, key: string, max = 8): Promise<boolean> => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const recent = (requestBuckets.get(`${key}:${ip}`) || []).filter((time) => now - time < 10 * 60_000);
-  if (recent.length >= max) { res.status(429).json({ success: false, message: 'Too many attempts. Please try again later.' }); return true; }
-  recent.push(now); requestBuckets.set(`${key}:${ip}`, recent); return false;
+  const result = await requestBuckets.consume(`${key}:${ip}`, max, 10 * 60_000);
+  if (!result.limited) return false;
+  res.setHeader('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
+  res.status(429).json({ success: false, message: 'Too many attempts. Please try again later.' });
+  return true;
 };
 const maskEmail = (value: string) => {
   const [name, domain] = value.split('@');
@@ -52,7 +54,7 @@ const createChallenge = async (purpose: OtpPurpose, destination: string, channel
 
 export const requestRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (limited(req, res, 'reg-otp-request')) return;
+    if (await limited(req, res, 'reg-otp-request')) return;
     await prisma.otpChallenge.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60_000) } } });
     if (!secret()) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
     const channel = req.body.channel === 'mobile' ? 'mobile' : 'email';
@@ -84,7 +86,7 @@ export const requestRegistrationOtp = async (req: Request, res: Response): Promi
 
 export const resendAuthOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (limited(req, res, 'auth-otp-resend', 10)) return;
+    if (await limited(req, res, 'auth-otp-resend', 10)) return;
     const challenge = await prisma.otpChallenge.findUnique({ where: { id: String(req.body.challengeId || '') } });
     if (!challenge || challenge.consumedAt || ![OtpPurpose.LOGIN, OtpPurpose.REGISTRATION_EMAIL, OtpPurpose.REGISTRATION_MOBILE].includes(challenge.purpose)) {
       res.status(400).json({ success: false, message: 'Verification has expired. Start again.' }); return;
@@ -106,7 +108,7 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
 
 export const verifyRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (limited(req, res, 'auth-otp-verify', 30)) return;
+    if (await limited(req, res, 'auth-otp-verify', 30)) return;
     const challenge = await prisma.otpChallenge.findUnique({ where: { id: String(req.body.challengeId || '') } });
     const expectedPurpose = req.body.channel === 'mobile' ? OtpPurpose.REGISTRATION_MOBILE : OtpPurpose.REGISTRATION_EMAIL;
     if (!challenge || challenge.purpose !== expectedPurpose || challenge.consumedAt || !challenge.otpHash || challenge.expiresAt.getTime() <= Date.now()) { res.status(400).json({ success: false, message: 'This code has expired. Request a new one.' }); return; }
@@ -122,7 +124,7 @@ export const verifyRegistrationOtp = async (req: Request, res: Response): Promis
 
 export const verifyLoginOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (limited(req, res, 'login-otp-verify', 30)) return;
+    if (await limited(req, res, 'login-otp-verify', 30)) return;
     const id = String(req.body.challengeId || '');
     const challenge = await prisma.otpChallenge.findUnique({
       where: { id },
@@ -156,7 +158,9 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
     const consumed = await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null, otpHash: challenge.otpHash, expiresAt: { gt: new Date() } }, data: { otpHash: null, consumedAt: new Date() } });
     if (consumed.count !== 1) { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
     const user = challenge.user;
-    const token = jwt.sign({ userId: user.id, role: user.role, status: user.status }, jwtSecret, { expiresIn: '7d' });
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const session = await prisma.authSession.create({ data: { userId: user.id, expiresAt } });
+    const token = jwt.sign({ userId: user.id, role: user.role, status: user.status, sid: session.id }, jwtSecret, { expiresIn: '7d' });
     res.cookie('ncc_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
     res.json({ success: true, message: 'Authentication successful.', token, user: {
       id: user.id, fullName: user.fullName, regimentalNumber: user.regimentalNumber, collegeRollNumber: user.collegeRollNumber,
@@ -167,7 +171,7 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
 };
 
 export const startLoginOtp = async (req: Request, user: { id: string; fullName: string; email: string; emailVerified: boolean; phone: string | null; mobileVerified: boolean; role?: string }, res: Response): Promise<void> => {
-  if (limited(req, res, 'login-otp-request', 5)) return;
+  if (await limited(req, res, 'login-otp-request', 5)) return;
   if (!secret()) { res.status(503).json({ success: false, message: 'Login verification is temporarily unavailable.' }); return; }
   const useMobile = Boolean(user.phone && user.mobileVerified);
   // Officers provisioned by ANO may not have gone through self-registration OTP, so their

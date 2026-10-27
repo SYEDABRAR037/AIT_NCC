@@ -2,18 +2,33 @@ class CampParticipantModel {
   final String id;
   final String cadetId;
   final String status;
+  final String? cadetName;
+  final String? cadetRegimentalNumber;
+  final String? cadetPlatoon;
+  final String? remarks;
 
   CampParticipantModel({
     required this.id,
     required this.cadetId,
     required this.status,
+    this.cadetName,
+    this.cadetRegimentalNumber,
+    this.cadetPlatoon,
+    this.remarks,
   });
 
   factory CampParticipantModel.fromJson(Map<String, dynamic> json) {
+    final cadet = json['cadet'] is Map<String, dynamic>
+        ? json['cadet'] as Map<String, dynamic>
+        : const <String, dynamic>{};
     return CampParticipantModel(
       id: json['id']?.toString() ?? '',
       cadetId: json['cadetId']?.toString() ?? '',
       status: json['status']?.toString() ?? 'NOMINATED',
+      cadetName: cadet['fullName']?.toString(),
+      cadetRegimentalNumber: cadet['regimentalNumber']?.toString(),
+      cadetPlatoon: cadet['platoonName']?.toString(),
+      remarks: json['remarks']?.toString(),
     );
   }
 }

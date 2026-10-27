@@ -2,8 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { Role, AccountStatus } from '@prisma/client';
+import { isSessionActive } from '../services/sessionPolicy';
 
 export interface AuthRequest extends Request {
+  authSessionId?: string;
   user?: {
     id: string;
     fullName: string;
@@ -41,7 +43,21 @@ export const authenticateToken = async (
     }
 
     const secret = process.env.JWT_SECRET!;
-    const decoded = jwt.verify(token, secret) as { userId: string };
+    const decoded = jwt.verify(token, secret) as { userId: string; sid?: string };
+
+    // Legacy tokens without a session id remain accepted during the compatibility
+    // rollout; all newly issued tokens are checked against durable session state.
+    if (decoded.sid) {
+      const session = await prisma.authSession.findFirst({
+        where: { id: decoded.sid, userId: decoded.userId, revokedAt: null, expiresAt: { gt: new Date() } },
+        select: { id: true, userId: true, expiresAt: true, revokedAt: true },
+      });
+      if (!session || !isSessionActive(decoded, session, new Date())) {
+        res.status(401).json({ success: false, message: 'Session is no longer valid. Please sign in again.' });
+        return;
+      }
+      req.authSessionId = session.id;
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },

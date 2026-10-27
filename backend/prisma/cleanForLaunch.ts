@@ -4,9 +4,9 @@
  * the owner supplies the real identities for each retained privileged role and
  * a separately verified backup path. Never wire this file into application startup.
  */
-import { PrismaClient } from '@prisma/client';
+import { createExplicitUtilityPrismaClient } from '../src/scriptPrisma';
 
-const prisma = new PrismaClient();
+const prisma = createExplicitUtilityPrismaClient('preflight');
 
 async function preflight() {
   if (process.argv.includes('--execute')) {

@@ -42,6 +42,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     return `${localPart[0]}${'*'.repeat(Math.max(3, localPart.length - 1))}@${domain}`;
   };
 
+  const recoveryEndpoint = (action: 'request-otp' | 'resend-otp' | 'verify-otp' | 'reset-password') =>
+    `${window.location.origin}/.netlify/functions/recovery?action=${action}`;
+
   const otpErrorMessage = (message: unknown, fallback: string) => {
     const text = typeof message === 'string' ? message : '';
     if (/too many|attempt limit|maximum.*attempt/i.test(text)) {
@@ -118,7 +121,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/request-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('request-otp'), {
         method: 'POST',
         body: JSON.stringify({
           email: email.trim(),
@@ -128,15 +131,14 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
       const isSuccessful =
         ok &&
-        (data?.success === true ||
-          data?.otpSent === true ||
-          data?.nextStep === 'VERIFY_OTP' ||
-          data?.status === 'OTP_SENT' ||
-          Boolean(data?.recoveryId) ||
-          Boolean(data?.verificationId));
+        data?.success === true &&
+        data?.challengeAccepted === true &&
+        data?.nextStep === 'VERIFY_OTP' &&
+        typeof data?.recoveryId === 'string' &&
+        data.recoveryId.length > 0;
 
       if (isSuccessful) {
-        const id = data?.recoveryId || data?.verificationId || '';
+        const id = data.recoveryId;
         const masked = data?.maskedEmail || maskEmailAddress(email.trim());
         setRecoveryId(id);
         setMaskedEmail(masked);
@@ -169,28 +171,27 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/resend-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('resend-otp'), {
         method: 'POST',
         body: JSON.stringify({ recoveryId }),
       });
 
       const isSuccessful =
         ok &&
-        (data?.success === true ||
-          data?.otpSent === true ||
-          data?.nextStep === 'VERIFY_OTP' ||
-          data?.status === 'OTP_SENT' ||
-          Boolean(data?.recoveryId) ||
-          Boolean(data?.verificationId));
+        data?.success === true &&
+        data?.challengeAccepted === true &&
+        data?.nextStep === 'VERIFY_OTP' &&
+        typeof data?.recoveryId === 'string' &&
+        data.recoveryId.length > 0;
 
       if (isSuccessful) {
-        const id = data?.recoveryId || data?.verificationId || recoveryId;
+        const id = data.recoveryId;
         const masked = data?.maskedEmail || maskedEmail;
         setRecoveryId(id);
         setMaskedEmail(masked);
         applyServerExpiry(data);
         setResendCooldown(45);
-        setSuccessNotice('A fresh verification code is on its way.');
+        setSuccessNotice('If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.');
         return true;
       } else {
         setErrorMsg(otpErrorMessage(data?.message, 'Unable to resend the verification code. Please try again.'));
@@ -218,7 +219,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/verify-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('verify-otp'), {
         method: 'POST',
         body: JSON.stringify({
           recoveryId,
@@ -268,7 +269,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/reset-password', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('reset-password'), {
         method: 'POST',
         body: JSON.stringify({
           resetToken,
@@ -518,6 +519,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {step === 'OTP' && (
             <OTPVerification
               destination={maskedEmail}
+              instruction="If the details match an eligible account and delivery is available, a 6-digit code will be sent to the registered email address."
               expiresInSeconds={timerSeconds}
               verifyDisabled={timerSeconds <= 0}
               onVerify={handleVerifyOtp}

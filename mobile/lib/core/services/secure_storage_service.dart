@@ -17,60 +17,44 @@ class SecureStorageService {
 
   // Save auth JWT
   Future<void> saveToken(String token) async {
-    try {
-      await _secureStorage.write(key: _keyToken, value: token);
-    } catch (_) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyToken, token);
-    }
+    // Authentication tokens must never fall back to plaintext preferences.
+    await _secureStorage.write(key: _keyToken, value: token);
   }
 
   // Retrieve auth JWT
   Future<String?> getToken() async {
-    try {
-      final token = await _secureStorage.read(key: _keyToken);
-      if (token != null && token.isNotEmpty) return token;
-    } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken);
+    final token = await _secureStorage.read(key: _keyToken);
+    return token != null && token.isNotEmpty ? token : null;
   }
 
   // Delete auth JWT
   Future<void> deleteToken() async {
+    // Remove any credentials written by the former insecure SharedPreferences fallback.
     try {
-      await _secureStorage.delete(key: _keyToken);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyToken);
     } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
+    await _secureStorage.delete(key: _keyToken);
   }
 
   // Save serialized User JSON
   Future<void> saveUserJson(String userJson) async {
-    try {
-      await _secureStorage.write(key: _keyUserJson, value: userJson);
-    } catch (_) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyUserJson, userJson);
-    }
+    await _secureStorage.write(key: _keyUserJson, value: userJson);
   }
 
   // Get serialized User JSON
   Future<String?> getUserJson() async {
-    try {
-      final json = await _secureStorage.read(key: _keyUserJson);
-      if (json != null && json.isNotEmpty) return json;
-    } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyUserJson);
+    final json = await _secureStorage.read(key: _keyUserJson);
+    return json != null && json.isNotEmpty ? json : null;
   }
 
   // Delete serialized User JSON
   Future<void> deleteUserJson() async {
     try {
-      await _secureStorage.delete(key: _keyUserJson);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyUserJson);
     } catch (_) {}
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyUserJson);
+    await _secureStorage.delete(key: _keyUserJson);
   }
 
   // Clear all credentials

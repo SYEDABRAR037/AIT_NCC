@@ -84,6 +84,9 @@ model User {
   notificationPreferences NotificationPreferences?
   pushSubscriptions   WebPushSubscription[]
   notificationReads  NotificationRead[]
+  authSessions       AuthSession[]
+  drillInstructorAssignments DrillInstructorAssignment[]
+  recoveryChallenges RecoveryChallenge[]
 
   @@index([role])
   @@index([status])
@@ -166,6 +169,19 @@ model PlatoonSeniorAssignment {
   @@unique([platoonSeniorId, platoonId])
 }
 
+model DrillInstructorAssignment {
+  id                    String   @id @default(uuid())
+  drillInstructorId     String
+  platoonId             String
+  assignedAt            DateTime @default(now())
+
+  drillInstructor User    @relation(fields: [drillInstructorId], references: [id], onDelete: Cascade)
+  platoon         Platoon @relation(fields: [platoonId], references: [id], onDelete: Cascade)
+
+  @@unique([drillInstructorId, platoonId])
+  @@index([platoonId])
+}
+
 model Platoon {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -173,6 +189,42 @@ model Platoon {
   createdAt   DateTime @default(now())
 
   platoonSeniors PlatoonSeniorAssignment[]
+  drillInstructors DrillInstructorAssignment[]
+}
+
+model AuthSession {
+  id        String    @id @default(uuid())
+  userId    String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model RecoveryChallenge {
+  id             String    @id @default(uuid())
+  userId         String?
+  lookupHash     String
+  otpHash        String
+  expiresAt      DateTime
+  attemptCount   Int       @default(0)
+  sendCount      Int       @default(1)
+  lastSentAt     DateTime  @default(now())
+  deliveryStatus String    @default("QUEUED")
+  verifiedAt     DateTime?
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([lookupHash, createdAt])
+  @@index([expiresAt])
 }
 
 model Notice {
