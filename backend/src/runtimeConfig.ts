@@ -4,7 +4,9 @@ export interface RuntimeConfig {
 
 /** Validate required runtime settings without logging their values. */
 export function validateRuntimeConfig(env: Readonly<Record<string, string | undefined>>): RuntimeConfig {
-  if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) {
+  const jwtSecret = env.JWT_SECRET || '';
+  const isPlaceholderSecret = /[<>]|placeholder|replace[_ -]?|generate[_ -]?|set[_ -]?me|your[_ -]/i.test(jwtSecret);
+  if (jwtSecret.length < 32 || isPlaceholderSecret) {
     throw new Error('JWT_SECRET must be configured with at least 32 characters before the API can start.');
   }
 

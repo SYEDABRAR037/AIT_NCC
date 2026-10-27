@@ -13,6 +13,8 @@ assert.deepStrictEqual(validateRuntimeConfig({ ...valid, PORT: undefined }), { p
 assert.throws(() => validateRuntimeConfig({ ...valid, DATABASE_URL: undefined }), /DATABASE_URL/);
 assert.throws(() => validateRuntimeConfig({ ...valid, DATABASE_URL: 'https://example.invalid/db' }), /PostgreSQL/);
 assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: 'short' }), /JWT_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: '<GENERATE_A_UNIQUE_RANDOM_SECRET>' }), /JWT_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: 'replace_with_a_random_secret_at_least_32_characters' }), /JWT_SECRET/);
 assert.throws(() => validateRuntimeConfig({ ...valid, PORT: '65536' }), /PORT/);
 
 void (async () => {
