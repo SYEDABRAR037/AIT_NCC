@@ -29,6 +29,12 @@ backups/
 */backups/
 *.dump
 *.sql.gz
+*.db
+*.sqlite
+*.sqlite3
+*.backup
+*.bak
+*.tar.gz
 
 # IDE & Editor configs
 .vscode/

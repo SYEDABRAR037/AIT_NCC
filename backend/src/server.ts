@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import publicRoutes from './routes/public.routes';
 import authRoutes from './routes/auth.routes';
@@ -26,18 +25,12 @@ import searchRoutes from './routes/search.routes';
 import digitalIdRoutes from './routes/digitalId.routes';
 import digitalIdPublicRoutes from './routes/digitalIdPublic.routes';
 import { processNotificationDeliveries } from './services/notificationDelivery.service';
-
-// Integration runs set an explicit disposable environment and must not inherit
-// credentials or service settings from the developer's .env file.
-if (process.env.PRISMA_DONT_LOAD_DOTENV !== '1') {
-  dotenv.config();
-}
+import { prisma } from './db';
+import { validateRuntimeConfig } from './runtimeConfig';
+import { checkReadiness } from './health';
 
 const app = express();
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
-  throw new Error('JWT_SECRET must be configured with at least 32 characters before the API can start.');
-}
-const PORT = process.env.PORT || 5050;
+const { port: PORT } = validateRuntimeConfig(process.env);
 
 // Security & Middleware
 app.use(helmet());
@@ -79,6 +72,13 @@ app.get('/api/health', (_req: Request, res: Response) => {
       : {}),
     timestamp: new Date().toISOString(),
   });
+});
+
+// Readiness check for preview hosts: unlike liveness, this verifies the DB path.
+// Errors are intentionally generic so infrastructure details are not exposed.
+app.get('/api/health/ready', async (_req: Request, res: Response) => {
+  const result = await checkReadiness(() => prisma.$queryRaw`SELECT 1`);
+  res.status(result.statusCode).json(result.body);
 });
 
 // API Routes
