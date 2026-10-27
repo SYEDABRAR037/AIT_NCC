@@ -178,7 +178,7 @@ Official Account Recovery System`;
       },
       body: JSON.stringify({
         success: false,
-        error: err?.message || 'Email dispatch failed via relay',
+        message: 'Email dispatch failed via relay.',
       }),
     };
   }

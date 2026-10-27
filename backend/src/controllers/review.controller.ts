@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role, AccountStatus } from '@prisma/client';
+import { resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
+import { reviewerCanAccessCadet } from '../services/reviewerScope';
 
 // 1. Get Pending Cadet Registrations (Phase 2 & Phase 3)
 // Visible to SENIOR, PLATOON_SENIOR, and ADMIN_ANO
@@ -17,6 +19,14 @@ export const getPendingApplications = async (req: AuthRequest, res: Response): P
       role: 'CADET',
       status: req.user.role === 'ADMIN_ANO' ? 'ANO_REVIEW' : { in: ['UNDER_REVIEW', 'HOLD', 'RETURNED'] },
     };
+
+    if (req.user.role === 'SENIOR') {
+      const assignments = await prisma.seniorAssignment.findMany({ where: { seniorId: req.user.id }, select: { cadetId: true } });
+      whereClause.id = { in: assignments.map(({ cadetId }) => cadetId) };
+    } else if (req.user.role === 'PLATOON_SENIOR') {
+      const platoons = await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
+      whereClause.platoonName = { in: platoons };
+    }
 
     const pending = await prisma.user.findMany({
       where: whereClause,
@@ -72,10 +82,14 @@ export const getPendingApplications = async (req: AuthRequest, res: Response): P
 // 2. Get Application History & Full Profile (Phase 2 Full Profile Visibility)
 export const getApplicationDetails = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (!req.user) {
+      res.status(401).json({ success: false, message: 'Authentication required' });
+      return;
+    }
     const { cadetId } = req.params;
 
     const cadet = await prisma.user.findUnique({
-      where: { id: String(cadetId) },
+      where: { id: String(cadetId), role: Role.CADET },
       select: {
         id: true,
         fullName: true,
@@ -114,6 +128,23 @@ export const getApplicationDetails = async (req: AuthRequest, res: Response): Pr
 
     if (!cadet) {
       res.status(404).json({ success: false, message: 'Cadet application record not found' });
+      return;
+    }
+
+    const seniorAssignments = req.user.role === 'SENIOR'
+      ? (await prisma.seniorAssignment.findMany({ where: { seniorId: req.user.id }, select: { cadetId: true } })).map(({ cadetId: assignedId }) => assignedId)
+      : [];
+    const authorizedPlatoons = req.user.role === 'PLATOON_SENIOR'
+      ? await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName)
+      : [];
+    if (!reviewerCanAccessCadet({
+      role: req.user.role,
+      cadetId: cadet.id,
+      seniorAssignments,
+      cadetPlatoon: cadet.platoonName,
+      authorizedPlatoons,
+    })) {
+      res.status(403).json({ success: false, message: 'Cadet application is outside your authorized review scope.' });
       return;
     }
 
@@ -178,6 +209,25 @@ export const processReviewAction = async (req: AuthRequest, res: Response): Prom
 
       if (!cadet) {
         throw { statusCode: 404, message: 'Cadet application not found' };
+      }
+      if (cadet.role !== Role.CADET) {
+        throw { statusCode: 404, message: 'Cadet application not found' };
+      }
+
+      const seniorAssignments = reviewerRole === 'SENIOR'
+        ? (await tx.seniorAssignment.findMany({ where: { seniorId: req.user!.id }, select: { cadetId: true } })).map(({ cadetId: assignedId }) => assignedId)
+        : [];
+      const authorizedPlatoons = reviewerRole === 'PLATOON_SENIOR'
+        ? await resolvePlatoonSeniorScope(req.user!.id, req.user!.platoonName, tx)
+        : [];
+      if (!reviewerCanAccessCadet({
+        role: reviewerRole,
+        cadetId: cadet.id,
+        seniorAssignments,
+        cadetPlatoon: cadet.platoonName,
+        authorizedPlatoons,
+      })) {
+        throw { statusCode: 403, message: 'Cadet application is outside your authorized review scope.' };
       }
 
       // Check if registration was already finalized

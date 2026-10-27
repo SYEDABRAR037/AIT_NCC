@@ -338,6 +338,36 @@ export const assignPlatoonSenior = async (req: AuthRequest, res: Response): Prom
   }
 };
 
+export const assignDrillInstructor = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { drillInstructorId, platoonId } = req.body;
+    if (!drillInstructorId || !platoonId) {
+      res.status(400).json({ success: false, message: 'drillInstructorId and platoonId are required.' });
+      return;
+    }
+    const officer = await prisma.user.findUnique({ where: { id: String(drillInstructorId) }, select: { id: true, role: true } });
+    if (!officer || officer.role !== 'DRILL_INSTRUCTOR') {
+      res.status(400).json({ success: false, message: 'The assigned account must have DRILL_INSTRUCTOR role.' });
+      return;
+    }
+    const platoon = await prisma.platoon.findUnique({ where: { id: String(platoonId) }, select: { id: true, name: true } });
+    if (!platoon) {
+      res.status(400).json({ success: false, message: 'The selected platoon does not exist.' });
+      return;
+    }
+    const assignment = await prisma.drillInstructorAssignment.upsert({
+      where: { drillInstructorId_platoonId: { drillInstructorId: officer.id, platoonId: platoon.id } },
+      update: {},
+      create: { drillInstructorId: officer.id, platoonId: platoon.id },
+      include: { platoon: { select: { id: true, name: true } }, drillInstructor: { select: { id: true, fullName: true, regimentalNumber: true } } },
+    });
+    res.json({ success: true, message: `${assignment.drillInstructor.fullName} assigned to ${assignment.platoon.name}.`, assignment });
+  } catch (error) {
+    console.error('assignDrillInstructor error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign Drill Instructor.' });
+  }
+};
+
 // 7. ANO / Admin Command Center Dashboard Summary (Zero Analytics / Zero Reports)
 export const getAdminDashboardSummary = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {

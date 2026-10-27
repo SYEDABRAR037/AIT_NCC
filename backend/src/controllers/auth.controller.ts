@@ -1,10 +1,31 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { OtpPurpose } from '@prisma/client';
 import { startLoginOtp } from './otpAuth.controller';
 import { normalizePhoneNumber } from '../services/attendanceNotification.service';
+import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
+import { revokePresentedSession } from '../services/sessionPolicy';
+
+const failedLoginAttempts = new ProcessLocalRateLimitStore(20_000);
+const LOGIN_FAILURE_LIMIT = 10;
+const LOGIN_FAILURE_WINDOW_MS = 15 * 60_000;
+
+const loginIdentifierKey = (identifier: string): string =>
+  `login:identifier:${crypto.createHash('sha256').update(identifier.toLowerCase()).digest('hex')}`;
+
+const rejectThrottledLogin = async (res: Response, key: string): Promise<boolean> => {
+  // Atomically reserve a credential attempt before password verification. A shared
+  // adapter must implement consume as one atomic check-and-increment operation.
+  const result = await failedLoginAttempts.consume(key, LOGIN_FAILURE_LIMIT, LOGIN_FAILURE_WINDOW_MS);
+  if (!result.limited) return false;
+  res.setHeader('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
+  res.status(429).json({ success: false, message: 'Too many unsuccessful sign-in attempts. Please try again later.' });
+  return true;
+};
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -195,18 +216,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const identifier = req.body.identifier || req.body.email;
+    const identifier = req.body.identifier ?? req.body.email;
     const password = req.body.password;
 
-    if (!identifier || !password) {
+    if (typeof identifier !== 'string' || typeof password !== 'string' || !identifier.trim() || !password || identifier.length > 256 || password.length > 1024) {
       res.status(400).json({
         success: false,
-        message: 'Please provide regimental number or email, and password.',
+        message: 'Provide a valid regimental number or email and password.',
       });
       return;
     }
 
     const cleanIdentifier = identifier.trim();
+    const identifierKey = loginIdentifierKey(cleanIdentifier);
+    if (await rejectThrottledLogin(res, identifierKey)) return;
 
     // Query user by email, regimental number, or roll number with case-insensitivity (Phase 7)
     const user = await prisma.user.findFirst({
@@ -244,6 +267,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    const accountKey = `login:account:${user.id}`;
+    if (await rejectThrottledLogin(res, accountKey)) return;
+
     // Verify Password Hash
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
@@ -253,6 +279,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+
+    await failedLoginAttempts.clear(identifierKey);
+    await failedLoginAttempts.clear(accountKey);
 
     if (user.role === 'CADET') {
       // Cadets must use regimental number as the login identifier
@@ -344,7 +373,26 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
   }
 };
 
-export const logout = async (_req: Request, res: Response): Promise<void> => {
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  const authHeader = req.headers.authorization;
+  const tokens = [
+    authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined,
+    req.cookies?.ncc_token,
+  ].filter((token): token is string => Boolean(token));
+  if (process.env.JWT_SECRET) {
+    const revoked = new Set<string>();
+    for (const token of tokens) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId?: string; sid?: string };
+        if (decoded.sid && decoded.userId && !revoked.has(decoded.sid)) {
+          await revokePresentedSession(prisma.authSession, decoded);
+          revoked.add(decoded.sid);
+        }
+      } catch {
+        // Logout remains idempotent for expired or malformed tokens; the client still clears local state.
+      }
+    }
+  }
   res.clearCookie('ncc_token');
   res.json({
     success: true,

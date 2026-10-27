@@ -186,7 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     const apiBase = getApiBaseUrl();
     try {
-      await fetch(`${apiBase}/api/auth/logout`, { method: 'POST' });
+      await fetch(`${apiBase}/api/auth/logout`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
     } catch (err) {
       console.warn('Logout fallback:', err);
     } finally {

@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
+import { escapeHtml } from '../utils/html';
 
 interface SendOtpEmailParams {
   recipientEmail: string;
@@ -151,13 +152,13 @@ NCC Digital Command & Cadet Management System`;
       <p>NCC AIT Pune Verification</p>
     </div>
     <div class="body">
-      <div class="salutation">Dear ${cadetName || 'Cadet'},</div>
+      <div class="salutation">Dear ${escapeHtml(cadetName || 'Cadet')},</div>
       <div class="intro">
-        Your NCC ${action} OTP is:
+        Your NCC ${escapeHtml(action)} OTP is:
       </div>
       <div class="otp-box">
         <div class="otp-label">One-Time Password</div>
-        <div class="otp-code">${otp}</div>
+        <div class="otp-code">${escapeHtml(otp)}</div>
         <div class="validity">Valid for 60 seconds only</div>
       </div>
       <div class="notice">
@@ -217,8 +218,7 @@ NCC Digital Command & Cadet Management System`;
           return { success: true, messageId: data.messageId };
         }
       } else {
-        const errText = await resp.text().catch(() => '');
-        console.warn(`[MAIL SERVICE] Relay returned status ${resp.status} (${errText}). Falling back to direct SMTP...`);
+        console.warn(`[MAIL SERVICE] Relay returned status ${resp.status}. Falling back to direct SMTP...`);
       }
     } catch (relayErr: any) {
       console.warn('[MAIL SERVICE] HTTPS Relay failed or timed out:', relayErr?.message || relayErr);

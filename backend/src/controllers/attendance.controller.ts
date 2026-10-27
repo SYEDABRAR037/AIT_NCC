@@ -2,6 +2,9 @@ import { Response } from 'express';
 import { randomBytes } from 'crypto';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
+import { resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
+import { attendanceCadetInScope } from '../services/attendanceScope';
+import { assignedDrillPlatoonNames, drillInstructorCanAccessTarget } from '../services/drillInstructorScope';
 import {
   triggerPresentAttendanceNotifications,
   triggerAbsentAttendanceNotifications,
@@ -42,31 +45,57 @@ setInterval(() => {
 
 // ---------------------------------------------------------------------------
 // Helper: Resolve the set of cadet IDs that the calling officer may manage.
-// - ADMIN_ANO / PLATOON_SENIOR: all active cadets (no restriction).
-// - SENIOR: cadets explicitly assigned via SeniorAssignment; if none exist
-//   yet, falls back to ALL active cadets so sessions are immediately usable.
+// - ADMIN_ANO: all active cadets.
+// - DRILL_INSTRUCTOR: cadets only in explicit DrillInstructorAssignment platoons.
+// - PLATOON_SENIOR: cadets in the authenticated officer's assigned platoons.
+// - SENIOR: cadets explicitly assigned via SeniorAssignment.
 // ---------------------------------------------------------------------------
 async function getAuthorizedCadetIds(
   role: string,
   userId: string
 ): Promise<string[] | null> {
-  // null means "no restriction — return all active cadets"
-  if (role === 'ADMIN_ANO' || role === 'PLATOON_SENIOR' || role === 'DRILL_INSTRUCTOR') return null;
+  // null means "no restriction — return all active cadets" and is reserved for ANO/Admin.
+  if (role === 'ADMIN_ANO') return null;
+
+  if (role === 'DRILL_INSTRUCTOR') {
+    const assignments = await prisma.drillInstructorAssignment.findMany({
+      where: { drillInstructorId: userId },
+      select: { platoon: { select: { name: true } } },
+    });
+    const assignedNames = assignedDrillPlatoonNames(assignments);
+    if (assignedNames.length === 0) return [];
+    const cadets = await prisma.user.findMany({
+      where: { role: 'CADET', platoonName: { in: assignedNames } },
+      select: { id: true },
+    });
+    return cadets.map(({ id }) => id);
+  }
+
+  if (role === 'PLATOON_SENIOR') {
+    const officer = await prisma.user.findUnique({ where: { id: userId }, select: { platoonName: true } });
+    const platoons = await resolvePlatoonSeniorScope(userId, officer?.platoonName);
+    const cadets = await prisma.user.findMany({ where: { role: 'CADET', platoonName: { in: platoons } }, select: { id: true } });
+    return cadets.map(({ id }) => id);
+  }
 
   if (role === 'SENIOR') {
     const assignments = await prisma.seniorAssignment.findMany({
       where: { seniorId: userId },
       select: { cadetId: true },
     });
-    if (assignments.length > 0) {
-      return assignments.map((a) => a.cadetId);
-    }
-    // No explicit assignments yet — fall back to all active cadets so the
-    // Senior can operate without an empty scope.
-    return null;
+    return assignments.map((a) => a.cadetId);
   }
 
-  return null;
+  return [];
+}
+
+async function drillInstructorMayAccessTarget(role: string, userId: string, targetPlatoon?: string | null): Promise<boolean> {
+  if (role !== 'DRILL_INSTRUCTOR') return true;
+  const assignments = await prisma.drillInstructorAssignment.findMany({
+    where: { drillInstructorId: userId },
+    select: { platoon: { select: { name: true } } },
+  });
+  return drillInstructorCanAccessTarget(assignedDrillPlatoonNames(assignments), targetPlatoon);
 }
 
 async function getEligibleCadetsForMuster(role: string, userId: string, targetPlatoon: string, date: Date) {
@@ -83,10 +112,8 @@ async function getEligibleCadetsForMuster(role: string, userId: string, targetPl
   if (targetPlatoon && !['All Cadets', 'Unit Contingent'].includes(targetPlatoon)) {
     whereClause.platoonName = targetPlatoon;
   }
-  if (role === 'SENIOR') {
-    const authorizedIds = await getAuthorizedCadetIds(role, userId);
-    if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
-  }
+  const authorizedIds = await getAuthorizedCadetIds(role, userId);
+  if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
 
   return prisma.user.findMany({
     where: whereClause,
@@ -110,7 +137,16 @@ export const previewAttendanceEligibility = async (req: AuthRequest, res: Respon
       res.status(400).json({ success: false, message: 'Select a valid parade date.' });
       return;
     }
-    const cadets = await getEligibleCadetsForMuster(req.user.role, req.user.id, String(targetPlatoon || 'Unit Contingent'), sessionDate);
+    let effectivePlatoon = String(targetPlatoon || (req.user.role === 'PLATOON_SENIOR' ? req.user.platoonName : 'Unit Contingent'));
+    if (req.user.role === 'PLATOON_SENIOR') {
+      const platoons = await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
+      if (!targetPlatoon) effectivePlatoon = req.user.platoonName || platoons[0] || '';
+      if (!platoons.includes(effectivePlatoon)) {
+        res.status(403).json({ success: false, message: 'Target platoon is outside your authorized scope.' });
+        return;
+      }
+    }
+    const cadets = await getEligibleCadetsForMuster(req.user.role, req.user.id, effectivePlatoon, sessionDate);
     res.json({ success: true, expectedCount: cadets.length });
   } catch (error) {
     console.error('previewAttendanceEligibility error:', error);
@@ -143,8 +179,17 @@ export const createAttendanceSession = async (req: AuthRequest, res: Response): 
     }
 
     const sessionDate = date ? new Date(date) : new Date();
-    const effectivePlatoon = targetPlatoon || 'Unit Contingent';
+    let effectivePlatoon = String(targetPlatoon || (req.user.role === 'PLATOON_SENIOR' ? req.user.platoonName : 'Unit Contingent'));
     const effectiveTitle = title ? String(title).trim() : `${activity} — Parade Muster`;
+
+    if (req.user.role === 'PLATOON_SENIOR') {
+      const platoons = await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
+      if (!targetPlatoon) effectivePlatoon = req.user.platoonName || platoons[0] || '';
+      if (!platoons.includes(effectivePlatoon)) {
+        res.status(403).json({ success: false, message: 'Target platoon is outside your authorized scope.' });
+        return;
+      }
+    }
 
     // Recalculate from authenticated role and current database state; never accept a client count.
     const eligibleCadets = await getEligibleCadetsForMuster(req.user.role, req.user.id, effectivePlatoon, sessionDate);
@@ -200,8 +245,16 @@ export const getAttendanceSessions = async (req: AuthRequest, res: Response): Pr
     }
 
     const whereClause: any = {};
-    // Senior can see all sessions in the unit (not just their own)
-    // so that they can pick up and operate any session.
+    const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+    if (authorizedIds !== null) {
+      const authorizedCadets = await prisma.user.findMany({ where: { id: { in: authorizedIds } }, select: { platoonName: true } });
+      const targetPlatoons = [...new Set(authorizedCadets.map((cadet) => cadet.platoonName))];
+      whereClause.OR = [
+        { conductedBy: req.user.id },
+        ...(targetPlatoons.length ? [{ targetPlatoon: { in: targetPlatoons } }] : []),
+        ...(authorizedIds.length ? [{ attendance: { some: { cadetId: { in: authorizedIds } } } }] : []),
+      ];
+    }
 
     const sessions = await prisma.trainingSession.findMany({
       where: whereClause,
@@ -223,13 +276,17 @@ export const getAttendanceSessions = async (req: AuthRequest, res: Response): Pr
     res.json({
       success: true,
       count: sessions.length,
-      sessions: sessions.map((s) => ({
-        ...s,
-        presentCount: s.attendance.filter((a) => a.status === 'PRESENT').length,
-        absentCount: s.attendance.filter((a) => a.status === 'ABSENT').length,
-        excusedCount: s.attendance.filter((a) => a.status === 'EXCUSED').length,
-        totalEnrolled: s._count.attendance,
-      })),
+      sessions: sessions.map((s) => {
+        const attendance = authorizedIds === null ? s.attendance : s.attendance.filter((record) => authorizedIds.includes(record.cadetId));
+        return {
+          ...s,
+          attendance,
+          presentCount: attendance.filter((a) => a.status === 'PRESENT').length,
+          absentCount: attendance.filter((a) => a.status === 'ABSENT').length,
+          excusedCount: attendance.filter((a) => a.status === 'EXCUSED').length,
+          totalEnrolled: attendance.length,
+        };
+      }),
     });
   } catch (error) {
     console.error('getAttendanceSessions error:', error);
@@ -269,6 +326,16 @@ export const getSessionAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    if (!(await drillInstructorMayAccessTarget(req.user!.role, req.user!.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
+    const authorizedIds = await getAuthorizedCadetIds(req.user!.role, req.user!.id);
+    if (authorizedIds !== null) {
+      session.attendance = session.attendance.filter((record) => authorizedIds.includes(record.cadetId));
+    }
+
     res.json({ success: true, session });
   } catch (error) {
     console.error('getSessionAttendance error:', error);
@@ -301,11 +368,16 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
     // 1. Session Existence & Closed Session Validation
     const session = await prisma.trainingSession.findUnique({
       where: { id: String(sessionId) },
-      select: { id: true, title: true, activity: true, date: true, status: true, expectedCount: true },
+      select: { id: true, title: true, activity: true, date: true, status: true, expectedCount: true, targetPlatoon: true },
     });
 
     if (!session) {
       res.status(404).json({ success: false, message: 'Attendance session not found.' });
+      return;
+    }
+
+    if (!(await drillInstructorMayAccessTarget(req.user.role, req.user.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
       return;
     }
 
@@ -333,9 +405,9 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
     }
 
     // 3. Senior Mentor Squad Scope Authorization
-    if (req.user.role === 'SENIOR') {
+    {
       const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
-      if (authorizedIds !== null && !authorizedIds.includes(eligibleCadet.id)) {
+      if (!attendanceCadetInScope(authorizedIds, eligibleCadet.id)) {
         res.status(403).json({
           success: false,
           code: 'NOT_ELIGIBLE',
@@ -629,7 +701,7 @@ export const bulkImportAttendance = async (req: AuthRequest, res: Response): Pro
 
     const { sessionId, records } = req.body;
 
-    if (!sessionId || !Array.isArray(records) || records.length === 0) {
+    if (!sessionId || !Array.isArray(records) || records.length === 0 || records.length > 500) {
       res.status(400).json({ success: false, message: 'Session ID and valid records list are required' });
       return;
     }
@@ -639,16 +711,29 @@ export const bulkImportAttendance = async (req: AuthRequest, res: Response): Pro
       res.status(404).json({ success: false, message: 'Parade training session not found' });
       return;
     }
+    if (session.status === 'CLOSED') {
+      res.status(409).json({ success: false, message: 'Attendance session is closed.' });
+      return;
+    }
+
+    const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+    const seenCadetIds = new Set<string>();
 
     let successCount = 0;
     const errors: string[] = [];
 
     for (const item of records) {
+      if (!item || typeof item !== 'object') {
+        errors.push('A record is malformed.');
+        continue;
+      }
       const identifier = item.regimentalNumber || item.collegeRollNumber || item.identifier;
       if (!identifier) continue;
 
       const cadet = await prisma.user.findFirst({
         where: {
+          role: 'CADET',
+          status: { in: ['APPROVED', 'ACTIVE'] },
           OR: [
             { regimentalNumber: { equals: String(identifier).trim(), mode: 'insensitive' } },
             { collegeRollNumber: { equals: String(identifier).trim(), mode: 'insensitive' } },
@@ -657,12 +742,38 @@ export const bulkImportAttendance = async (req: AuthRequest, res: Response): Pro
       });
 
       if (!cadet) {
-        errors.push(`Cadet with identifier "${identifier}" not found`);
+        errors.push('A cadet record was not found or is not active.');
         continue;
       }
 
+      if (!attendanceCadetInScope(authorizedIds, cadet.id)) {
+        errors.push('A cadet is outside your authorized attendance scope.');
+        continue;
+      }
+      if (seenCadetIds.has(cadet.id)) {
+        errors.push('Duplicate cadet in the import was skipped.');
+        continue;
+      }
+      seenCadetIds.add(cadet.id);
+
       const rawStatus = String(item.status || 'PRESENT').toUpperCase();
-      const status = ['PRESENT', 'ABSENT', 'EXCUSED'].includes(rawStatus) ? rawStatus : 'PRESENT';
+      if (!['PRESENT', 'ABSENT', 'EXCUSED'].includes(rawStatus)) {
+        errors.push('An attendance status is invalid.');
+        continue;
+      }
+      const status = rawStatus;
+
+      if (status === 'PRESENT') {
+        const dayStart = new Date(session.date);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const dayEnd = new Date(session.date);
+        dayEnd.setUTCHours(23, 59, 59, 999);
+        const leave = await prisma.leave.findFirst({ where: { cadetId: cadet.id, status: 'APPROVED', startDate: { lte: dayEnd }, endDate: { gte: dayStart } }, select: { id: true } });
+        if (leave) {
+          errors.push('A cadet on approved leave cannot be marked present.');
+          continue;
+        }
+      }
 
       await prisma.trainingAttendance.upsert({
         where: {
@@ -740,11 +851,16 @@ export const issueVerificationChallenge = async (req: AuthRequest, res: Response
 
     const session = await prisma.trainingSession.findUnique({
       where: { id: String(sessionId) },
-      select: { id: true, status: true },
+      select: { id: true, status: true, targetPlatoon: true },
     });
 
     if (!session) {
       res.status(404).json({ success: false, message: 'Attendance session not found.' });
+      return;
+    }
+
+    if (!(await drillInstructorMayAccessTarget(req.user.role, req.user.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
       return;
     }
 
@@ -911,6 +1027,11 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    if (!(await drillInstructorMayAccessTarget(req.user.role, req.user.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
     if (session.status === 'CLOSED') {
       res.status(400).json({
         success: false,
@@ -998,11 +1119,9 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
 
     // All approved active cadets in the unit are eligible for live attendance
 
-    if (req.user.role === 'SENIOR') {
-      // If explicit assignments exist, enforce scope. Otherwise allow all cadets
-      // (graceful fallback when no SeniorAssignment rows have been seeded yet).
+    {
       const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
-      if (authorizedIds !== null && !authorizedIds.includes(matchedCadet.id)) {
+      if (!attendanceCadetInScope(authorizedIds, matchedCadet.id)) {
         res.status(403).json({
           success: false,
           code: 'NOT_ELIGIBLE',
@@ -1222,6 +1341,16 @@ export const endAttendanceSession = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    if (!(await drillInstructorMayAccessTarget(req.user!.role, req.user!.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
+    if (req.user.role !== 'ADMIN_ANO' && session.conductedBy !== req.user.id) {
+      res.status(403).json({ success: false, message: 'Only the session creator or an administrator may close this session.' });
+      return;
+    }
+
     const endTime = new Date().toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
@@ -1407,7 +1536,16 @@ export const getSessionAbsentList = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const absentRecords = session.attendance.filter(
+    if (!(await drillInstructorMayAccessTarget(req.user!.role, req.user!.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
+    const authorizedIds = await getAuthorizedCadetIds(req.user!.role, req.user!.id);
+    const visibleAttendance = authorizedIds === null
+      ? session.attendance
+      : session.attendance.filter((record) => authorizedIds.includes(record.cadetId));
+    const absentRecords = visibleAttendance.filter(
       (a) => a.status === 'ABSENT' || a.status === 'EXCUSED'
     );
 
@@ -1463,6 +1601,16 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       return;
     }
 
+    if (cadet.role !== 'CADET' || !['APPROVED', 'ACTIVE'].includes(cadet.status)) {
+      res.status(400).json({ success: false, message: 'Only approved, active cadet accounts can be enrolled.' });
+      return;
+    }
+    const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+    if (!attendanceCadetInScope(authorizedIds, cadet.id)) {
+      res.status(403).json({ success: false, message: 'Cadet is outside your authorized enrollment scope.' });
+      return;
+    }
+
     const template = await prisma.biometricTemplate.upsert({
       where: { cadetId: cadet.id },
       create: {
@@ -1501,6 +1649,8 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
 export const getBiometricEnrollmentRoster = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const whereClause: any = { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } };
+    const authorizedIds = await getAuthorizedCadetIds(req.user!.role, req.user!.id);
+    if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
 
     const cadets = await prisma.user.findMany({
       where: whereClause,
@@ -1571,13 +1721,17 @@ export const getEligibleBiometrics = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
+    if (!(await drillInstructorMayAccessTarget(req.user.role, req.user.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
     const whereClause: any = { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } };
 
-    if (req.user.role === 'SENIOR') {
-      const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
-      if (authorizedIds !== null) {
-        whereClause.id = { in: authorizedIds };
-      }
+    const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+    if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
+    if (session.targetPlatoon && !['All Cadets', 'Unit Contingent'].includes(session.targetPlatoon)) {
+      whereClause.platoonName = session.targetPlatoon;
     }
 
     const cadets = await prisma.user.findMany({
@@ -1664,7 +1818,7 @@ export const getSessionLiveStats = async (req: AuthRequest, res: Response): Prom
 
     const session = await prisma.trainingSession.findUnique({
       where: { id: String(sessionId) },
-      select: { id: true, expectedCount: true, presentCount: true, status: true },
+      select: { id: true, expectedCount: true, presentCount: true, status: true, targetPlatoon: true, date: true },
     });
 
     if (!session) {
@@ -1672,13 +1826,21 @@ export const getSessionLiveStats = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    if (!(await drillInstructorMayAccessTarget(req.user.role, req.user.id, session.targetPlatoon))) {
+      res.status(403).json({ success: false, message: 'Attendance session is outside your assigned platoon scope.' });
+      return;
+    }
+
     // Always re-count from attendance records — DB is the single source of truth
+    const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
     const livePresent = await prisma.trainingAttendance.count({
-      where: { sessionId: session.id, status: 'PRESENT' },
+      where: { sessionId: session.id, status: 'PRESENT', ...(authorizedIds === null ? {} : { cadetId: { in: authorizedIds } }) },
     });
 
-    let liveExpected = session.expectedCount;
-    if (liveExpected === 0) {
+    let liveExpected = authorizedIds === null
+      ? session.expectedCount
+      : (await getEligibleCadetsForMuster(req.user.role, req.user.id, session.targetPlatoon || 'Unit Contingent', session.date)).length;
+    if (authorizedIds === null && liveExpected === 0) {
       const activeCadetCount = await prisma.user.count({
         where: { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } },
       });

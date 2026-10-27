@@ -42,6 +42,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     return `${localPart[0]}${'*'.repeat(Math.max(3, localPart.length - 1))}@${domain}`;
   };
 
+  const recoveryEndpoint = (action: 'request-otp' | 'resend-otp' | 'verify-otp' | 'reset-password') =>
+    `${window.location.origin}/.netlify/functions/recovery?action=${action}`;
+
   const otpErrorMessage = (message: unknown, fallback: string) => {
     const text = typeof message === 'string' ? message : '';
     if (/too many|attempt limit|maximum.*attempt/i.test(text)) {
@@ -118,7 +121,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/request-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('request-otp'), {
         method: 'POST',
         body: JSON.stringify({
           email: email.trim(),
@@ -168,7 +171,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/resend-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('resend-otp'), {
         method: 'POST',
         body: JSON.stringify({ recoveryId }),
       });
@@ -188,7 +191,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
         setMaskedEmail(masked);
         applyServerExpiry(data);
         setResendCooldown(45);
-        setSuccessNotice('The mail service accepted the new verification code for dispatch.');
+        setSuccessNotice('If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.');
         return true;
       } else {
         setErrorMsg(otpErrorMessage(data?.message, 'Unable to resend the verification code. Please try again.'));
@@ -216,7 +219,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/verify-otp', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('verify-otp'), {
         method: 'POST',
         body: JSON.stringify({
           recoveryId,
@@ -266,7 +269,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     setLoading(true);
 
     try {
-      const { ok, data } = await safeApiFetch('/api/auth/recovery/reset-password', {
+      const { ok, data } = await safeApiFetch(recoveryEndpoint('reset-password'), {
         method: 'POST',
         body: JSON.stringify({
           resetToken,
@@ -516,6 +519,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
           {step === 'OTP' && (
             <OTPVerification
               destination={maskedEmail}
+              instruction="If the details match an eligible account and delivery is available, a 6-digit code will be sent to the registered email address."
               expiresInSeconds={timerSeconds}
               verifyDisabled={timerSeconds <= 0}
               onVerify={handleVerifyOtp}

@@ -3,6 +3,7 @@ import { prisma } from '../db';
 import { canTransitionInquiryStatusAtStage } from '../services/workflowPolicy';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
+import { normalizeHttpUrl } from '../services/httpUrl';
 
 // Generate unique Request Number: REQ-2026-XXXX
 const generateRequestNumber = async (): Promise<string> => {
@@ -42,6 +43,14 @@ export const submitRequest = async (req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    const normalizedSupportingDocUrl = supportingDocUrl == null || supportingDocUrl === ''
+      ? null
+      : normalizeHttpUrl(supportingDocUrl);
+    if (supportingDocUrl != null && supportingDocUrl !== '' && !normalizedSupportingDocUrl) {
+      res.status(400).json({ success: false, message: 'Supporting document must be a valid HTTP or HTTPS URL.' });
+      return;
+    }
+
     const requestNumber = await generateRequestNumber();
 
     // Determine initial reviewer role
@@ -63,7 +72,7 @@ export const submitRequest = async (req: AuthRequest, res: Response): Promise<vo
           priority: priority || 'NORMAL',
           status: 'SUBMITTED',
           currentReviewerRole: initialReviewerRole,
-          supportingDocUrl: supportingDocUrl ? String(supportingDocUrl).trim() : null,
+          supportingDocUrl: normalizedSupportingDocUrl,
           metadata: metadata ? JSON.stringify(metadata) : null,
         },
       });
@@ -884,14 +893,17 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
         },
       });
 
-      await tx.request.update({
-        where: { id: inquiry.id },
+      const claimed = await tx.request.updateMany({
+        where: { id: inquiry.id, status: inquiry.status, updatedAt: inquiry.updatedAt },
         data: {
           status: nextStatus,
           currentReviewerId: isCadet ? inquiry.currentReviewerId : req.user!.id,
           updatedAt: new Date(),
         },
       });
+      if (claimed.count !== 1) {
+        throw Object.assign(new Error('Inquiry changed concurrently. Refresh the thread and try again.'), { statusCode: 409 });
+      }
 
       await tx.requestHistoryRecord.create({
         data: {
@@ -963,7 +975,8 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
 
   } catch (error) {
     console.error('replyToInquiry error:', error);
-    res.status(500).json({ success: false, message: 'Failed to record reply' });
+    const statusCode = (error as { statusCode?: number })?.statusCode || 500;
+    res.status(statusCode).json({ success: false, message: statusCode === 409 ? 'Inquiry changed concurrently. Refresh the thread and try again.' : 'Failed to record reply' });
   }
 };
 
@@ -1039,8 +1052,14 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const u = await tx.request.update({
-        where: { id: inquiry.id },
+      const claimed = await tx.request.updateMany({
+        where: {
+          id: inquiry.id,
+          status: inquiry.status,
+          currentReviewerRole: inquiry.currentReviewerRole,
+          currentReviewerId: inquiry.currentReviewerId,
+          updatedAt: inquiry.updatedAt,
+        },
         data: {
           status,
           currentReviewerRole: nextReviewerRole,
@@ -1048,6 +1067,10 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
           updatedAt: new Date(),
         },
       });
+      if (claimed.count !== 1) {
+        throw Object.assign(new Error('Inquiry changed concurrently. Refresh the thread and try again.'), { statusCode: 409 });
+      }
+      const u = await tx.request.findUnique({ where: { id: inquiry.id } });
 
       await tx.requestHistoryRecord.create({
         data: {
@@ -1090,6 +1113,7 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
     });
   } catch (error) {
     console.error('updateInquiryStatus error:', error);
-    res.status(500).json({ success: false, message: 'Failed to update inquiry status' });
+    const statusCode = (error as { statusCode?: number })?.statusCode || 500;
+    res.status(statusCode).json({ success: false, message: statusCode === 409 ? 'Inquiry changed concurrently. Refresh the thread and try again.' : 'Failed to update inquiry status' });
   }
 };

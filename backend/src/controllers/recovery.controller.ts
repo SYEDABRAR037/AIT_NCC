@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../db';
-import { sendOtpEmail } from '../services/mail.service';
+import { recoveryOtpDispatcher } from '../services/recoveryOtpDispatcher';
+import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 
 const maskEmail = (email: string): string => {
   const parts = email.split('@');
@@ -16,38 +17,22 @@ const maskEmail = (email: string): string => {
 };
 
 const OTP_TTL_MS = 60_000;
-const requestLimits = new Map<string, number[]>();
-const isRateLimited = (key: string, max: number, windowMs: number): boolean => {
-  const now = Date.now();
-  const recent = (requestLimits.get(key) || []).filter((time) => now - time < windowMs);
-  if (recent.length >= max) {
-    requestLimits.set(key, recent);
-    return true;
-  }
-  recent.push(now);
-  requestLimits.set(key, recent);
-  return false;
+const requestLimits = new ProcessLocalRateLimitStore(10_000);
+const isRateLimited = async (key: string, max: number, windowMs: number): Promise<boolean> => {
+  return (await requestLimits.consume(key, max, windowMs)).limited;
 };
 
-const rateLimitRequest = (req: Request, res: Response, bucket: string, max: number, windowMs: number): boolean => {
+const rateLimitRequest = async (req: Request, res: Response, bucket: string, max: number, windowMs: number): Promise<boolean> => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  if (!isRateLimited(`${bucket}:${ip}`, max, windowMs)) return false;
+  if (!(await isRateLimited(`${bucket}:${ip}`, max, windowMs))) return false;
   res.status(429).json({ success: false, message: 'Please wait before trying again.' });
   return true;
-};
-
-const respondWithNeutralRecoveryNotice = (res: Response): void => {
-  res.json({
-    success: false,
-    challengeAccepted: false,
-    message: 'If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.',
-  });
 };
 
 // 1. Request Password Reset OTP (Phase 8, 9, 10, 11, 12, 13)
 export const requestPasswordResetOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (rateLimitRequest(req, res, 'request', 10, 10 * 60_000)) return;
+    if (await rateLimitRequest(req, res, 'request', 10, 10 * 60_000)) return;
     const { email, regimentalNumber } = req.body;
 
     if (!email || !regimentalNumber) {
@@ -61,13 +46,6 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanRegimental = String(regimentalNumber).trim().toUpperCase();
 
-    console.log('[RECOVERY] RECOVERY_REQUEST_RECEIVED:', {
-      email: maskEmail(cleanEmail),
-    });
-
-    console.log('[RECOVERY] IDENTIFIER_VERIFICATION_STARTED');
-
-    // Verify account: Both email and regimental number must match the same user account
     const user = await prisma.user.findFirst({
       where: {
         AND: [
@@ -83,119 +61,54 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
       },
     });
 
-    if (!user) {
-      respondWithNeutralRecoveryNotice(res);
-      return;
-    }
-
-    console.log('[RECOVERY] IDENTIFIER_VERIFICATION_COMPLETED:', { userId: user.id });
-
-    // Cooldown check: prevent rapid spamming (Phase 26)
-    const recentRequest = await prisma.passwordReset.findFirst({
+    const lookupHash = crypto.createHash('sha256').update(`${cleanEmail}\0${cleanRegimental}`).digest('hex');
+    const recentRequest = await prisma.recoveryChallenge.findFirst({
       where: {
-        userId: user.id,
+        lookupHash,
         createdAt: { gte: new Date(Date.now() - 45 * 1000) },
       },
       orderBy: { createdAt: 'desc' },
     });
-
-    if (recentRequest) {
-      respondWithNeutralRecoveryNotice(res);
-      return;
-    }
-
-    // Generate cryptographically secure 6-digit OTP (Phase 10)
-    if (isRateLimited(`account:${user.id}`, 5, 60 * 60_000)) {
-      respondWithNeutralRecoveryNotice(res);
-      return;
-    }
-    const recentCount = await prisma.passwordReset.count({
-      where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 60 * 60_000) } },
+    const recentCount = await prisma.recoveryChallenge.count({
+      where: { lookupHash, createdAt: { gte: new Date(Date.now() - 60 * 60_000) } },
     });
-    if (recentCount >= 5) {
-      respondWithNeutralRecoveryNotice(res);
-      return;
-    }
-
+    const accountLimited = recentCount >= 5 || Boolean(recentRequest) ||
+      (user ? await isRateLimited(`account:${user.id}`, 5, 60 * 60_000) : false);
     const otpNumber = crypto.randomInt(100000, 1000000).toString();
     const otpHash = await bcrypt.hash(otpNumber, 10);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-    // Invalidate existing unused OTP records for this user (Phase 10)
-    await prisma.passwordReset.updateMany({
-      where: {
-        userId: user.id,
-        usedAt: null,
-      },
+    const now = new Date();
+    const challenge = await prisma.recoveryChallenge.create({
       data: {
-        usedAt: new Date(),
-      },
-    });
-
-    // Create persistent PasswordReset record
-    const resetRecord = await prisma.passwordReset.create({
-      data: {
-        userId: user.id,
+        userId: user && !accountLimited ? user.id : null,
+        lookupHash,
         otpHash,
         expiresAt,
         attemptCount: 0,
-        lastResendAt: new Date(),
+        lastSentAt: now,
+        deliveryStatus: user && !accountLimited ? 'QUEUED' : 'SUPPRESSED',
       },
     });
-    console.log('[RECOVERY] OTP_RECORD_SAVED:', { recoveryId: resetRecord.id });
-
-    // Send official OTP email (Phase 3, 7, 8, 9, 11, 12, 13)
-    const emailResult = await sendOtpEmail({
-      recipientEmail: user.email,
-      cadetName: user.fullName,
-      otp: otpNumber,
-    });
-
-    if (!emailResult.success) {
-      console.warn('[RECOVERY] RECOVERY_ERROR: Email provider delivery failed. Rolling back OTP record.');
-      // Phase 9: DO NOT SHOW FALSE SUCCESS. If provider fails, delete OTP record and return error
-      await prisma.passwordReset.delete({
-        where: { id: resetRecord.id },
-      }).catch(() => {});
-
-      res.status(503).json({
-        success: false,
-        errorType: 'EMAIL_DISPATCH_FAILED',
-        message: 'The email service could not dispatch your verification code. Please verify your connection or try again in a few moments.',
-      });
-      return;
+    // Send after the same generic response for known, unknown, cooldown, and provider-error cases.
+    // The challenge row records eventual provider outcome without exposing it to the requester.
+    if (user && !accountLimited) {
+      void recoveryOtpDispatcher.dispatch({ recipientEmail: user.email, cadetName: user.fullName, otp: otpNumber })
+        .then(async (sent) => {
+          await prisma.recoveryChallenge.updateMany({ where: { id: challenge.id, userId: user.id }, data: { deliveryStatus: sent ? 'SENT' : 'FAILED' } });
+          if (sent) await prisma.auditLog.create({ data: { actorId: user.id, actorName: user.fullName || user.email, action: 'PASSWORD_RECOVERY_INITIATED', targetType: 'PASSWORD_RECOVERY', targetId: challenge.id } }).catch(() => {});
+        })
+        .catch(() => prisma.recoveryChallenge.updateMany({ where: { id: challenge.id, userId: user.id }, data: { deliveryStatus: 'FAILED' } }).catch(() => {}));
     }
-
-    const issuedAt = new Date();
-    const actualExpiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
-    await prisma.passwordReset.update({ where: { id: resetRecord.id }, data: { expiresAt: actualExpiresAt, lastResendAt: issuedAt } });
-
-    // Audit Log (Phase 27)
-    await prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        actorName: user.fullName || user.email,
-        action: 'PASSWORD_RECOVERY_INITIATED',
-        targetType: 'PASSWORD_RECOVERY',
-        targetId: resetRecord.id,
-        details: JSON.stringify({
-          email: maskEmail(user.email),
-          expiresAt: actualExpiresAt,
-        }),
-      },
-    });
-
-    console.log('[RECOVERY] RECOVERY_RESPONSE_SENT:', { recoveryId: resetRecord.id });
     res.json({
       success: true,
       challengeAccepted: true,
       nextStep: 'VERIFY_OTP',
-      message: 'If the details match an account, a code was sent to its registered email address.',
-      recoveryId: resetRecord.id,
-      verificationId: resetRecord.id,
-      maskedEmail: maskEmail(user.email),
-      expiresAt: actualExpiresAt.toISOString(),
-      serverNow: issuedAt.toISOString(),
+      message: 'If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.',
+      recoveryId: challenge.id,
+      verificationId: challenge.id,
+      maskedEmail: maskEmail(cleanEmail),
+      expiresAt: expiresAt.toISOString(),
+      serverNow: now.toISOString(),
     });
   } catch (error: any) {
     console.error('[RECOVERY] RECOVERY_ERROR:', error?.message || error);
@@ -209,118 +122,38 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
 // 2. Resend Password Reset OTP (Phase 17)
 export const resendPasswordResetOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (rateLimitRequest(req, res, 'resend', 10, 10 * 60_000)) return;
-    const { recoveryId } = req.body;
-
-    if (!recoveryId) {
-      res.status(400).json({ success: false, message: 'Recovery session ID required.' });
-      return;
-    }
-
-    const previousReset = await prisma.passwordReset.findUnique({
-      where: { id: String(recoveryId) },
+    if (await rateLimitRequest(req, res, 'resend', 10, 10 * 60_000)) return;
+    const previous = await prisma.recoveryChallenge.findUnique({
+      where: { id: String(req.body.recoveryId || '') },
       include: { user: true },
     });
-
-    if (!previousReset || !previousReset.user) {
+    if (!previous || previous.usedAt || previous.verifiedAt || previous.expiresAt <= new Date()) {
       res.status(400).json({ success: false, message: 'This recovery request cannot be continued. Please request a new code.' });
       return;
     }
-
-    // Cooldown check (Phase 17: 30-60 seconds cooldown)
-    const cooldownMs = 45 * 1000;
-    const timeSinceLast = Date.now() - new Date(previousReset.lastResendAt).getTime();
-    if (timeSinceLast < cooldownMs) {
-      res.status(429).json({
-        success: false,
-        message: 'Please wait 45 seconds before requesting a new code.',
-      });
-      return;
-    }
-    const issuedLastHour = await prisma.passwordReset.count({
-      where: { userId: previousReset.userId, createdAt: { gte: new Date(Date.now() - 60 * 60_000) } },
-    });
-    if (issuedLastHour >= 5) {
+    if (Date.now() - previous.lastSentAt.getTime() < 45_000 || previous.sendCount >= 5) {
       res.status(429).json({ success: false, message: 'Please wait before requesting another code.' });
       return;
     }
-    if (isRateLimited(`resend-account:${previousReset.userId}`, 5, 60 * 60_000)) {
+    if (await isRateLimited(`resend-challenge:${previous.lookupHash}`, 5, 60 * 60_000)) {
       res.status(429).json({ success: false, message: 'Please wait 45 seconds before requesting a new code.' });
       return;
     }
-
-    // Invalidate old OTP (Phase 17)
-    await prisma.passwordReset.update({
-      where: { id: previousReset.id },
-      data: { usedAt: new Date() },
-    });
-
-    // Generate new OTP
     const otpNumber = crypto.randomInt(100000, 1000000).toString();
     const otpHash = await bcrypt.hash(otpNumber, 10);
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-    const newResetRecord = await prisma.passwordReset.create({
-      data: {
-        userId: previousReset.userId,
-        otpHash,
-        expiresAt,
-        attemptCount: 0,
-        lastResendAt: new Date(),
-      },
-    });
-
-    // Send new OTP email
-    const emailResult = await sendOtpEmail({
-      recipientEmail: previousReset.user.email,
-      cadetName: previousReset.user.fullName,
-      otp: otpNumber,
-    });
-
-    if (!emailResult.success) {
-      console.warn('[RECOVERY] Resend OTP email delivery failed. Aborting recovery update.');
-      await prisma.passwordReset.delete({
-        where: { id: newResetRecord.id },
-      }).catch(() => {});
-
-      res.status(503).json({
-        success: false,
-        errorType: 'EMAIL_DISPATCH_FAILED',
-        message: 'The email service could not dispatch your verification code. Please verify your connection or try again in a few moments.',
-      });
-      return;
-    }
-
     const issuedAt = new Date();
-    const actualExpiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
-    await prisma.passwordReset.update({ where: { id: newResetRecord.id }, data: { expiresAt: actualExpiresAt, lastResendAt: issuedAt } });
-
-    // Audit Log
-    await prisma.auditLog.create({
-      data: {
-        actorId: previousReset.userId,
-        actorName: previousReset.user.fullName || previousReset.user.email,
-        action: 'PASSWORD_RECOVERY_OTP_RESENT',
-        targetType: 'PASSWORD_RECOVERY',
-        targetId: newResetRecord.id,
-        details: JSON.stringify({
-          previousRecoveryId: previousReset.id,
-          expiresAt: actualExpiresAt,
-        }),
-      },
+    const expiresAt = new Date(issuedAt.getTime() + OTP_TTL_MS);
+    const updated = await prisma.recoveryChallenge.updateMany({
+      where: { id: previous.id, usedAt: null, verifiedAt: null, sendCount: { lt: 5 }, lastSentAt: previous.lastSentAt },
+      data: { otpHash, expiresAt, attemptCount: 0, sendCount: { increment: 1 }, lastSentAt: issuedAt, deliveryStatus: previous.userId ? 'QUEUED' : 'SUPPRESSED' },
     });
-
-    res.json({
-      success: true,
-      challengeAccepted: true,
-      nextStep: 'VERIFY_OTP',
-      message: 'If the details match an account, a code was sent to its registered email address.',
-      recoveryId: newResetRecord.id,
-      verificationId: newResetRecord.id,
-      maskedEmail: maskEmail(previousReset.user.email),
-      expiresAt: actualExpiresAt.toISOString(),
-      serverNow: issuedAt.toISOString(),
-    });
+    if (updated.count !== 1) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
+    if (previous.userId && previous.user) {
+      void recoveryOtpDispatcher.dispatch({ recipientEmail: previous.user.email, cadetName: previous.user.fullName, otp: otpNumber })
+        .then((sent) => prisma.recoveryChallenge.updateMany({ where: { id: previous.id, userId: previous.userId }, data: { deliveryStatus: sent ? 'SENT' : 'FAILED' } }))
+        .catch(() => prisma.recoveryChallenge.updateMany({ where: { id: previous.id, userId: previous.userId }, data: { deliveryStatus: 'FAILED' } }));
+    }
+    res.json({ success: true, challengeAccepted: true, nextStep: 'VERIFY_OTP', message: 'If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.', recoveryId: previous.id, verificationId: previous.id, maskedEmail: 'your registered email', expiresAt: expiresAt.toISOString(), serverNow: issuedAt.toISOString() });
   } catch (error) {
     console.error('resendPasswordResetOtp error:', error);
     res.status(500).json({ success: false, message: 'Failed to resend verification OTP.' });
@@ -330,7 +163,7 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
 // 3. Verify OTP (Phase 14, 15, 16)
 export const verifyPasswordResetOtp = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (rateLimitRequest(req, res, 'verify', 30, 10 * 60_000)) return;
+    if (await rateLimitRequest(req, res, 'verify', 30, 10 * 60_000)) return;
     const { recoveryId, otp } = req.body;
 
     if (!recoveryId || !otp) {
@@ -341,12 +174,12 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
       return;
     }
 
-    const resetRecord = await prisma.passwordReset.findUnique({
+    const resetRecord = await prisma.recoveryChallenge.findUnique({
       where: { id: String(recoveryId) },
       include: { user: true },
     });
 
-    if (!resetRecord || !resetRecord.user) {
+    if (!resetRecord) {
       res.status(400).json({
         success: false,
         message: 'Invalid or expired OTP. Please request a new one.',
@@ -365,26 +198,26 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
 
     // Check expiration (Phase 15)
     if (Date.now() >= new Date(resetRecord.expiresAt).getTime()) {
-      await prisma.passwordReset.update({
+      await prisma.recoveryChallenge.update({
         where: { id: resetRecord.id },
         data: { usedAt: new Date() },
       });
       res.status(400).json({
         success: false,
-        message: 'The verification OTP has expired. Please request a new one.',
+        message: 'Invalid or expired OTP. Please request a new one.',
       });
       return;
     }
 
     // Check Brute-Force Attempt Limit: max 5 attempts (Phase 16)
     if (resetRecord.attemptCount >= 5) {
-      await prisma.passwordReset.update({
+      await prisma.recoveryChallenge.update({
         where: { id: resetRecord.id },
         data: { usedAt: new Date() },
       });
-      res.status(429).json({
+      res.status(400).json({
         success: false,
-        message: 'Too many incorrect attempts. Please request a new OTP.',
+        message: 'Invalid or expired OTP. Please request a new one.',
       });
       return;
     }
@@ -394,39 +227,44 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
     const isOtpValid = /^\d{6}$/.test(cleanOtp) && await bcrypt.compare(cleanOtp, resetRecord.otpHash);
 
     if (!isOtpValid) {
-      await prisma.passwordReset.updateMany({
+      await prisma.recoveryChallenge.updateMany({
         where: { id: resetRecord.id, usedAt: null, attemptCount: { lt: 5 } },
         data: { attemptCount: { increment: 1 } },
       });
-      const updatedRecord = await prisma.passwordReset.findUnique({ where: { id: resetRecord.id } });
+      const updatedRecord = await prisma.recoveryChallenge.findUnique({ where: { id: resetRecord.id } });
       const updatedAttempts = updatedRecord?.attemptCount ?? 5;
 
       if (updatedAttempts >= 5) {
-        await prisma.passwordReset.updateMany({ where: { id: resetRecord.id, usedAt: null }, data: { usedAt: new Date() } });
-        res.status(429).json({
+        await prisma.recoveryChallenge.updateMany({ where: { id: resetRecord.id, usedAt: null }, data: { usedAt: new Date() } });
+        res.status(400).json({
           success: false,
-          message: 'Too many incorrect attempts. Please request a new OTP.',
+          message: 'Invalid or expired OTP. Please request a new one.',
         });
         return;
       }
 
-      const remainingAttempts = 5 - updatedAttempts;
+      void updatedAttempts;
       res.status(400).json({
         success: false,
-        message: `Invalid OTP. Please check the code and try again. (${remainingAttempts} attempt${remainingAttempts === 1 ? '' : 's'} remaining)`,
+        message: 'Invalid or expired OTP. Please request a new one.',
       });
+      return;
+    }
+
+    if (!resetRecord.userId || !resetRecord.user) {
+      res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please request a new one.' });
       return;
     }
 
     // Mark as verified
     const verifiedAt = new Date();
     const verified = await prisma.$transaction(async (tx) => {
-      const result = await tx.passwordReset.updateMany({
-        where: { id: resetRecord.id, usedAt: null, verifiedAt: null, expiresAt: { gt: verifiedAt } },
+      const result = await tx.recoveryChallenge.updateMany({
+        where: { id: resetRecord.id, userId: resetRecord.userId, usedAt: null, verifiedAt: null, attemptCount: { lt: 5 }, expiresAt: { gt: verifiedAt } },
         data: { verifiedAt },
       });
       if (result.count === 1) {
-        await tx.user.update({ where: { id: resetRecord.userId }, data: { emailVerified: true } });
+        await tx.user.update({ where: { id: resetRecord.userId! }, data: { emailVerified: true } });
       }
       return result;
     });
@@ -439,7 +277,7 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
     const secret = process.env.JWT_SECRET!;
     const resetToken = jwt.sign(
       {
-        userId: resetRecord.userId,
+        userId: resetRecord.userId!,
         recoveryId: resetRecord.id,
         purpose: 'PASSWORD_RESET',
       },
@@ -450,7 +288,7 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
     // Audit Log
     await prisma.auditLog.create({
       data: {
-        actorId: resetRecord.userId,
+        actorId: resetRecord.userId!,
         actorName: resetRecord.user.fullName || resetRecord.user.email,
         action: 'PASSWORD_RECOVERY_OTP_VERIFIED',
         targetType: 'PASSWORD_RECOVERY',
@@ -475,7 +313,7 @@ export const verifyPasswordResetOtp = async (req: Request, res: Response): Promi
 // 4. Reset Password (Phase 18, 19, 20, 21)
 export const resetPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (rateLimitRequest(req, res, 'reset', 10, 10 * 60_000)) return;
+    if (await rateLimitRequest(req, res, 'reset', 10, 10 * 60_000)) return;
     const { resetToken, newPassword, confirmPassword } = req.body;
 
     if (!resetToken || !newPassword || !confirmPassword) {
@@ -521,18 +359,20 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
     }
 
     // Verify that the recovery record was verified and not yet used
-    const resetRecord = await prisma.passwordReset.findUnique({
+    const resetRecord = await prisma.recoveryChallenge.findUnique({
       where: { id: decoded.recoveryId },
       include: { user: true },
     });
 
-    if (!resetRecord || resetRecord.userId !== decoded.userId || !resetRecord.verifiedAt || resetRecord.usedAt) {
+    if (!resetRecord || !resetRecord.user || !resetRecord.userId || resetRecord.userId !== decoded.userId || !resetRecord.verifiedAt || resetRecord.usedAt) {
       res.status(400).json({
         success: false,
         message: 'This recovery session has already been concluded or is invalid.',
       });
       return;
     }
+    const recoveryUserId = resetRecord.userId;
+    const recoveryUser = resetRecord.user;
 
     // Hash the new password securely (Phase 3 & 18)
     const salt = await bcrypt.genSalt(10);
@@ -540,7 +380,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
     // Atomic transaction: update password, invalidate recovery records (Phases 18, 20, 21)
     await prisma.$transaction(async (tx) => {
-      const claimed = await tx.passwordReset.updateMany({
+      const claimed = await tx.recoveryChallenge.updateMany({
         where: { id: resetRecord.id, userId: decoded.userId, verifiedAt: { not: null }, usedAt: null },
         data: { usedAt: new Date() },
       });
@@ -548,15 +388,15 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
 
       // 1. Update ONLY passwordHash — all profile, role, status, attendance, and assignment fields are preserved
       await tx.user.update({
-        where: { id: resetRecord.userId },
+        where: { id: recoveryUserId },
         data: { passwordHash: newPasswordHash },
       });
 
       // 2. Mark this reset record as used
       // 3. Invalidate any other active recovery records for this user
-      await tx.passwordReset.updateMany({
+      await tx.recoveryChallenge.updateMany({
         where: {
-          userId: resetRecord.userId,
+          userId: recoveryUserId,
           usedAt: null,
         },
         data: { usedAt: new Date() },
@@ -565,11 +405,11 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       // 4. Record Audit Log (Phase 27)
       await tx.auditLog.create({
         data: {
-          actorId: resetRecord.userId,
-          actorName: resetRecord.user.fullName || resetRecord.user.email,
+          actorId: recoveryUserId,
+          actorName: recoveryUser.fullName || recoveryUser.email,
           action: 'PASSWORD_RESET_COMPLETED',
           targetType: 'USER_ACCOUNT',
-          targetId: resetRecord.userId,
+          targetId: recoveryUserId,
           details: JSON.stringify({
             recoveryId: resetRecord.id,
             completedAt: new Date(),
