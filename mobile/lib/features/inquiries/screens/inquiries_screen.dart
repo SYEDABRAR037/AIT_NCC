@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/inquiry_model.dart';
 import '../providers/inquiry_provider.dart';
+import 'inquiry_thread_screen.dart';
 
 class InquiriesScreen extends StatefulWidget {
   const InquiriesScreen({super.key});
@@ -47,6 +48,24 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
       ),
       body: provider.isLoading && provider.inquiries.isEmpty
           ? const Center(child: CircularProgressIndicator(color: AppColors.navyPrimary))
+          : provider.errorMessage != null && provider.inquiries.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(provider.errorMessage!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: provider.fetchInquiries,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
           : RefreshIndicator(
               onRefresh: () => provider.fetchInquiries(),
               color: AppColors.navyPrimary,
@@ -132,7 +151,7 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Type: ${inquiry.requestType.replaceAll('_', ' ')}',
+                  'Priority: ${inquiry.priority}',
                   style: const TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                 ),
                 Text(
@@ -149,6 +168,27 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
                 style: const TextStyle(fontSize: 11, color: AppColors.navyPrimary, fontWeight: FontWeight.w700),
               ),
             ],
+            if (inquiry.cadetName != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                '${inquiry.cadetName}${inquiry.cadetRegimentalNumber == null ? '' : ' • ${inquiry.cadetRegimentalNumber}'}',
+                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InquiryThreadScreen(inquiryId: inquiry.id),
+                  ),
+                ),
+                icon: const Icon(Icons.forum_outlined, size: 18),
+                label: Text('Conversation (${inquiry.replyCount})'),
+              ),
+            ),
           ],
         ),
       ),
@@ -156,7 +196,6 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
   }
 
   void _openNewInquiryDialog(BuildContext context, InquiryProvider provider) {
-    String selectedType = 'OTHER';
     String priority = 'NORMAL';
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -175,7 +214,8 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
             right: 20,
             bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
           ),
-          child: Column(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -185,24 +225,9 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
               ),
               const SizedBox(height: 14),
 
-              DropdownButtonFormField<String>(
-                initialValue: selectedType,
-                decoration: const InputDecoration(labelText: 'Inquiry Category'),
-                items: const [
-                  DropdownMenuItem(value: 'DOCUMENT_REQUEST', child: Text('Document Request')),
-                  DropdownMenuItem(value: 'PROFILE_CORRECTION', child: Text('Profile Correction')),
-                  DropdownMenuItem(value: 'CERTIFICATE_VERIFICATION', child: Text('Certificate Verification')),
-                  DropdownMenuItem(value: 'DUTY_RELATED', child: Text('Duty Related Query')),
-                  DropdownMenuItem(value: 'OTHER', child: Text('General Operational Query')),
-                ],
-                onChanged: (val) {
-                  if (val != null) setModalState(() => selectedType = val);
-                },
-              ),
-              const SizedBox(height: 12),
-
               TextField(
                 controller: titleController,
+                maxLength: 200,
                 decoration: const InputDecoration(
                   labelText: 'Subject / Title',
                   hintText: 'e.g. Roll number correction on digital record',
@@ -210,9 +235,24 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
               ),
               const SizedBox(height: 12),
 
+              DropdownButtonFormField<String>(
+                initialValue: priority,
+                decoration: const InputDecoration(labelText: 'Priority'),
+                items: const [
+                  DropdownMenuItem(value: 'NORMAL', child: Text('Normal')),
+                  DropdownMenuItem(value: 'HIGH', child: Text('High')),
+                  DropdownMenuItem(value: 'URGENT', child: Text('Urgent')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setModalState(() => priority = value);
+                },
+              ),
+              const SizedBox(height: 12),
+
               TextField(
                 controller: descriptionController,
                 maxLines: 3,
+                maxLength: 5000,
                 decoration: const InputDecoration(
                   labelText: 'Details / Justification',
                   hintText: 'Explain the nature of your request with particulars...',
@@ -225,15 +265,14 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
                   final title = titleController.text.trim();
                   final desc = descriptionController.text.trim();
                   final messenger = ScaffoldMessenger.of(context);
-                  if (title.isEmpty || desc.isEmpty) {
+                  if (title.length < 3 || desc.length < 5) {
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Please fill in title and description.'), backgroundColor: AppColors.error),
+                      const SnackBar(content: Text('Subject must be at least 3 characters and details at least 5.'), backgroundColor: AppColors.error),
                     );
                     return;
                   }
                   Navigator.pop(ctx);
                   final success = await provider.submitInquiry(
-                    requestType: selectedType,
                     title: title,
                     description: desc,
                     priority: priority,
@@ -241,7 +280,7 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
                   if (mounted) {
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(success ? 'Inquiry submitted successfully.' : 'Failed to submit inquiry.'),
+                        content: Text(success ? 'Inquiry submitted successfully.' : (provider.errorMessage ?? 'Failed to submit inquiry.')),
                         backgroundColor: success ? AppColors.success : AppColors.error,
                       ),
                     );
@@ -250,6 +289,7 @@ class _InquiriesScreenState extends State<InquiriesScreen> {
                 child: const Text('SUBMIT TO COMMAND DESK'),
               ),
             ],
+            ),
           ),
         ),
       ),

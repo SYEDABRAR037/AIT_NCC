@@ -1,10 +1,9 @@
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import nodemailer from 'nodemailer';
 
-const SENDER_EMAIL = 'kashmirgaming033@gmail.com';
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
-const SMTP_USER = process.env.SMTP_USER || SENDER_EMAIL;
-const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET || process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
+const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
+const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET;
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   // CORS Preflight
@@ -27,12 +26,20 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     };
   }
 
+  if (!RELAY_SECRET) {
+    return {
+      statusCode: 503,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ success: false, message: 'Email relay is not configured.' }),
+    };
+  }
+
   try {
     const body = JSON.parse(event.body || '{}');
-    const { secret, recipientEmail, cadetName, otp, subject, htmlContent, textContent, smtpPass, smtpUser } = body;
+    const { recipientEmail, cadetName, otp, subject, htmlContent, textContent, smtpPass, smtpUser } = body;
 
     // Validate relay authorization
-    const reqSecret = event.headers['x-relay-secret'] || secret;
+    const reqSecret = event.headers['x-relay-secret'] || event.headers['X-Relay-Secret'];
     if (!reqSecret || reqSecret !== RELAY_SECRET) {
       console.warn('[EMAIL-RELAY] Unauthorized dispatch attempt.');
       return {
@@ -45,7 +52,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     const authPass = (smtpPass || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
     const authUser = (smtpUser || SMTP_USER).trim();
 
-    if (!authPass || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
+    if (!authPass || !authUser || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -53,7 +60,7 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
       };
     }
 
-    console.log(`[EMAIL-RELAY] Authorized recovery email dispatch started for ${recipientEmail}.`);
+    console.log('[EMAIL-RELAY] Authorized recovery email dispatch started.');
 
     // Create secure transporter on port 465 (AWS Lambda/Netlify allows outbound 465)
     const transporter = nodemailer.createTransport({

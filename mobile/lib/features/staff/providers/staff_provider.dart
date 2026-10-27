@@ -149,9 +149,3 @@ class StaffProvider extends ChangeNotifier {
     }
   }
 }
-
-extension ApiPatch on ApiService {
-  Future<ApiResponse> patch(String url, {dynamic body, bool requiresAuth = true}) {
-    return put(url, body: body, requiresAuth: requiresAuth);
-  }
-}

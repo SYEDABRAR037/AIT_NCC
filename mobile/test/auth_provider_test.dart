@@ -3,12 +3,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mobile/features/auth/models/user_model.dart';
 import 'package:mobile/features/auth/providers/auth_provider.dart';
+import 'package:mobile/core/services/api_service.dart';
+import 'package:mobile/core/services/secure_storage_service.dart';
 
 void main() {
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
+    ApiService.setDemoMode(false);
   });
 
   group('UserModel Serialization & Role Tests', () {
@@ -119,5 +122,74 @@ void main() {
       expect(auth.isDemo, isFalse);
       expect(auth.isAuthenticated, isTrue);
     });
+
+    test(
+      'Session credentials are not read from plaintext preferences',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'ncc_jwt_token': 'legacy-plaintext-token',
+          'ncc_user_json': '{"id":"legacy-user"}',
+        });
+        final storage = SecureStorageService();
+
+        expect(await storage.getToken(), isNull);
+        expect(await storage.getUserJson(), isNull);
+        await storage.deleteToken();
+        expect(
+          (await SharedPreferences.getInstance()).containsKey('ncc_jwt_token'),
+          isFalse,
+        );
+        await storage.saveToken('secure-token');
+        expect(await storage.getToken(), 'secure-token');
+        await storage.deleteToken();
+        expect(await storage.getToken(), isNull);
+      },
+    );
+
+    test(
+      'Demo sessions block all API verbs even if a real token remains stored',
+      () async {
+        await SecureStorageService().saveToken('previous-real-session-token');
+        final auth = AuthProvider();
+        auth.setSessionForDemo(
+          user: UserModel(
+            id: 'demo-1',
+            fullName: 'Demo Cadet',
+            regimentalNumber: 'MH/22/SDA/1001',
+            email: 'demo@aitpune.edu.in',
+            role: 'CADET',
+            status: 'ACTIVE',
+          ),
+          demoToken: 'DEMO_CADET_TOKEN',
+        );
+
+        final api = ApiService();
+        const url = 'https://ait-ncc.onrender.com/api/test-only';
+        final responses = await Future.wait([
+          api.get(url),
+          api.post(url, body: const {}),
+          api.put(url, body: const {}),
+          api.patch(url, body: const {}),
+          api.delete(url),
+        ]);
+
+        expect(
+          responses,
+          everyElement(
+            predicate<ApiResponse>(
+              (response) => !response.success && response.statusCode == 0,
+            ),
+          ),
+        );
+        expect(
+          responses,
+          everyElement(
+            predicate<ApiResponse>(
+              (response) => response.message!.contains('disabled in demo'),
+            ),
+          ),
+        );
+      },
+    );
   });
 }

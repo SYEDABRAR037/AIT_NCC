@@ -371,11 +371,11 @@ class _DigitalIdScreenState extends State<DigitalIdScreen> {
 
   Widget _buildDemoPresentation(dynamic user) {
     final sampleCadet = DigitalIdModel(
-      id: user?.id ?? 'cadet-demo-001',
-      fullName: user?.fullName ?? 'Aman Kumar',
+      id: user?.id ?? 'demo-cadet-001',
+      fullName: user?.fullName ?? 'Demo Cadet',
       rank: 'CDT',
-      regimentalNumber: user?.regimentalNumber ?? 'MH/22/SDA/1001',
-      collegeRollNumber: user?.collegeRollNumber ?? '22014',
+      regimentalNumber: user?.regimentalNumber ?? 'DEMO/CADET/001',
+      collegeRollNumber: user?.collegeRollNumber ?? 'DEMO-ROLL-001',
       year: user?.year ?? 'Third Year',
       platoonName: user?.platoonName ?? 'Senior Division',
       team: 'Alpha Section',

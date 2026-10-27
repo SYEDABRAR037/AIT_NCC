@@ -141,9 +141,9 @@ class _StaffSessionAttendanceScreenState extends State<StaffSessionAttendanceScr
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(40),
               ),
-              icon: const Icon(Icons.playlist_add_check, size: 18),
-              label: const Text('MARK CADET MUSTER ROLL', style: TextStyle(fontSize: 12)),
-              onPressed: () => _openMusterMarkingSheet(session, provider),
+              icon: Icon(session.isActive ? Icons.playlist_add_check : Icons.lock_outline, size: 18),
+              label: Text(session.isActive ? 'MARK CADET MUSTER ROLL' : 'SESSION CLOSED', style: const TextStyle(fontSize: 12)),
+              onPressed: session.isActive ? () => _openMusterMarkingSheet(session, provider) : null,
             ),
           ],
         ),

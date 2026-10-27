@@ -128,15 +128,14 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
       const isSuccessful =
         ok &&
-        (data?.success === true ||
-          data?.otpSent === true ||
-          data?.nextStep === 'VERIFY_OTP' ||
-          data?.status === 'OTP_SENT' ||
-          Boolean(data?.recoveryId) ||
-          Boolean(data?.verificationId));
+        data?.success === true &&
+        data?.challengeAccepted === true &&
+        data?.nextStep === 'VERIFY_OTP' &&
+        typeof data?.recoveryId === 'string' &&
+        data.recoveryId.length > 0;
 
       if (isSuccessful) {
-        const id = data?.recoveryId || data?.verificationId || '';
+        const id = data.recoveryId;
         const masked = data?.maskedEmail || maskEmailAddress(email.trim());
         setRecoveryId(id);
         setMaskedEmail(masked);
@@ -176,21 +175,20 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
 
       const isSuccessful =
         ok &&
-        (data?.success === true ||
-          data?.otpSent === true ||
-          data?.nextStep === 'VERIFY_OTP' ||
-          data?.status === 'OTP_SENT' ||
-          Boolean(data?.recoveryId) ||
-          Boolean(data?.verificationId));
+        data?.success === true &&
+        data?.challengeAccepted === true &&
+        data?.nextStep === 'VERIFY_OTP' &&
+        typeof data?.recoveryId === 'string' &&
+        data.recoveryId.length > 0;
 
       if (isSuccessful) {
-        const id = data?.recoveryId || data?.verificationId || recoveryId;
+        const id = data.recoveryId;
         const masked = data?.maskedEmail || maskedEmail;
         setRecoveryId(id);
         setMaskedEmail(masked);
         applyServerExpiry(data);
         setResendCooldown(45);
-        setSuccessNotice('A fresh verification code is on its way.');
+        setSuccessNotice('The mail service accepted the new verification code for dispatch.');
         return true;
       } else {
         setErrorMsg(otpErrorMessage(data?.message, 'Unable to resend the verification code. Please try again.'));

@@ -1,10 +1,13 @@
+import '../testScriptBootstrap';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { createDisposableTestPrismaClient } from '../scriptPrisma';
+import { assertIsolatedTestApi, requireIsolatedTestApiUrl } from '../testScriptSafety';
 
-const prisma = new PrismaClient();
-const BASE_URL = 'http://localhost:5050';
+const prisma = createDisposableTestPrismaClient();
+const BASE_URL = requireIsolatedTestApiUrl();
 
 async function main() {
+  await assertIsolatedTestApi(BASE_URL);
   console.log('=== NCC AIT PUNE: AUTHENTICATION & OTP RECOVERY TEST SUITE ===\n');
 
   const testId = Date.now().toString().slice(-6);

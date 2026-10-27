@@ -77,6 +77,7 @@ async function runIsolationRegressionSuite() {
         `
         process.env.NODE_ENV = 'test';
         process.env.ALLOW_DISPOSABLE_TEST_DB = 'true';
+        process.env.NCC_DISPOSABLE_DB_CONFIRMATION = 'I_CONFIRMED_THIS_IS_AN_EMPTY_DISPOSABLE_TEST_DATABASE';
         process.env.DISPOSABLE_TEST_DATABASE_URL = 'postgresql://user:pass@dpg-disposable.render.com:5432/ncc_test_db';
         require('./src/db');
       `,
@@ -88,6 +89,7 @@ async function runIsolationRegressionSuite() {
           ...process.env,
           NODE_ENV: 'test',
           ALLOW_DISPOSABLE_TEST_DB: 'true',
+          NCC_DISPOSABLE_DB_CONFIRMATION: 'I_CONFIRMED_THIS_IS_AN_EMPTY_DISPOSABLE_TEST_DATABASE',
           DISPOSABLE_TEST_DATABASE_URL: 'postgresql://user:pass@dpg-disposable.render.com:5432/ncc_test_db',
         },
       }

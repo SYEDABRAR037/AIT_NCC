@@ -84,7 +84,7 @@ Create a `.env.production` file at the root:
 POSTGRES_USER=ncc_admin
 POSTGRES_PASSWORD=MilitaryGradeSecurePassword2026!
 POSTGRES_DB=ncc_command_db
-DATABASE_URL=postgresql://ncc_admin:MilitaryGradeSecurePassword2026!@db:5432/ncc_command_db?schema=public
+DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public
 
 # Security & Sessions
 JWT_SECRET=super_secret_institutional_jwt_token_key_ait_2mah_bn_2026
@@ -135,7 +135,7 @@ Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=5050
-Environment=DATABASE_URL=postgresql://ncc_admin:MilitarySecure2026!@localhost:5432/ncc_command_db?schema=public
+Environment=DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public
 
 [Install]
 WantedBy=multi-user.target

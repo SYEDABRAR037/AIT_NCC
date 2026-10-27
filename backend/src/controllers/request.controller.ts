@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { prisma } from '../db';
+import { canTransitionInquiryStatusAtStage } from '../services/workflowPolicy';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
 
@@ -603,15 +604,20 @@ export const getInquiryList = async (req: AuthRequest, res: Response): Promise<v
         { cadetId: req.user.id },
       ];
     } else if (req.user.role === 'PLATOON_SENIOR') {
-      const platoonCadets = await prisma.user.findMany({
-        where: { platoonName: req.user.platoonName },
-        select: { id: true },
-      });
+      const platoonCadets = req.user.platoonName
+        ? await prisma.user.findMany({
+            where: { platoonName: req.user.platoonName, role: Role.CADET },
+            select: { id: true },
+          })
+        : [];
       const cadetIds = platoonCadets.map((c) => c.id);
       whereClause.OR = [
         { cadetId: { in: cadetIds } },
         { cadetId: req.user.id },
       ];
+    } else if (req.user.role === 'DRILL_INSTRUCTOR') {
+      // Drill instructors may follow their own official inquiry, not cadet threads.
+      whereClause.cadetId = req.user.id;
     }
     // ADMIN_ANO sees all inquiries
 
@@ -771,6 +777,11 @@ export const getInquiryThread = async (req: AuthRequest, res: Response): Promise
       }
     }
 
+    if (req.user.role === 'DRILL_INSTRUCTOR' && inquiry.cadetId !== req.user.id) {
+      res.status(403).json({ success: false, message: 'Drill instructors may only access their own inquiry threads.' });
+      return;
+    }
+
     res.json({
       success: true,
       inquiry,
@@ -842,6 +853,11 @@ export const replyToInquiry = async (req: AuthRequest, res: Response): Promise<v
         res.status(403).json({ success: false, message: 'Unauthorized to reply outside your assigned platoon scope' });
         return;
       }
+    }
+
+    if (req.user.role === 'DRILL_INSTRUCTOR' && inquiry.cadetId !== req.user.id) {
+      res.status(403).json({ success: false, message: 'Drill instructors may only reply to their own inquiry threads.' });
+      return;
     }
 
     const isCadet = req.user.role === 'CADET';
@@ -965,7 +981,7 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
     }
 
     const { id } = req.params;
-    const { status, remarks, forwardToRole } = req.body;
+    const { status, remarks } = req.body;
 
     const validStatuses = ['SUBMITTED', 'UNDER_REVIEW', 'REPLIED', 'FORWARDED', 'RESOLVED', 'CLOSED'];
     if (!validStatuses.includes(status)) {
@@ -986,14 +1002,37 @@ export const updateInquiryStatus = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    if (inquiry.status === 'CLOSED') {
+      res.status(409).json({ success: false, message: 'Closed inquiries cannot be reopened through this endpoint.' });
+      return;
+    }
+
+    if (!canTransitionInquiryStatusAtStage(req.user.role, inquiry.currentReviewerRole, status, req.user.id, inquiry.cadetId)) {
+      res.status(403).json({ success: false, message: 'Status transition is not permitted for your current reviewer stage.' });
+      return;
+    }
+
+    if (req.user.role === 'SENIOR') {
+      const assignment = await prisma.seniorAssignment.findFirst({
+        where: { seniorId: req.user.id, cadetId: inquiry.cadetId },
+      });
+      if (!assignment && inquiry.currentReviewerId !== req.user.id) {
+        res.status(403).json({ success: false, message: 'Inquiry is outside your current assigned review scope.' });
+        return;
+      }
+    } else if (req.user.role === 'PLATOON_SENIOR') {
+      if (inquiry.cadet.platoonName !== req.user.platoonName) {
+        res.status(403).json({ success: false, message: 'Inquiry is outside your current platoon review scope.' });
+        return;
+      }
+    }
+
     let nextReviewerRole: Role | null = inquiry.currentReviewerRole;
     if (status === 'FORWARDED') {
       if (req.user.role === 'SENIOR') {
         nextReviewerRole = Role.PLATOON_SENIOR;
       } else if (req.user.role === 'PLATOON_SENIOR') {
         nextReviewerRole = Role.ADMIN_ANO;
-      } else if (forwardToRole) {
-        nextReviewerRole = forwardToRole;
       }
     } else if (status === 'RESOLVED' || status === 'CLOSED') {
       nextReviewerRole = null;

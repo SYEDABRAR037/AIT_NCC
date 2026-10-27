@@ -179,12 +179,11 @@ NCC Digital Command & Cadet Management System`;
   // This bypasses cloud hosting provider SMTP port blocks (e.g. Render free tier blocks ports 25, 465, 587)
   const relayUrl =
     process.env.EMAIL_RELAY_URL || 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay';
+  const relaySecret = process.env.RECOVERY_RELAY_SECRET;
 
-  if (relayUrl) {
+  if (relaySecret) {
     try {
       console.log('[MAIL SERVICE] Dispatching recovery OTP via HTTPS relay.');
-      const relaySecret =
-        process.env.RECOVERY_RELAY_SECRET || process.env.JWT_SECRET || 'ncc_command_jwt_super_secure_key_2026_ait_pune';
       const smtpPass = (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD || '').replace(/\s+/g, '');
 
       const controller = new AbortController();
@@ -224,6 +223,8 @@ NCC Digital Command & Cadet Management System`;
     } catch (relayErr: any) {
       console.warn('[MAIL SERVICE] HTTPS Relay failed or timed out:', relayErr?.message || relayErr);
     }
+  } else {
+    console.warn('[MAIL SERVICE] HTTPS relay skipped: RECOVERY_RELAY_SECRET is not configured.');
   }
 
   // Strategy 2: Direct Nodemailer SMTP (works on local machine, non-restricted VPS, or paid tiers)
@@ -249,48 +250,6 @@ NCC Digital Command & Cadet Management System`;
     return { success: true, messageId: info.messageId };
   } catch (smtpErr: any) {
     console.error('[MAIL SERVICE] DIRECT_SMTP_FAILED:', smtpErr?.message || smtpErr);
-
-    // If direct SMTP failed and we haven't tried the Netlify relay yet, try it now!
-    if (!relayUrl) {
-      try {
-        console.log(`[MAIL SERVICE] Retrying dispatch via Netlify HTTPS Relay to ${recipientEmail}...`);
-        const fallbackRelayUrl = 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay';
-        const relaySecret =
-          process.env.RECOVERY_RELAY_SECRET || '';
-
-        const controller = new AbortController();
-        const relayTimeout = setTimeout(() => controller.abort(), 9000);
-
-        const resp = await fetch(fallbackRelayUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-relay-secret': relaySecret,
-          },
-          body: JSON.stringify({
-            recipientEmail,
-            cadetName,
-            otp,
-            subject,
-            textContent,
-            htmlContent,
-          }),
-          signal: controller.signal,
-        });
-
-        clearTimeout(relayTimeout);
-
-        if (resp.ok) {
-          const data = (await resp.json()) as any;
-          if (data.success) {
-            console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Accepted via HTTPS Relay (ID: ${data.messageId})`);
-            return { success: true, messageId: data.messageId };
-          }
-        }
-      } catch (fallbackErr: any) {
-        console.error('[MAIL SERVICE] Fallback relay also failed:', fallbackErr?.message || fallbackErr);
-      }
-    }
 
     return { success: false, error: smtpErr?.message || 'Email delivery failed' };
   }

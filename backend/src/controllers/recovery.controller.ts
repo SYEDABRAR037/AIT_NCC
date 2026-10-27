@@ -17,7 +17,6 @@ const maskEmail = (email: string): string => {
 
 const OTP_TTL_MS = 60_000;
 const requestLimits = new Map<string, number[]>();
-const dummySessions = new Map<string, { email: string; lastIssuedAt: number; issuedAtTimes: number[] }>();
 const isRateLimited = (key: string, max: number, windowMs: number): boolean => {
   const now = Date.now();
   const recent = (requestLimits.get(key) || []).filter((time) => now - time < windowMs);
@@ -37,24 +36,11 @@ const rateLimitRequest = (req: Request, res: Response, bucket: string, max: numb
   return true;
 };
 
-const respondWithGenericChallenge = (res: Response, email = 'your registered email address'): void => {
-  const serverNow = new Date();
-  const recoveryId = crypto.randomUUID();
-  dummySessions.set(recoveryId, {
-    email: email.includes('@') ? maskEmail(email) : email,
-    lastIssuedAt: serverNow.getTime(),
-    issuedAtTimes: [serverNow.getTime()],
-  });
+const respondWithNeutralRecoveryNotice = (res: Response): void => {
   res.json({
-    success: true,
-    challengeAccepted: true,
-    nextStep: 'VERIFY_OTP',
-    message: 'If the details match an account, a code was sent to its registered email address.',
-    recoveryId,
-    verificationId: recoveryId,
-    maskedEmail: dummySessions.get(recoveryId)!.email,
-    expiresAt: new Date(serverNow.getTime() + OTP_TTL_MS).toISOString(),
-    serverNow: serverNow.toISOString(),
+    success: false,
+    challengeAccepted: false,
+    message: 'If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.',
   });
 };
 
@@ -98,7 +84,7 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     });
 
     if (!user) {
-      respondWithGenericChallenge(res, cleanEmail);
+      respondWithNeutralRecoveryNotice(res);
       return;
     }
 
@@ -114,20 +100,20 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
     });
 
     if (recentRequest) {
-      respondWithGenericChallenge(res, cleanEmail);
+      respondWithNeutralRecoveryNotice(res);
       return;
     }
 
     // Generate cryptographically secure 6-digit OTP (Phase 10)
     if (isRateLimited(`account:${user.id}`, 5, 60 * 60_000)) {
-      respondWithGenericChallenge(res, cleanEmail);
+      respondWithNeutralRecoveryNotice(res);
       return;
     }
     const recentCount = await prisma.passwordReset.count({
       where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 60 * 60_000) } },
     });
     if (recentCount >= 5) {
-      respondWithGenericChallenge(res, cleanEmail);
+      respondWithNeutralRecoveryNotice(res);
       return;
     }
 
@@ -237,32 +223,7 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
     });
 
     if (!previousReset || !previousReset.user) {
-      const dummy = dummySessions.get(String(recoveryId));
-      if (!dummy || Date.now() - dummy.lastIssuedAt < 45_000) {
-        res.status(429).json({ success: false, message: 'Please wait 45 seconds before requesting a new code.' });
-        return;
-      }
-      const recentDummyIssues = dummy.issuedAtTimes.filter((time) => Date.now() - time < 60 * 60_000);
-      if (recentDummyIssues.length >= 5) {
-        res.status(429).json({ success: false, message: 'Please wait before requesting another code.' });
-        return;
-      }
-      const serverNow = new Date();
-      const nextId = crypto.randomUUID();
-      const expiresAt = new Date(serverNow.getTime() + OTP_TTL_MS);
-      dummySessions.delete(String(recoveryId));
-      dummySessions.set(nextId, { email: dummy.email, lastIssuedAt: serverNow.getTime(), issuedAtTimes: [...recentDummyIssues, serverNow.getTime()] });
-      res.json({
-        success: true,
-        challengeAccepted: true,
-        nextStep: 'VERIFY_OTP',
-        message: 'If the details match an account, a code was sent to its registered email address.',
-        recoveryId: nextId,
-        verificationId: nextId,
-        maskedEmail: dummy.email,
-        expiresAt: expiresAt.toISOString(),
-        serverNow: serverNow.toISOString(),
-      });
+      res.status(400).json({ success: false, message: 'This recovery request cannot be continued. Please request a new code.' });
       return;
     }
 

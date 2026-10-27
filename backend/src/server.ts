@@ -27,7 +27,11 @@ import digitalIdRoutes from './routes/digitalId.routes';
 import digitalIdPublicRoutes from './routes/digitalIdPublic.routes';
 import { processNotificationDeliveries } from './services/notificationDelivery.service';
 
-dotenv.config();
+// Integration runs set an explicit disposable environment and must not inherit
+// credentials or service settings from the developer's .env file.
+if (process.env.PRISMA_DONT_LOAD_DOTENV !== '1') {
+  dotenv.config();
+}
 
 const app = express();
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
@@ -70,6 +74,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
     unit: 'Army Institute of Technology, Pune',
     version: '2.1.0-audit-fixes',
     phase: 14,
+    ...(process.env.NODE_ENV === 'test' && process.env.NCC_TEST_DATABASE_ISOLATED === 'true'
+      ? { isolatedTestEnvironment: true }
+      : {}),
     timestamp: new Date().toISOString(),
   });
 });

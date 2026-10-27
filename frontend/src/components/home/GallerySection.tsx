@@ -112,7 +112,7 @@ export const GallerySection: React.FC = () => {
           <span className="sub-title" style={{ color: 'var(--color-accent)', fontWeight: 700 }}>
             <ImageIcon size={16} /> REGIMENTAL MEDIA ARCHIVES
           </span>
-          <h2 className="cinzel-title" style={{ fontSize: '2.25rem', color: 'var(--color-primary)', margin: '0.5rem 0' }}>
+          <h2 className="cinzel-title" style={{ color: 'var(--color-primary)', margin: '0.5rem 0' }}>
             Photographic Archives
           </h2>
           <p className="description" style={{ maxWidth: '640px', margin: '0 auto', color: 'var(--color-text-secondary)' }}>

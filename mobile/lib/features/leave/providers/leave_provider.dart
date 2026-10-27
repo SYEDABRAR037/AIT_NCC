@@ -4,15 +4,69 @@ import '../../../core/services/api_service.dart';
 import '../models/leave_model.dart';
 
 class LeaveProvider extends ChangeNotifier {
-  final ApiService _api = ApiService();
+  LeaveProvider({ApiService? api}) : _api = api ?? ApiService();
+
+  final ApiService _api;
 
   List<LeaveModel> _leaves = [];
   bool _isLoading = false;
   String? _errorMessage;
+  List<LeaveModel> _reviewLeaves = [];
+  bool _isLoadingReview = false;
+  String? _reviewErrorMessage;
 
   List<LeaveModel> get leaves => _leaves;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  List<LeaveModel> get reviewLeaves => _reviewLeaves;
+  bool get isLoadingReview => _isLoadingReview;
+  String? get reviewErrorMessage => _reviewErrorMessage;
+
+  Future<void> fetchReviewLeaves() async {
+    _isLoadingReview = true;
+    _reviewErrorMessage = null;
+    notifyListeners();
+    try {
+      final response = await _api.get(ApiConstants.leaveReview);
+      final values = response.rawJson?['leaves'];
+      if (response.success && values is List) {
+        _reviewLeaves = values
+            .whereType<Map<String, dynamic>>()
+            .map(LeaveModel.fromJson)
+            .toList();
+      } else {
+        _reviewErrorMessage = response.message ?? 'Unable to load leave reviews.';
+      }
+    } catch (e) {
+      _reviewErrorMessage = 'Unable to load leave reviews: $e';
+    } finally {
+      _isLoadingReview = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> processReview({
+    required String leaveId,
+    required String action,
+    String? remarks,
+  }) async {
+    _reviewErrorMessage = null;
+    try {
+      final response = await _api.patch(
+        ApiConstants.leaveReviewAction(Uri.encodeComponent(leaveId)),
+        body: {'action': action, if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim()},
+      );
+      if (response.success) {
+        await fetchReviewLeaves();
+        return true;
+      }
+      _reviewErrorMessage = response.message ?? 'Unable to process this leave review.';
+    } catch (e) {
+      _reviewErrorMessage = 'Unable to process this leave review: $e';
+    }
+    notifyListeners();
+    return false;
+  }
 
   Future<void> fetchLeaves() async {
     _isLoading = true;
@@ -83,6 +137,7 @@ class LeaveProvider extends ChangeNotifier {
   }
 
   Future<bool> cancelLeave(String leaveId) async {
+    _errorMessage = null;
     try {
       final response = await _api.post(
         '${ApiConstants.activeBaseUrl}/leave/$leaveId/cancel',
@@ -92,8 +147,10 @@ class LeaveProvider extends ChangeNotifier {
         await fetchLeaves();
         return true;
       }
+      _errorMessage = response.message ?? 'Failed to cancel leave request.';
       return false;
-    } catch (_) {
+    } catch (e) {
+      _errorMessage = 'Network error while cancelling leave: $e';
       return false;
     }
   }

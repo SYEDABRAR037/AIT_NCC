@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../db';
+import { canTransitionCampParticipantStatus } from '../services/workflowPolicy';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { Role, AccountStatus } from '@prisma/client';
 
@@ -460,7 +461,7 @@ export const decideCadetLeave = async (req: AuthRequest, res: Response): Promise
 export const getAdminCamps = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const role = req.user?.role;
-    let visibleCadetIds: string[] | undefined;
+    let visibleCadetIds: string[] | undefined = [];
     if (role === 'CADET') visibleCadetIds = [req.user!.id];
     else if (role === 'SENIOR') {
       const assignments = await prisma.seniorAssignment.findMany({ where: { seniorId: req.user!.id }, select: { cadetId: true } });
@@ -470,6 +471,8 @@ export const getAdminCamps = async (req: AuthRequest, res: Response): Promise<vo
       const names = assignments.map((a) => a.platoon.name);
       const cadets = names.length ? await prisma.user.findMany({ where: { role: Role.CADET, platoonName: { in: names } }, select: { id: true } }) : [];
       visibleCadetIds = cadets.map((c) => c.id);
+    } else if (role === 'ADMIN_ANO') {
+      visibleCadetIds = undefined;
     }
     const camps = await prisma.camp.findMany({
       include: {
@@ -694,10 +697,27 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
       }
     }
 
+    const currentParticipant = await prisma.campParticipant.findUnique({
+      where: { campId_cadetId: { campId: String(campId), cadetId: String(cadetId) } },
+      select: { status: true },
+    });
+    if (!currentParticipant) {
+      res.status(404).json({ success: false, message: 'Camp participant record not found' });
+      return;
+    }
+    if (!canTransitionCampParticipantStatus(req.user.role, currentParticipant.status, status)) {
+      res.status(403).json({ success: false, message: 'Status transition is not permitted at this camp review stage.' });
+      return;
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
-      const p = await tx.campParticipant.update({
-        where: { campId_cadetId: { campId: String(campId), cadetId: String(cadetId) } },
+      const changed = await tx.campParticipant.updateMany({
+        where: { campId: String(campId), cadetId: String(cadetId), status: currentParticipant.status },
         data: { status, remarks: remarks ? String(remarks).trim() : null },
+      });
+      if (changed.count !== 1) throw new Error('CAMP_STATUS_CONFLICT');
+      const p = await tx.campParticipant.findUniqueOrThrow({
+        where: { campId_cadetId: { campId: String(campId), cadetId: String(cadetId) } },
         include: { cadet: { select: { fullName: true, regimentalNumber: true } } },
       });
 
@@ -736,6 +756,10 @@ export const updateCampParticipantStatus = async (req: AuthRequest, res: Respons
       participant: updated,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === 'CAMP_STATUS_CONFLICT') {
+      res.status(409).json({ success: false, message: 'Camp participant status changed. Reload and try again.' });
+      return;
+    }
     console.error('updateCampParticipantStatus error:', error);
     res.status(500).json({ success: false, message: 'Failed to update camp participant status' });
   }
