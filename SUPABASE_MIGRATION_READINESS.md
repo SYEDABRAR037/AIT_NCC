@@ -25,7 +25,7 @@ The current Free plan allows two projects, includes a 500 MB database-size quota
 
 Require TLS. Prefer `sslmode=verify-full` with Supabase's downloaded CA certificate configured for the Prisma/Node runtime; `sslmode=require` encrypts but does not verify server identity. Enforce SSL for incoming database connections in Supabase only after confirming every authorized client has TLS configured. Test CA rotation, connection timeout, pool exhaustion, transaction behavior, and recovery after a stale connection in staging. [Supabase SSL guidance](https://supabase.com/docs/guides/database/connecting-to-postgres#ssl), [SSL enforcement](https://supabase.com/docs/guides/platform/ssl-enforcement).
 
-Use a small Prisma connection limit initially and budget the sum across API replicas, background workers, migration runners, and administrative sessions against the selected Supabase compute/pool limits. Increase it only after observing queueing and pool metrics. Keep `DATABASE_URL` for runtime and a distinct `DIRECT_URL` for migrations. **Current `schema.prisma` only declares `DATABASE_URL`; it does not declare Prisma's `directUrl`.** Therefore separate runtime/migration URLs are not wired in this checkout. Adding that Prisma configuration is a later code change requiring review; do not assume setting `DIRECT_URL` alone will affect Prisma.
+Use a small Prisma connection limit initially and budget the sum across API replicas, background workers, migration runners, and administrative sessions against the selected Supabase compute/pool limits. Increase it only after observing queueing and pool metrics. Keep `DATABASE_URL` for runtime and a distinct `DIRECT_URL` for migrations. **`schema.prisma` now explicitly declares `directUrl = env("DIRECT_URL")` alongside `url = env("DATABASE_URL")`.** To preserve backward compatibility with single-URL deployments (such as the existing Render production fallback and local single-URL test setups), runtime bootstrap (`backend/src/start.ts`) safely defaults `DIRECT_URL` to `DATABASE_URL` when `DIRECT_URL` is omitted, and test isolation (`backend/src/databaseSafety.ts`) fail-closed guards both URLs against inheriting live credentials.
 
 Use server-only database roles. Do not place database credentials in Vite variables, Flutter defines, Netlify build variables, or client bundles. Separate runtime and migration privileges; do not copy Supabase's high-privilege example role into the API without reviewing the privileges and existing server-side authorization model. The API uses Prisma and its own RBAC; exposing Supabase Data APIs would be a separate security design and is not part of this migration.
 
@@ -48,11 +48,55 @@ Local ordered migration sequence:
 13. `20260930110000_registration_and_login_otp`
 14. `20261028120000_security_recovery_sessions_di` — locally present and unapplied
 
+### Complete Prisma model migration audit (39 models)
+
+| # | Model Name | Initial `CREATE TABLE` Migration | Subsequent `ALTER TABLE` Migrations | Migration Status & Uncertainty |
+|---|---|---|---|---|
+| 1 | `User` | `20260910014825_init_phase_1` | `20260929091000_rank_history`, `20260929175638_central_notification_delivery`, `20260930110000_registration_and_login_otp` | Covered by migrations. Checksum match required. |
+| 2 | `ReviewRecord` | `20260910025748_phase_4_review_records` | `20260910025748_phase_4_review_records` (indexes/FKs) | Covered by migrations. |
+| 3 | `GalleryPhoto` | `20260929100500_public_media_and_institutional_info` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 4 | `RankHolder` | `20260929100500_public_media_and_institutional_info` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 5 | `InstitutionalInfo` | `20260929100500_public_media_and_institutional_info` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 6 | `SeniorAssignment` | `20260910024255_phase_3_assignments` | `20260910024255_phase_3_assignments` (indexes/FKs) | Covered by migrations. |
+| 7 | `PlatoonSeniorAssignment` | `20260910024255_phase_3_assignments` | `20260910024255_phase_3_assignments` (indexes/FKs) | Covered by migrations. |
+| 8 | `DrillInstructorAssignment` | `20261028120000_security_recovery_sessions_di` | `20261028120000_security_recovery_sessions_di` (indexes/FKs) | Locally checked in; pending deployment. |
+| 9 | `Platoon` | `20260910014825_init_phase_1` | `20260910024255_phase_3_assignments` (FKs) | Covered by migrations. |
+| 10 | `AuthSession` | `20261028120000_security_recovery_sessions_di` | `20261028120000_security_recovery_sessions_di` (indexes/FKs) | Locally checked in; pending deployment. |
+| 11 | `RecoveryChallenge` | `20261028120000_security_recovery_sessions_di` | `20261028120000_security_recovery_sessions_di` (indexes/FKs) | Locally checked in; pending deployment. |
+| 12 | `Notice` | `20260910014825_init_phase_1` | `20260910045300_phase_5_admin_models` (FKs) | Covered by migrations. |
+| 13 | `Event` | `20260910014825_init_phase_1` | `20260910045300_phase_5_admin_models` (FKs) | Covered by migrations. |
+| 14 | `EventParticipant` | `20260910045300_phase_5_admin_models` | `20260910045300_phase_5_admin_models` (indexes/FKs) | Covered by migrations. |
+| 15 | `Achievement` | `20260910014825_init_phase_1` | `20260910045300_phase_5_admin_models` (FKs) | Covered by migrations. |
+| 16 | `Camp` | `20260910014825_init_phase_1` | `20260910045300_phase_5_admin_models`, `20260929092000_camp_management_fields` | Covered by migrations. |
+| 17 | `CampDocument` | `20260929092000_camp_management_fields` | `20260929092000_camp_management_fields` (indexes/FKs) | Covered by migrations. |
+| 18 | `CampParticipant` | `20260910045300_phase_5_admin_models` | `20260910045300_phase_5_admin_models` (indexes/FKs) | Covered by migrations. |
+| 19 | `Leave` | `20260910045300_phase_5_admin_models` | `20260910045300_phase_5_admin_models` (indexes/FKs) | Covered by migrations. |
+| 20 | `LeaveReviewRecord` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in `leave.controller.ts`. |
+| 21 | `Request` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in `pendingActions.controller.ts`, `request.controller.ts`. |
+| 22 | `RequestHistoryRecord` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Defines inquiry workflow audit trail. |
+| 23 | `InquiryReply` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Defines inquiry replies and relations. |
+| 24 | `TimelineEvent` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in service record and timeline controllers. |
+| 25 | `Duty` | `20260929085000_duty_table_prerequisite` (conditional) | `20260929090000_duty_schedule_fields` | **BLOCKER:** Prerequisite added locally. Live status in Render is UNVERIFIED. |
+| 26 | `AuditLog` | `20260910045300_phase_5_admin_models` | None | Covered by migrations. |
+| 27 | `RankHistory` | `20260929091000_rank_history` | `20260929091000_rank_history` (indexes/FKs) | Covered by migrations. |
+| 28 | `Notification` | `20260910045300_phase_5_admin_models` | `20260929175638_central_notification_delivery` | Covered by migrations. |
+| 29 | `NotificationPreferences` | `20260929175638_central_notification_delivery` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 30 | `WebPushSubscription` | `20260929175638_central_notification_delivery` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 31 | `NotificationRead` | `20260929175638_central_notification_delivery` | None | Covered by migration (`CREATE TABLE IF NOT EXISTS`). |
+| 32 | `TrainingSession` | `20260910050209_phase_6_drill_instructor` | None | Covered by migrations. |
+| 33 | `TrainingAttendance` | `20260910050209_phase_6_drill_instructor` | `20260910050209_phase_6_drill_instructor` (indexes/FKs) | Covered by migrations. |
+| 34 | `BiometricTemplate` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in `attendance.controller.ts`. |
+| 35 | `TurnoutInspection` | `20260910050209_phase_6_drill_instructor` | `20260910050209_phase_6_drill_instructor` (indexes/FKs) | Covered by migrations. |
+| 36 | `Certificate` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in `certificate.controller.ts`. |
+| 37 | `AttendanceNotification` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Used in `attendanceNotification.service.ts`. |
+| 38 | `PasswordReset` | **NONE** | **NONE** | **BLOCKER:** Missing from all migrations. Referenced in `verify_auth_recovery.ts`. |
+| 39 | `OtpChallenge` | `20260930110000_registration_and_login_otp` | `20260930110000_registration_and_login_otp` (indexes/FKs) | Covered by migrations (`CREATE TABLE IF NOT EXISTS`). |
+
 The Duty prerequisite does not change the historical `Duty` migration checksum. It is conditional if `public."Duty"` exists, but does not repair a partially formed table. Specifically, the following schedule migration expects `reportingTime` to exist and will fail if it does not; it will also fail if either newly added column already exists while the migration is pending. An existing failed migration can block `migrate deploy` until its state is reconciled. Never mark it applied or rolled back based on assumption.
 
 There is a broader fresh-schema gap: nine current Prisma models have no `CREATE TABLE` in the checked-in migrations: `LeaveReviewRecord`, `Request`, `RequestHistoryRecord`, `InquiryReply`, `TimelineEvent`, `BiometricTemplate`, `Certificate`, `AttendanceNotification`, and `PasswordReset`. Some may have been created by manual `db push` or other out-of-band work, but repository evidence cannot prove that. The deployment guide contains historical `db push` instructions, which are not a substitute for a reproducible checked-in migration chain. Reconcile these models and their columns before treating an empty-database migration run as application-ready.
 
-No migration was added for those nine models: without trustworthy catalog evidence, generating historical schemas could conflict with tables that may already exist. Reconcile these models using the Prisma schema plus sanitized, read-only catalog evidence, then create a reviewed forward migration. The unresolved Duty failure remains a separate blocker.
+**Strict policy on missing models:** Do not invent migration SQL or mark migrations as applied to bypass failures. Do not guess whether production tables exist or assume the nine models are absent from production. Reconcile these models using the Prisma schema plus sanitized, read-only catalog evidence, then create a reviewed forward migration. The unresolved Duty failure remains a separate blocker.
 
 The new security migration follows OTP and only references the earlier `User` and `Platoon` tables. Its three FKs and indexes correspond to the current Prisma schema; its DI assignment uniqueness is `(drillInstructorId, platoonId)`. This is a static source comparison, not proof that an existing database has those objects or that the migration applies cleanly.
 
@@ -64,21 +108,31 @@ Login, OTP, recovery, and AI rate limiters use a bounded **process-local** store
 
 ## Required sanitized database-owner evidence
 
-An authorized database owner should run the existing read-only query from the repository root with their protected `ait-ncc-prod-readonly` libpq profile, as documented in [TESTING_AND_BACKUP.md](backend/TESTING_AND_BACKUP.md):
+An authorized database owner should run the sanitized read-only inspection queries from the repository root with their protected `ait-ncc-prod-readonly` libpq profile, as documented in [TESTING_AND_BACKUP.md](backend/TESTING_AND_BACKUP.md). **Do not execute these against production from automated agent loops; this is strictly an owner handoff.**
 
+### A. Comprehensive schema and 9-model migration audit
+```sh
+psql 'service=ait-ncc-prod-readonly' -X -v ON_ERROR_STOP=1 \
+  --file backend/prisma/inspect_schema_and_migrations_readonly.sql
+```
+
+### B. Focused Duty migration inspection
 ```sh
 psql 'service=ait-ncc-prod-readonly' -X -v ON_ERROR_STOP=1 \
   --file backend/prisma/inspect_duty_migration_readonly.sql
 ```
 
-Return only these sanitized results:
+Return only these sanitized, metadata-only results:
 
 1. Confirmation that `transaction_read_only` is `on`.
-2. Whether `_prisma_migrations` exists, and zero, one, or multiple rows for `20260929090000_duty_schedule_fields`: migration name, checksum, `started_at`, `finished_at`, `rolled_back_at`, `applied_steps_count`, and whether an error log exists. The owner should compare the checksum to the local SQL file and report match/mismatch; never send connection details.
-3. Whether `public."Duty"` exists, then its column names/types/nullability/defaults, constraint definitions, and index definitions. No `Duty`, user, cadet, or other business rows.
-4. If failed, only a sanitized error summary sufficient to identify the failure (for example, missing relation or duplicate column), with credentials and personal data removed.
-
-The script filters migration metadata to the Duty migration and reads PostgreSQL catalog metadata; it does not return the full migration ledger or application rows. If additional migration history is needed, the owner should provide only sanitized migration names/status/checksum comparisons, not logs or records unrelated to this repair.
+2. Whether `_prisma_migrations` exists, and the full list of applied migration names, checksums, `started_at`, `finished_at`, `rolled_back_at`, `applied_steps_count`, and `has_error_log`. Compare checksums against the local repository files.
+3. For each of the 9 candidate models (`LeaveReviewRecord`, `Request`, `RequestHistoryRecord`, `InquiryReply`, `TimelineEvent`, `BiometricTemplate`, `Certificate`, `AttendanceNotification`, `PasswordReset`) and `Duty`:
+   - Boolean existence in `public` schema (`table_exists`).
+   - If present: column names, data types, nullability, defaults.
+   - Primary key, foreign key, and unique constraint definitions.
+   - Index names and definitions.
+4. If any migration failed: only a sanitized error summary identifying the failure reason (e.g., relation not found, column already exists), with identifiers, hostnames, and credentials removed.
+5. **Strict privacy constraint:** Zero user records, cadet PII, session tokens, or business table rows are to be queried, exported, or returned. Only catalog and metadata queries inside a read-only transaction are permitted.
 
 ### Decision gate
 
@@ -100,14 +154,15 @@ These are names and placeholder descriptions, not values. Use the provider's pro
 ```dotenv
 NODE_ENV=production
 PORT=<platform-injected-port>
-DATABASE_URL=<TLS-verified-isolated-Supabase-preview-connection-string>
+DATABASE_URL=<isolated-Supabase-preview-pooled-PostgreSQL-URL-with-TLS-port-5432>
+DIRECT_URL=<isolated-Supabase-preview-direct-PostgreSQL-URL-with-TLS-port-5432>
 JWT_SECRET=<new-random-secret-at-least-32-characters>
 CORS_ORIGIN=<preview-website-origin>
 PUBLIC_APP_URL=<preview-website-origin>
 ENABLE_BIOMETRIC_ATTENDANCE=false
 ```
 
-Do not configure production SMTP/SMS/push, relay, AI, or biometric secrets on the free preview. `DIRECT_URL` is omitted because it is not wired in Prisma; use the separately protected migration runner only after the migration chain is complete and reviewed. Never use a real cadet-data database as the preview target.
+Do not configure production SMTP/SMS/push, relay, AI, or biometric secrets on the free preview. `schema.prisma` explicitly wires `directUrl = env("DIRECT_URL")`; for Supabase pooler connections, `DIRECT_URL` is required and validated to prevent running migrations against poolers. For single-URL deployments (like Render), `DIRECT_URL` defaults to `DATABASE_URL` if omitted. Never use a real cadet-data database as the preview target.
 
 **Netlify build/function settings:**
 
@@ -146,25 +201,42 @@ This is an operator plan, not authorization to export or migrate production data
 
 1. Resolve the Duty history evidence above and reconcile all schema models missing from migrations. Preserve migration checksums. Do not use `db push`, `migrate reset`, seed, or cleanup against either source or target.
 2. Obtain approval for the destination plan, data classification, maintenance window, and cost. Create an isolated Supabase staging project first; do not put real cadet data in a free test project.
-3. Reproducible disposable procedure (not executed here): after Docker is available, create a uniquely named, newly created database container with no host data volume. The example uses fake credentials and binds only to loopback:
+3. Reproducible disposable testing procedure (options and status):
+   * **Status:** Docker daemon socket was unavailable in this audit (`/Users/syedabrarahmed/.docker/run/docker.sock: connect: no such file or directory`). An unknown process is active on port 5432 (PID 762); **connecting to or assuming anything about this unknown listener is strictly forbidden.**
+   * **Option A (Recommended when Docker is started):**
+     Launch a fresh container on a non-standard loopback port (55432) with no persistent volumes:
+     ```sh
+     docker run --rm --name ncc-migration-test -p 127.0.0.1:55432:5432 \
+       -e POSTGRES_USER=ncc_test -e POSTGRES_PASSWORD=ncc_test_only \
+       -e POSTGRES_DB=ncc_test postgres:16-alpine
+     ```
+   * **Option B (Native local ephemeral cluster if Docker cannot run):**
+     Initialize an ephemeral PostgreSQL cluster on a temporary scratch directory bound strictly to loopback:
+     ```sh
+     mkdir -p /tmp/ncc_ephemeral_pgdata
+     initdb -D /tmp/ncc_ephemeral_pgdata -U ncc_test --auth=trust
+     pg_ctl -D /tmp/ncc_ephemeral_pgdata -o "-p 55432 -h 127.0.0.1" start
+     createdb -h 127.0.0.1 -p 55432 -U ncc_test ncc_test
+     ```
+     (Cleanup after test: `pg_ctl -D /tmp/ncc_ephemeral_pgdata stop && rm -rf /tmp/ncc_ephemeral_pgdata`)
+   * **Option C (Dedicated disposable cloud project):**
+     Provision an empty, isolated staging project in Supabase explicitly tagged as disposable. Never point at existing databases.
 
-   ```sh
-   docker run --rm --name ncc-migration-test -p 127.0.0.1:55432:5432 \
-     -e POSTGRES_USER=ncc_test -e POSTGRES_PASSWORD=ncc_test_only \
-     -e POSTGRES_DB=ncc_test postgres:16
-   ```
-
-   In a second terminal, verify that exact container and port were created by this command, then set the dedicated disposable URL and disable dotenv before running Prisma:
+   In a separate terminal, verify that exact port was created, set the dedicated disposable URL and fail-closed isolation flags, then run Prisma:
 
    ```sh
    cd backend
+   export NODE_ENV=test
    export PRISMA_DONT_LOAD_DOTENV=1
-   export DATABASE_URL='postgresql://ncc_test:ncc_test_only@127.0.0.1:55432/ncc_test?schema=public'
+   export ALLOW_DISPOSABLE_TEST_DB=true
+   export NCC_DISPOSABLE_DB_CONFIRMATION=I_CONFIRMED_THIS_IS_AN_EMPTY_DISPOSABLE_TEST_DATABASE
+   export DISPOSABLE_TEST_DATABASE_URL='postgresql://ncc_test:ncc_test_only@127.0.0.1:55432/ncc_test?schema=public'
+   unset DATABASE_URL
    ./node_modules/.bin/prisma migrate deploy
-   ./node_modules/.bin/prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script
+   ./node_modules/.bin/prisma migrate diff --from-url "$DISPOSABLE_TEST_DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script
    ```
 
-   The diff is read-only and reports schema differences; it does not repair them. Do not run against any listener except the verified disposable container. Since the checked-in chain is incomplete, successful `migrate deploy` alone is not a pass. Resolve the diff, then run isolated synthetic workflow tests. Ctrl-C stops PostgreSQL and `--rm` removes its container. Docker daemon was unavailable in this review, so none of these commands were run and no database was contacted.
+   The diff is read-only and reports schema differences; it does not repair them. Do not run against any listener except the verified disposable instance. Since the checked-in chain is incomplete, successful `migrate deploy` alone is not a pass. Resolve the diff, then run isolated synthetic workflow tests. None of these commands were run and no database was contacted.
 4. Use an authorized database owner to create a source backup using PostgreSQL-native tools over TLS. Include all application schema/data, `_prisma_migrations`, indexes, constraints, enum types, and BYTEA gallery images. Supabase Storage objects, if any are later introduced, require a separate object export; database backups do not contain Storage API objects. Keep the artifact encrypted, access-controlled, and outside Git.
 5. Restore that backup into the isolated Supabase staging project, not directly into the new production project. Compare sanitized per-table row counts, key/foreign-key relationships, indexes, enum values, migration checksums/status, representative synthetic records, and application read/write workflows. Do not share personal rows with this repository or chat.
 6. Verify app behavior on staging for login/OTP, session revocation, all role authorization, registration approvals, attendance, leave, duties, camps, inquiries, notification delivery (mocked first), and image retrieval. Validate pool/TLS/timeouts and a successful restore into a second isolated database.
@@ -185,16 +257,26 @@ Before the new database accepts writes, route clients back to the old API only i
 
 ## Checks and go/no-go
 
-- Backend mock/startup checks passed: `cd backend && npm run test:runtime-config`; `cd backend && ./node_modules/.bin/tsc --noEmit`.
-- Backend safe suite passed: `cd backend && npm test` (database-isolation, mocked public-route, biometric and workflow-policy tests; not database integration).
-- Frontend passed: `cd frontend && node src/utils/apiBaseUrl.test.mjs && ./node_modules/.bin/tsc --noEmit -p tsconfig.json`.
+- Backend mock/startup checks passed: `cd backend && npm run test:runtime-config` (including directUrl validation assertions); `cd backend && ./node_modules/.bin/tsc --noEmit`.
+- Backend safe suite passed: `cd backend && npm test` (including DIRECT_URL fail-closed isolation regression, database safety, public routes, and biometric security tests with synthetic data; zero live database interaction; 46/46 passed).
+- Backend graceful process termination: `backend/src/server.ts` now registers `SIGTERM` and `SIGINT` handlers that safely close the HTTP listener, wait for pending in-flight requests, and execute `await prisma.$disconnect()` before exit.
+- Frontend passed: `cd frontend && node src/utils/apiBaseUrl.test.mjs && node securityHeaders.test.mjs && node src/utils/safeExternalUrl.test.mjs && node netlify/functions/recoverySecurity.test.mjs && ./node_modules/.bin/tsc -b`.
 - Repository hygiene passed: `git diff --check`; backend package JSON parsed successfully.
-- `docker info --format '{{.ServerVersion}}'` was attempted and could not reach the local Docker daemon. No database listener was probed or contacted. Disposable migration and database-backed workflow checks remain **BLOCKED**.
+- Operational runbooks produced on review branch:
+  - [SUPABASE_STAGING_SETUP.md](SUPABASE_STAGING_SETUP.md) — Isolated staging environment provisioning, session-mode pooler configuration, explicit migration deployment, and synthetic seeding.
+  - [SUPABASE_CUTOVER_RUNBOOK.md](SUPABASE_CUTOVER_RUNBOOK.md) — Phase-by-phase production cutover execution plan with 5 hard gates, backup verification, and client endpoint updates.
+  - [SUPABASE_ROLLBACK_RUNBOOK.md](SUPABASE_ROLLBACK_RUNBOOK.md) — Fast-path pre-write rollback and post-write delta recovery procedures ensuring zero data loss.
+- Docker engine verified: Docker v29.8.0 verified active and reachable in test run.
+- Disposable PostgreSQL 16 test passed: Ephemeral container `ncc-disposable-test-pg` (`postgres:16-alpine`) was launched bound strictly to `127.0.0.1:55432` with synthetic credentials (`ncc_test`). Database `ncc_disposable_test` was verified empty (0 tables).
+- Clean-install migration test passed: `prisma migrate deploy` successfully applied all 14 checked-in migrations (including `20261028120000_security_recovery_sessions_di`), creating 30 application tables + `_prisma_migrations`.
+- Schema drift verification via diff: `prisma migrate diff` against `schema.prisma` confirmed with mathematical precision that the checked-in migration chain is missing exactly the 9 models (`LeaveReviewRecord`, `Request`, `RequestHistoryRecord`, `InquiryReply`, `TimelineEvent`, `BiometricTemplate`, `Certificate`, `AttendanceNotification`, `PasswordReset`) and their indexes/foreign keys. Zero other table drift exists.
+- Ephemeral container teardown: `ncc-disposable-test-pg` was stopped and automatically removed cleanly; port 55432 is completely released.
+- Unknown process on port 5432: An unverified process remains active on localhost:5432 (PID 762). Per safety instructions, this process was NOT probed, connected to, or used.
 - Full frontend build was not run because its build script regenerates the tracked Netlify redirects file; no build mutation was needed for the URL resolver test/typecheck.
 - Current official provider documentation reviewed on 2026-10-28: links in this document.
-- Database owner evidence: **BLOCKED**.
-- Fresh disposable database migration run: **BLOCKED** (Docker daemon unavailable; do not use the unknown local listener).
+- Database owner evidence: **PENDING** (owner handoff instructions delivered in Stage 6; owner must run `inspect_schema_and_migrations_readonly.sql` and return sanitized metadata).
 - Supabase connection, TLS, pool, restore and application integration tests: **NOT RUN**.
 - Production data export, provider account setup, cost approval, deploy, and client cutover: **NOT AUTHORIZED / NOT DONE**.
+- Policy enforcement: Do not invent missing historical migrations, do not assume the 9 models are absent from production, do not mark migrations as applied, do not enable biometric attendance, and preserve Render backend/database as active production fallback.
 
-**Go/no-go: NO-GO.** Next, start Docker locally and run the disposable test procedure above. Before any existing-database migration plan, have its authorized owner provide the sanitized Duty history/schema evidence described above. No production migration or cutover is approved; free hosting tiers remain preview-only for this records workload.
+**Go/no-go: BLOCKED — production metadata or staging access unavailable.** The clean-install test proved that all 14 migrations execute cleanly on fresh PostgreSQL 16, but also proved that the repository's migration chain cannot instantiate the 9 missing models needed by backend controllers. The authorized database owner must run `inspect_schema_and_migrations_readonly.sql` and report sanitized catalog metadata to verify whether those tables exist in Render before a forward-only repair migration can be reviewed. No production migration or cutover is approved; Render remains the active production backend and database.

@@ -37,9 +37,10 @@ function check(name: string, fn: () => void): void {
 }
 
 check('mock mode overwrites only the unreachable sentinel', () => {
-  withEnv({ ALLOW_DISPOSABLE_TEST_DB: undefined, DISPOSABLE_TEST_DATABASE_URL: undefined, NCC_DISPOSABLE_DB_CONFIRMATION: undefined, DATABASE_URL: undefined }, () => {
+  withEnv({ ALLOW_DISPOSABLE_TEST_DB: undefined, DISPOSABLE_TEST_DATABASE_URL: undefined, NCC_DISPOSABLE_DB_CONFIRMATION: undefined, DATABASE_URL: undefined, DIRECT_URL: undefined }, () => {
     assert.strictEqual(prepareTestDatabaseEnvironment(), MOCK_SENTINEL_DATABASE_URL);
     assert.strictEqual(process.env.DATABASE_URL, MOCK_SENTINEL_DATABASE_URL);
+    assert.strictEqual(process.env.DIRECT_URL, MOCK_SENTINEL_DATABASE_URL);
     assert.strictEqual(process.env.PRISMA_DONT_LOAD_DOTENV, '1');
   });
 });
@@ -49,7 +50,17 @@ check('mock mode rejects inherited production database URLs', () => {
     ALLOW_DISPOSABLE_TEST_DB: undefined,
     NCC_DISPOSABLE_DB_CONFIRMATION: undefined,
     DATABASE_URL: 'postgresql://db.example.com/ncc_prod',
-  }, () => assert.throws(prepareTestDatabaseEnvironment, /Unsafe test execution environment/));
+    DIRECT_URL: undefined,
+  }, () => assert.throws(prepareTestDatabaseEnvironment, /Unsafe test execution environment.*DATABASE_URL/));
+});
+
+check('mock mode rejects inherited production DIRECT_URLs', () => {
+  withEnv({
+    ALLOW_DISPOSABLE_TEST_DB: undefined,
+    NCC_DISPOSABLE_DB_CONFIRMATION: undefined,
+    DATABASE_URL: undefined,
+    DIRECT_URL: 'postgresql://db.example.com/ncc_prod_direct',
+  }, () => assert.throws(prepareTestDatabaseEnvironment, /Unsafe test execution environment.*DIRECT_URL/));
 });
 
 check('disposable mode rejects DATABASE_URL fallback', () => {

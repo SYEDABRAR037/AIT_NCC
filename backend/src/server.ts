@@ -122,11 +122,36 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[NCC COMMAND SERVER] Running on port ${PORT}`);
   void processNotificationDeliveries();
   const notificationTimer = setInterval(() => { void processNotificationDeliveries(); }, 15_000);
   notificationTimer.unref();
 });
+
+// Graceful shutdown handling for container and process managers (Render, Koyeb, Docker)
+const handleShutdown = (signal: string) => {
+  console.log(`[NCC COMMAND SERVER] Received ${signal}. Closing server gracefully...`);
+  server.close(async () => {
+    console.log('[NCC COMMAND SERVER] HTTP server closed.');
+    try {
+      await prisma.$disconnect();
+      console.log('[NCC COMMAND SERVER] Database connections closed.');
+      process.exit(0);
+    } catch (err) {
+      console.error('[NCC COMMAND SERVER] Error during database disconnect:', err);
+      process.exit(1);
+    }
+  });
+
+  // Force shutdown if cleanup exceeds 10 seconds
+  setTimeout(() => {
+    console.error('[NCC COMMAND SERVER] Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10_000).unref();
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 export default app;
