@@ -7,8 +7,8 @@ import { StrengthAndNotices } from './components/home/StrengthAndNotices';
 import { QuoteBanner } from './components/home/QuoteBanner';
 import { AboutSection } from './components/home/AboutSection';
 import { UnitIntroduction } from './components/home/UnitIntroduction';
-import { MissionVisionValues } from './components/home/MissionVisionValues';
-import { TrainingActivities } from './components/home/TrainingActivities';
+
+
 import { UpcomingEvents } from './components/home/UpcomingEvents';
 import { Achievements } from './components/home/Achievements';
 import { GallerySection } from './components/home/GallerySection';
@@ -85,10 +85,10 @@ const AppContent: React.FC = () => {
             <UnitIntroduction />
 
             {/* Institutional Principles, Mission & Ethos */}
-            <MissionVisionValues />
+
 
             {/* Training Curriculum & Regimental Drills */}
-            <TrainingActivities />
+
 
             {/* Upcoming Activities & Camps (Real DB) */}
             <UpcomingEvents />

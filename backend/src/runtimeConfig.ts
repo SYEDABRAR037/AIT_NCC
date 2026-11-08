@@ -10,6 +10,21 @@ export function validateRuntimeConfig(env: Readonly<Record<string, string | unde
     throw new Error('JWT_SECRET must be configured with at least 32 characters before the API can start.');
   }
 
+  const otpSecret = env.OTP_SECRET || '';
+  const isPlaceholderOtp = /[<>]|placeholder|replace[_ -]?|generate[_ -]?|set[_ -]?me|your[_ -]/i.test(otpSecret);
+  if (otpSecret.length < 32 || isPlaceholderOtp) {
+    throw new Error('OTP_SECRET must be configured with at least 32 characters before the API can start.');
+  }
+
+  if (env.OTP_TRANSITION_CUTOFF) {
+    const rawCutoff = env.OTP_TRANSITION_CUTOFF;
+    const isStrictIso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(rawCutoff);
+    const cutoffDate = new Date(rawCutoff);
+    if (!isStrictIso || isNaN(cutoffDate.getTime()) || cutoffDate.toISOString().replace(/\.000Z$/, 'Z') !== rawCutoff.replace(/\.000Z$/, 'Z')) {
+      throw new Error('OTP_TRANSITION_CUTOFF must be a valid, unambiguous UTC ISO 8601 timestamp (e.g. 2026-11-07T22:30:00.000Z).');
+    }
+  }
+
   if (!env.DATABASE_URL) {
     throw new Error('DATABASE_URL must be configured before the API can start.');
   }

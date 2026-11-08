@@ -11,14 +11,70 @@ const TTL_MS = 60_000;
 const PROOF_TTL_MS = 15 * 60_000;
 const RESEND_WAIT_MS = 30_000;
 const requestBuckets = new ProcessLocalRateLimitStore(10_000);
-const secret = () => process.env.OTP_SECRET || process.env.JWT_SECRET || '';
-const hashOtp = (id: string, otp: string) => crypto.createHmac('sha256', secret()).update(`${id}:${otp}`).digest('hex');
-const safeEqual = (a: string, b: string) => {
+
+export const getOtpSecret = (): string => process.env.OTP_SECRET || '';
+
+// Deterministic shared transition cutoff timestamp parsed from environment.
+// Does NOT use per-instance boot times (Date.now()) to prevent rolling-deployment divergence.
+// If set, unexpired legacy challenges created before this cutoff can verify using JWT_SECRET during rollout overlap.
+// If unset, legacy fallback is disabled (pure OTP_SECRET mode).
+export const getOtpTransitionCutoff = (): Date | null => {
+  const raw = process.env.OTP_TRANSITION_CUTOFF;
+  if (!raw) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(raw)) return null;
+  const parsed = new Date(raw);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+export const hashOtp = (id: string, otp: string, secretKey: string): string =>
+  crypto.createHmac('sha256', secretKey).update(`${id}:${otp}`).digest('hex');
+
+export const safeEqual = (a: string, b: string): boolean => {
   const left = Buffer.from(a, 'hex'); const right = Buffer.from(b, 'hex');
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 };
+
+export const verifyChallengeCode = (
+  challenge: { id: string; otpHash: string | null; createdAt: Date; expiresAt: Date; sendCount: number },
+  candidateOtp: string
+): boolean => {
+  if (!challenge.otpHash || !/^\d{6}$/.test(candidateOtp)) {
+    return false;
+  }
+
+  // 1. New-code challenge path: explicitly prefixed with v2:
+  // Must verify exclusively with OTP_SECRET; zero fallback to JWT_SECRET.
+  if (challenge.otpHash.startsWith('v2:')) {
+    const rawHash = challenge.otpHash.slice(3);
+    const otpSecret = getOtpSecret();
+    return Boolean(otpSecret) && safeEqual(rawHash, hashOtp(challenge.id, candidateOtp, otpSecret));
+  }
+
+  // 2. Bounded legacy compatibility path:
+  // Strictly applies to raw legacy hashes without v2: prefix (demonstrably 64 hex chars).
+  // Applies to both original legacy challenges and legacy challenges resent by an old instance, provided:
+  // - The hash is in raw 64-hex format
+  // - The challenge was created before the shared transition cutoff (createdAt < transitionCutoff)
+  // - The challenge remains within its valid unexpired window (expiresAt > now)
+  // - JWT_SECRET is configured in the environment
+  const transitionCutoff = getOtpTransitionCutoff();
+  const isLegacyRawHash = /^[0-9a-f]{64}$/i.test(challenge.otpHash);
+  if (
+    isLegacyRawHash &&
+    transitionCutoff !== null &&
+    challenge.createdAt < transitionCutoff &&
+    challenge.expiresAt.getTime() > Date.now() &&
+    process.env.JWT_SECRET
+  ) {
+    if (safeEqual(challenge.otpHash, hashOtp(challenge.id, candidateOtp, process.env.JWT_SECRET))) {
+      return true;
+    }
+  }
+
+  return false;
+};
 const limited = async (req: Request, res: Response, key: string, max = 8): Promise<boolean> => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   const result = await requestBuckets.consume(`${key}:${ip}`, max, 10 * 60_000);
   if (!result.limited) return false;
   res.setHeader('Retry-After', String(Math.ceil(result.retryAfterMs / 1000)));
@@ -38,11 +94,13 @@ const dispatch = async (destination: string, channel: 'email' | 'mobile', otp: s
 };
 
 const createChallenge = async (purpose: OtpPurpose, destination: string, channel: 'email' | 'mobile', userId?: string, name = 'Cadet') => {
+  const otpSecret = getOtpSecret();
+  if (!otpSecret) throw new Error('OTP_SECRET_MISSING');
   const code = issueOtp();
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + TTL_MS);
   const challenge = await prisma.otpChallenge.create({
-    data: { id, purpose, destination, userId, otpHash: hashOtp(id, code), expiresAt },
+    data: { id, purpose, destination, userId, otpHash: `v2:${hashOtp(id, code, otpSecret)}`, expiresAt },
   });
   const sent = await dispatch(destination, channel, code, name, purpose === 'LOGIN' ? 'login' : 'registration');
   if (!sent) {
@@ -56,7 +114,7 @@ export const requestRegistrationOtp = async (req: Request, res: Response): Promi
   try {
     if (await limited(req, res, 'reg-otp-request')) return;
     await prisma.otpChallenge.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60_000) } } });
-    if (!secret()) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
+    if (!getOtpSecret()) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
     const channel = req.body.channel === 'mobile' ? 'mobile' : 'email';
     const raw = String(req.body.destination || '').trim();
     let destination: string;
@@ -95,8 +153,10 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
     if (challenge.sendCount >= 5) { res.status(429).json({ success: false, message: 'Too many codes requested. Start verification again later.' }); return; }
     const count = await prisma.otpChallenge.count({ where: { destination: challenge.destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
     if (count >= 5) { res.status(429).json({ success: false, message: 'Too many codes requested. Please try again later.' }); return; }
+    const otpSecret = getOtpSecret();
+    if (!otpSecret) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
     const code = issueOtp(); const expiresAt = new Date(Date.now() + TTL_MS);
-    const reserved = await prisma.otpChallenge.updateMany({ where: { id: challenge.id, lastSentAt: challenge.lastSentAt, sendCount: { lt: 5 }, consumedAt: null }, data: { otpHash: hashOtp(challenge.id, code), expiresAt, verifiedAt: null, proofExpiresAt: null, attemptCount: 0, sendCount: { increment: 1 }, lastSentAt: new Date() } });
+    const reserved = await prisma.otpChallenge.updateMany({ where: { id: challenge.id, lastSentAt: challenge.lastSentAt, sendCount: { lt: 5 }, consumedAt: null }, data: { otpHash: `v2:${hashOtp(challenge.id, code, otpSecret)}`, expiresAt, verifiedAt: null, proofExpiresAt: null, attemptCount: 0, sendCount: { increment: 1 }, lastSentAt: new Date() } });
     if (reserved.count !== 1) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
     const channel = challenge.purpose === OtpPurpose.REGISTRATION_MOBILE || (challenge.purpose === OtpPurpose.LOGIN && challenge.destination.startsWith('+')) ? 'mobile' : 'email';
     const user = challenge.userId ? await prisma.user.findUnique({ where: { id: challenge.userId }, select: { fullName: true } }) : null;
@@ -113,7 +173,7 @@ export const verifyRegistrationOtp = async (req: Request, res: Response): Promis
     const expectedPurpose = req.body.channel === 'mobile' ? OtpPurpose.REGISTRATION_MOBILE : OtpPurpose.REGISTRATION_EMAIL;
     if (!challenge || challenge.purpose !== expectedPurpose || challenge.consumedAt || !challenge.otpHash || challenge.expiresAt.getTime() <= Date.now()) { res.status(400).json({ success: false, message: 'This code has expired. Request a new one.' }); return; }
     if (challenge.attemptCount >= 5) { res.status(429).json({ success: false, message: 'Too many incorrect attempts. Request a new code.' }); return; }
-    const valid = /^\d{6}$/.test(String(req.body.otp || '')) && safeEqual(challenge.otpHash, hashOtp(challenge.id, String(req.body.otp)));
+    const valid = verifyChallengeCode(challenge, String(req.body.otp || ''));
     if (!valid) { await prisma.otpChallenge.updateMany({ where: { id: challenge.id, attemptCount: { lt: 5 }, consumedAt: null }, data: { attemptCount: { increment: 1 } } }); res.status(400).json({ success: false, message: 'The code is incorrect.' }); return; }
     const verifiedAt = new Date();
     const updated = await prisma.otpChallenge.updateMany({ where: { id: challenge.id, otpHash: challenge.otpHash, attemptCount: { lt: 5 }, consumedAt: null, expiresAt: { gt: verifiedAt } }, data: { otpHash: null, verifiedAt, proofExpiresAt: new Date(verifiedAt.getTime() + PROOF_TTL_MS) } });
@@ -153,7 +213,7 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) { res.status(503).json({ success: false, message: 'Login is temporarily unavailable.' }); return; }
     if (challenge.attemptCount >= 5) { res.status(429).json({ success: false, message: 'Too many incorrect attempts. Sign in again to request a new code.' }); return; }
-    const valid = /^\d{6}$/.test(String(req.body.otp || '')) && safeEqual(challenge.otpHash, hashOtp(id, String(req.body.otp)));
+    const valid = verifyChallengeCode(challenge, String(req.body.otp || ''));
     if (!valid) { await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null }, data: { attemptCount: { increment: 1 } } }); res.status(400).json({ success: false, message: 'The code is incorrect.' }); return; }
     const consumed = await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null, otpHash: challenge.otpHash, expiresAt: { gt: new Date() } }, data: { otpHash: null, consumedAt: new Date() } });
     if (consumed.count !== 1) { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
@@ -172,7 +232,7 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
 
 export const startLoginOtp = async (req: Request, user: { id: string; fullName: string; email: string; emailVerified: boolean; phone: string | null; mobileVerified: boolean; role?: string }, res: Response): Promise<void> => {
   if (await limited(req, res, 'login-otp-request', 5)) return;
-  if (!secret()) { res.status(503).json({ success: false, message: 'Login verification is temporarily unavailable.' }); return; }
+  if (!getOtpSecret()) { res.status(503).json({ success: false, message: 'Login verification is temporarily unavailable.' }); return; }
   const useMobile = Boolean(user.phone && user.mobileVerified);
   // Officers provisioned by ANO may not have gone through self-registration OTP, so their
   // emailVerified flag may be false. Trust the email for non-CADET roles. (DEF-01)

@@ -4,6 +4,7 @@ import { validateRuntimeConfig } from '../runtimeConfig';
 
 const valid = {
   JWT_SECRET: 'x'.repeat(32),
+  OTP_SECRET: 'y'.repeat(32),
   DATABASE_URL: 'postgresql://synthetic:placeholder@db.invalid:5432/ncc_test',
   PORT: '8080',
 };
@@ -17,6 +18,17 @@ assert.throws(() => validateRuntimeConfig({ ...valid, DATABASE_URL: 'https://exa
 assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: 'short' }), /JWT_SECRET/);
 assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: '<GENERATE_A_UNIQUE_RANDOM_SECRET>' }), /JWT_SECRET/);
 assert.throws(() => validateRuntimeConfig({ ...valid, JWT_SECRET: 'replace_with_a_random_secret_at_least_32_characters' }), /JWT_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_SECRET: undefined }), /OTP_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_SECRET: 'short' }), /OTP_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_SECRET: 'SET_ME' }), /OTP_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_SECRET: '<GENERATE_A_UNIQUE_RANDOM_SECRET>' }), /OTP_SECRET/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_SECRET: 'replace_with_a_random_secret_at_least_32_characters' }), /OTP_SECRET/);
+assert.deepStrictEqual(validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: '2026-11-07T22:30:00.000Z' }), { port: 8080 });
+assert.deepStrictEqual(validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: '2026-11-07T22:30:00Z' }), { port: 8080 });
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: 'invalid-date' }), /OTP_TRANSITION_CUTOFF.*ISO 8601/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: '2026-11-07 22:30:00' }), /OTP_TRANSITION_CUTOFF.*ISO 8601/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: '2026-02-31T22:30:00Z' }), /OTP_TRANSITION_CUTOFF.*ISO 8601/);
+assert.throws(() => validateRuntimeConfig({ ...valid, OTP_TRANSITION_CUTOFF: '2026' }), /OTP_TRANSITION_CUTOFF.*ISO 8601/);
 assert.throws(() => validateRuntimeConfig({ ...valid, PORT: '65536' }), /PORT/);
 
 // Supabase configuration & SSL validations

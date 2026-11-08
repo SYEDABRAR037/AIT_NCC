@@ -43,7 +43,7 @@ export const authenticateToken = async (
     }
 
     const secret = process.env.JWT_SECRET!;
-    const decoded = jwt.verify(token, secret) as { userId: string; sid?: string };
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] }) as { userId: string; sid?: string };
 
     // Legacy tokens without a session id remain accepted during the compatibility
     // rollout; all newly issued tokens are checked against durable session state.

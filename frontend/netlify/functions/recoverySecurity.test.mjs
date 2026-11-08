@@ -29,6 +29,8 @@ try {
   for (const action of ['request-otp', 'resend-otp', 'verify-otp', 'reset-password']) {
     assert.match(modalSource, new RegExp(`safeApiFetch\\(recoveryEndpoint\\('${action}'\\)`));
   }
+  assert.match(modalSource, /recoveryEndpoint\s*=\s*\([^)]*\)\s*=>\s*`\/api\/auth\/recovery\/\$\{action\}`/);
+  assert.equal(modalSource.includes('/.netlify/functions/recovery'), false, 'ForgotPasswordModal must not contain hardcoded Netlify function recovery URL');
 
   Object.assign(process.env, { NETLIFY: 'true', CONTEXT: 'production', NODE_ENV: 'production' });
 

@@ -100,7 +100,21 @@ const run = async (): Promise<void> => {
     assert.strictEqual(invalid.statusCode, 400);
     assert.deepStrictEqual(invalid.body, expiredResult.body);
   }
-  console.log('Recovery mocked regressions passed: known/unknown, cooldown, mail failure, expiry, and invalid-attempt cap.');
+
+  // Defensive socket handling tests (with socket, without socket, and neither ip nor socket)
+  const noSocketRes: any = response();
+  await requestPasswordResetOtp({ body: { email: syntheticUser.email, regimentalNumber: 'SYN-001' }, ip: '192.168.1.1' } as any, noSocketRes);
+  assert.strictEqual(noSocketRes.statusCode, 200, 'Should succeed when req.socket is undefined');
+
+  const socketOnlyRes: any = response();
+  await requestPasswordResetOtp({ body: { email: syntheticUser.email, regimentalNumber: 'SYN-001' }, socket: { remoteAddress: '192.168.1.2' } } as any, socketOnlyRes);
+  assert.strictEqual(socketOnlyRes.statusCode, 200, 'Should succeed when req.ip is undefined but req.socket.remoteAddress is present');
+
+  const neitherRes: any = response();
+  await requestPasswordResetOtp({ body: { email: syntheticUser.email, regimentalNumber: 'SYN-001' } } as any, neitherRes);
+  assert.strictEqual(neitherRes.statusCode, 200, 'Should safely fallback to unknown when neither req.ip nor req.socket is present');
+
+  console.log('Recovery mocked regressions passed: known/unknown, cooldown, mail failure, expiry, socket resilience, and invalid-attempt cap.');
 };
 
 run().catch((error) => {

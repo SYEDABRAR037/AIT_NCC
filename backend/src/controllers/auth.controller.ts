@@ -171,7 +171,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return [user];
     });
 
-    console.log(`[REGISTRATION] New cadet registered: ${newUser.fullName} (${newUser.regimentalNumber}). ProfilePhoto: ${!!newUser.profilePhotoUrl}, Biometrics: Yes`);
+    console.log(`[REGISTRATION] New cadet registered: ID ${newUser.id}`);
 
     res.status(201).json({
       success: true,
