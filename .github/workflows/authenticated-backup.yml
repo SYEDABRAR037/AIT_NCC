@@ -10,6 +10,10 @@ on:
         description: 'Target Environment (staging / production)'
         required: true
         default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   backup:
@@ -29,16 +33,40 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y postgresql-client
 
-      - name: Export Custom Compressed Dump via TLS
+      - name: Resolve Staging Database Target
         env:
-          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+          INPUT_ENV: ${{ github.event.inputs.target_env || 'staging' }}
+          STAGING_URL: ${{ secrets.STAGING_DIRECT_URL }}
+          PROD_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
         run: |
           mkdir -p /tmp/backups
           TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
-          DUMP_FILE="/tmp/backups/ncc_${{ github.event.inputs.target_env || 'staging' }}_${TIMESTAMP}.dump"
-          pg_dump --format=custom --compress=9 --no-owner --no-acl "${DIRECT_URL}" -f "${DUMP_FILE}"
-          echo "DUMP_FILE=${DUMP_FILE}" >> $GITHUB_ENV
+          
+          if [ "${INPUT_ENV}" = "production" ]; then
+            if [ -z "${PROD_URL}" ]; then
+              echo "::error::PRODUCTION_DIRECT_URL secret is not configured. Aborting."
+              exit 1
+            fi
+            echo "DIRECT_URL=${PROD_URL}" >> $GITHUB_ENV
+            echo "TARGET_ENV=production" >> $GITHUB_ENV
+          else
+            if [ -z "${STAGING_URL}" ]; then
+              echo "::error::STAGING_DIRECT_URL secret is not configured. Aborting."
+              exit 1
+            fi
+            echo "DIRECT_URL=${STAGING_URL}" >> $GITHUB_ENV
+            echo "TARGET_ENV=staging" >> $GITHUB_ENV
+          fi
+          
           echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
+          echo "DUMP_FILE=/tmp/backups/ncc_${INPUT_ENV}_${TIMESTAMP}.dump" >> $GITHUB_ENV
+
+      - name: Export Custom Compressed Dump via TLS
+        run: |
+          # Safe execution without printing connection string or credentials
+          pg_dump --format=custom --compress=9 --no-owner --no-acl "${DIRECT_URL}" -f "${DUMP_FILE}"
+          DUMP_SIZE=$(stat -c%s "${DUMP_FILE}" 2>/dev/null || stat -f%z "${DUMP_FILE}")
+          echo "Dump created successfully (${DUMP_SIZE} bytes)."
 
       - name: Encrypt with AES-256-GCM AEAD
         env:
@@ -51,7 +79,7 @@ jobs:
             const encPath = dumpPath + ".enc";
             const keyHex = process.env.BACKUP_ENCRYPTION_KEY;
             if (!keyHex || keyHex.length !== 64) {
-              console.error("BACKUP_ENCRYPTION_KEY must be a 64-char hex string (32 bytes)");
+              console.error("BACKUP_ENCRYPTION_KEY must be a 64-character hex string (256-bit key)");
               process.exit(1);
             }
             const key = Buffer.from(keyHex, "hex");
@@ -63,7 +91,7 @@ jobs:
             const tag = cipher.getAuthTag(); // 16-byte MAC tag
             const payload = Buffer.concat([keyHeader, iv, ciphertext, tag]);
             fs.writeFileSync(encPath, payload);
-            console.log("Encrypted archive created: " + encPath + " (" + payload.length + " bytes)");
+            console.log("Authenticated encrypted archive created (" + payload.length + " bytes).");
           '
           echo "ENC_FILE=${DUMP_FILE}.enc" >> $GITHUB_ENV
 
@@ -71,19 +99,20 @@ jobs:
         run: |
           sha256sum "${DUMP_FILE}" > "${DUMP_FILE}.sha256"
           sha256sum "${ENC_FILE}" > "${ENC_FILE}.sha256"
+          echo "SHA-256 digests computed."
 
       - name: Upload to GitHub Releases (Destination 1)
-        if: env.HAS_GITHUB_TOKEN == 'true'
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="backup-${{ github.event.inputs.target_env || 'staging' }}-${{ env.TIMESTAMP }}"
+          TAG_NAME="backup-${{ env.TARGET_ENV }}-${{ env.TIMESTAMP }}"
           gh release create "${TAG_NAME}" "${ENC_FILE}" "${ENC_FILE}.sha256" \
-            --title "Encrypted Backup: ${{ env.TIMESTAMP }}" \
+            --title "Encrypted Backup: ${{ env.TARGET_ENV }} ${{ env.TIMESTAMP }}" \
             --notes "Automated AES-256-GCM authenticated backup for NCC AIT."
 
       - name: Upload to Cloudflare R2 (Destination 2)
-        if: env.HAS_R2_CREDS == 'true'
+        if: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -93,6 +122,7 @@ jobs:
           FILENAME=$(basename "${ENC_FILE}")
           aws s3 cp "${ENC_FILE}" "s3://ncc-institutional-backups/backups/daily/${FILENAME}"
           aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-institutional-backups/backups/daily/${FILENAME}.sha256"
+          echo "Uploaded to Cloudflare R2: backups/daily/${FILENAME}"
 
       - name: Automated Verification Decryption Drill
         env:
@@ -106,7 +136,7 @@ jobs:
             const key = Buffer.from(process.env.BACKUP_ENCRYPTION_KEY, "hex");
             const encData = fs.readFileSync(encPath);
             const keyHeader = encData.subarray(0, 4).toString("ascii");
-            if (keyHeader !== "v001") throw new Error("Header mismatch");
+            if (keyHeader !== "v001") throw new Error("Key header mismatch");
             const iv = encData.subarray(4, 16);
             const tag = encData.subarray(encData.length - 16);
             const ciphertext = encData.subarray(16, encData.length - 16);
