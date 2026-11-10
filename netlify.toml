@@ -4,7 +4,7 @@
   command = "npm run build"
 
 [functions]
-  directory = "frontend/netlify/functions"
+  directory = "netlify/functions"
 
 # AI Facial recognition neural network models
 [[headers]]
