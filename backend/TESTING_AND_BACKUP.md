@@ -53,11 +53,20 @@ Production compatibility of the `Duty` repair is **UNVERIFIED**. The owner shoul
 - Inspect schema metadata only: whether `Duty` exists; `reportingTime`, `startTime`, `endTime` types, nullability and defaults; and the definitions of its primary/foreign-key constraints and indexes. Do not query `User`, `Duty`, or any other business table rows.
 - Preserve the result as a sanitized evidence table with migration name/status/checksum match and Duty columns/constraint/index definitions. If the migration failed, include only the error text needed to identify the failure, with identifiers/secrets removed.
 
-The read-only query script is [inspect_duty_migration_readonly.sql](prisma/inspect_duty_migration_readonly.sql). It runs inside `BEGIN READ ONLY`, selects only the named migration's ledger metadata and PostgreSQL metadata for `public."Duty"`, then rolls back the read-only transaction. It reports whether the migration table and Duty table exist; it never selects business rows or exposes the migration error text.
+The read-only query scripts are:
+- [inspect_duty_migration_readonly.sql](prisma/inspect_duty_migration_readonly.sql): Focused on the Duty schedule migration and `public."Duty"` schema.
+- [inspect_schema_and_migrations_readonly.sql](prisma/inspect_schema_and_migrations_readonly.sql): Audits the entire `_prisma_migrations` ledger and candidate table existence/definitions for the 9 models missing checked-in migrations (`LeaveReviewRecord`, `Request`, `RequestHistoryRecord`, `InquiryReply`, `TimelineEvent`, `BiometricTemplate`, `Certificate`, `AttendanceNotification`, `PasswordReset`) plus `Duty` and security tables.
 
-**Owner-run usage:** a DBA must first configure a libpq service profile named `ait-ncc-prod-readonly` outside the repository, using an explicitly authorized read-only account. Keep authentication in the DBA's protected credential manager or permission-restricted `.pgpass`; do not put credentials in shell history, this repository, or chat. Grant only `SELECT` on `public."_prisma_migrations"` and the catalog visibility needed to inspect the public schema. Then run from the repository root:
+Both scripts run inside `BEGIN READ ONLY`, select only ledger and PostgreSQL catalog metadata, and rollback the read-only transaction. They never select business rows, user data, or personal identifiers.
+
+**Owner-run usage:** a DBA must first configure a libpq service profile named `ait-ncc-prod-readonly` outside the repository, using an explicitly authorized read-only account. Keep authentication in the DBA's protected credential manager or permission-restricted `.pgpass`; do not put credentials in shell history, this repository, or chat. Grant only `SELECT` on `public."_prisma_migrations"` and catalog views. Then run from the repository root:
 
 ```sh
+# Full schema and 9-model audit
+psql 'service=ait-ncc-prod-readonly' -X -v ON_ERROR_STOP=1 \
+  --file backend/prisma/inspect_schema_and_migrations_readonly.sql
+
+# Focused Duty migration audit
 psql 'service=ait-ncc-prod-readonly' -X -v ON_ERROR_STOP=1 \
   --file backend/prisma/inspect_duty_migration_readonly.sql
 ```

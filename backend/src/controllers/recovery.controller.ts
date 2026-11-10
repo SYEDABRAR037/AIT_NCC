@@ -23,7 +23,7 @@ const isRateLimited = async (key: string, max: number, windowMs: number): Promis
 };
 
 const rateLimitRequest = async (req: Request, res: Response, bucket: string, max: number, windowMs: number): Promise<boolean> => {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
   if (!(await isRateLimited(`${bucket}:${ip}`, max, windowMs))) return false;
   res.status(429).json({ success: false, message: 'Please wait before trying again.' });
   return true;

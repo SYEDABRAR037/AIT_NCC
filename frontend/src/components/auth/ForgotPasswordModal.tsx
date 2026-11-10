@@ -43,7 +43,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
   };
 
   const recoveryEndpoint = (action: 'request-otp' | 'resend-otp' | 'verify-otp' | 'reset-password') =>
-    `${window.location.origin}/.netlify/functions/recovery?action=${action}`;
+    `/api/auth/recovery/${action}`;
 
   const otpErrorMessage = (message: unknown, fallback: string) => {
     const text = typeof message === 'string' ? message : '';

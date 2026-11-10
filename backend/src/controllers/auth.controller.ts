@@ -7,6 +7,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { OtpPurpose } from '@prisma/client';
 import { startLoginOtp } from './otpAuth.controller';
 import { normalizePhoneNumber } from '../services/attendanceNotification.service';
+import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
 import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 import { revokePresentedSession } from '../services/sessionPolicy';
 
@@ -43,7 +44,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password,
       profilePhotoUrl,
       profilePhoto,
-      photoSnapshot,
       faceDescriptor,
       qualityScore,
       mobileChallengeId,
@@ -60,12 +60,16 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 2. Mandatory Biometric Validation (Phase 13)
-    if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length < 128) {
+    if (!isValidFaceDescriptor(faceDescriptor)) {
       res.status(400).json({
         success: false,
         field: 'faceDescriptor',
-        message: 'Please complete biometric face registration before submitting your application.',
+        message: 'A valid 128-value face descriptor is required to submit your application.',
       });
+      return;
+    }
+    if (typeof qualityScore !== 'number' || !Number.isFinite(qualityScore) || qualityScore < 0 || qualityScore > 1) {
+      res.status(400).json({ success: false, field: 'qualityScore', message: 'A measured face detection confidence value is required.' });
       return;
     }
 
@@ -129,8 +133,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Profile photo & biometric snapshot normalization
-    const finalProfilePhoto = profilePhotoUrl || profilePhoto || photoSnapshot || null;
-    const finalBiometricSnapshot = photoSnapshot || profilePhoto || profilePhotoUrl || null;
+    const finalProfilePhoto = profilePhotoUrl || profilePhoto || null;
 
     // 5. Atomic Registration Transaction (Phase 8 & 12)
     const [newUser] = await prisma.$transaction(async (tx) => {
@@ -162,8 +165,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         data: {
           cadetId: user.id,
           descriptor: JSON.stringify(faceDescriptor),
-          photoSnapshot: finalBiometricSnapshot,
-          qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.98,
+          photoSnapshot: null,
+          qualityScore,
           registeredBy: 'SELF_ENROLLMENT (Cadet Registration)',
         },
       });
@@ -171,7 +174,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return [user];
     });
 
-    console.log(`[REGISTRATION] New cadet registered: ${newUser.fullName} (${newUser.regimentalNumber}). ProfilePhoto: ${!!newUser.profilePhotoUrl}, Biometrics: Yes`);
+    console.log(`[REGISTRATION] New cadet registered: ID ${newUser.id}`);
 
     res.status(201).json({
       success: true,

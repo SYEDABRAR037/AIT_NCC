@@ -1,0 +1,150 @@
+name: NCC Authenticated Database Backup
+
+on:
+  schedule:
+    # 02:00 IST (20:30 UTC) daily
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: 'Target Environment (staging / production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  backup:
+    name: Authenticated Backup & Dual-Upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Resolve Staging Database Target
+        env:
+          INPUT_ENV: ${{ github.event.inputs.target_env || 'staging' }}
+          STAGING_URL: ${{ secrets.STAGING_DIRECT_URL }}
+          PROD_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
+        run: |
+          mkdir -p /tmp/backups
+          TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
+          
+          if [ "${INPUT_ENV}" = "production" ]; then
+            if [ -z "${PROD_URL}" ]; then
+              echo "::error::PRODUCTION_DIRECT_URL secret is not configured. Aborting."
+              exit 1
+            fi
+            echo "DIRECT_URL=${PROD_URL}" >> $GITHUB_ENV
+            echo "TARGET_ENV=production" >> $GITHUB_ENV
+          else
+            if [ -z "${STAGING_URL}" ]; then
+              echo "::error::STAGING_DIRECT_URL secret is not configured. Aborting."
+              exit 1
+            fi
+            echo "DIRECT_URL=${STAGING_URL}" >> $GITHUB_ENV
+            echo "TARGET_ENV=staging" >> $GITHUB_ENV
+          fi
+          
+          echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
+          echo "DUMP_FILE=/tmp/backups/ncc_${INPUT_ENV}_${TIMESTAMP}.dump" >> $GITHUB_ENV
+
+      - name: Export Custom Compressed Dump via TLS
+        run: |
+          # Safe execution without printing connection string or credentials
+          pg_dump --format=custom --compress=9 --no-owner --no-acl "${DIRECT_URL}" -f "${DUMP_FILE}"
+          DUMP_SIZE=$(stat -c%s "${DUMP_FILE}" 2>/dev/null || stat -f%z "${DUMP_FILE}")
+          echo "Dump created successfully (${DUMP_SIZE} bytes)."
+
+      - name: Encrypt with AES-256-GCM AEAD
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const crypto = require("crypto");
+            const dumpPath = process.env.DUMP_FILE;
+            const encPath = dumpPath + ".enc";
+            const keyHex = process.env.BACKUP_ENCRYPTION_KEY;
+            if (!keyHex || keyHex.length !== 64) {
+              console.error("BACKUP_ENCRYPTION_KEY must be a 64-character hex string (256-bit key)");
+              process.exit(1);
+            }
+            const key = Buffer.from(keyHex, "hex");
+            const iv = crypto.randomBytes(12); // 96-bit CSPRNG IV
+            const keyHeader = Buffer.from("v001", "ascii"); // 4-byte key version header
+            const plaintext = fs.readFileSync(dumpPath);
+            const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+            const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+            const tag = cipher.getAuthTag(); // 16-byte MAC tag
+            const payload = Buffer.concat([keyHeader, iv, ciphertext, tag]);
+            fs.writeFileSync(encPath, payload);
+            console.log("Authenticated encrypted archive created (" + payload.length + " bytes).");
+          '
+          echo "ENC_FILE=${DUMP_FILE}.enc" >> $GITHUB_ENV
+
+      - name: Generate SHA-256 Digest Manifest
+        run: |
+          sha256sum "${DUMP_FILE}" > "${DUMP_FILE}.sha256"
+          sha256sum "${ENC_FILE}" > "${ENC_FILE}.sha256"
+          echo "SHA-256 digests computed."
+
+      - name: Upload to GitHub Releases (Destination 1)
+        if: ${{ secrets.GITHUB_TOKEN != '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="backup-${{ env.TARGET_ENV }}-${{ env.TIMESTAMP }}"
+          gh release create "${TAG_NAME}" "${ENC_FILE}" "${ENC_FILE}.sha256" \
+            --title "Encrypted Backup: ${{ env.TARGET_ENV }} ${{ env.TIMESTAMP }}" \
+            --notes "Automated AES-256-GCM authenticated backup for NCC AIT."
+
+      - name: Upload to Cloudflare R2 (Destination 2)
+        if: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          AWS_DEFAULT_REGION: auto
+        run: |
+          FILENAME=$(basename "${ENC_FILE}")
+          aws s3 cp "${ENC_FILE}" "s3://ncc-institutional-backups/backups/daily/${FILENAME}"
+          aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-institutional-backups/backups/daily/${FILENAME}.sha256"
+          echo "Uploaded to Cloudflare R2: backups/daily/${FILENAME}"
+
+      - name: Automated Verification Decryption Drill
+        env:
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const crypto = require("crypto");
+            const encPath = process.env.ENC_FILE;
+            const dumpPath = process.env.DUMP_FILE;
+            const key = Buffer.from(process.env.BACKUP_ENCRYPTION_KEY, "hex");
+            const encData = fs.readFileSync(encPath);
+            const keyHeader = encData.subarray(0, 4).toString("ascii");
+            if (keyHeader !== "v001") throw new Error("Key header mismatch");
+            const iv = encData.subarray(4, 16);
+            const tag = encData.subarray(encData.length - 16);
+            const ciphertext = encData.subarray(16, encData.length - 16);
+            const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+            decipher.setAuthTag(tag);
+            const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+            const originalHash = crypto.createHash("sha256").update(fs.readFileSync(dumpPath)).digest("hex");
+            const decHash = crypto.createHash("sha256").update(decrypted).digest("hex");
+            if (originalHash !== decHash) throw new Error("Decrypted hash mismatch!");
+            console.log("Decryption and integrity tag verified successfully. SHA-256 matches bit-for-bit.");
+          '

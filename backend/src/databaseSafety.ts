@@ -38,6 +38,7 @@ export function validateDisposableTestDatabase(rawUrl: string): void {
 export function prepareTestDatabaseEnvironment(): string {
   process.env.PRISMA_DONT_LOAD_DOTENV = '1';
   const inheritedUrl = process.env.DATABASE_URL;
+  const inheritedDirectUrl = process.env.DIRECT_URL;
 
   if (process.env.ALLOW_DISPOSABLE_TEST_DB === 'true') {
     const testUrl = process.env.DISPOSABLE_TEST_DATABASE_URL;
@@ -58,8 +59,14 @@ export function prepareTestDatabaseEnvironment(): string {
         '[FAIL-CLOSED DB GUARD] Conflicting DATABASE_URL is present. Remove it and provide only the dedicated disposable test URL.'
       );
     }
+    if (inheritedDirectUrl && inheritedDirectUrl !== MOCK_SENTINEL_DATABASE_URL && inheritedDirectUrl !== testUrl) {
+      throw new Error(
+        '[FAIL-CLOSED DB GUARD] Conflicting DIRECT_URL is present. Remove it or align it with the dedicated disposable test URL.'
+      );
+    }
 
     process.env.DATABASE_URL = testUrl;
+    process.env.DIRECT_URL = testUrl;
     process.env.NCC_TEST_DATABASE_ISOLATED = 'true';
     return testUrl;
   }
@@ -69,8 +76,14 @@ export function prepareTestDatabaseEnvironment(): string {
       '[FAIL-CLOSED DB GUARD] Unsafe test execution environment! A DATABASE_URL was inherited; clear it or configure a dedicated disposable test URL.'
     );
   }
+  if (inheritedDirectUrl && inheritedDirectUrl !== MOCK_SENTINEL_DATABASE_URL) {
+    throw new Error(
+      '[FAIL-CLOSED DB GUARD] Unsafe test execution environment! A DIRECT_URL was inherited; clear it or configure a dedicated disposable test URL.'
+    );
+  }
 
   process.env.DATABASE_URL = MOCK_SENTINEL_DATABASE_URL;
+  process.env.DIRECT_URL = MOCK_SENTINEL_DATABASE_URL;
   process.env.NCC_TEST_DATABASE_ISOLATED = 'false';
   return MOCK_SENTINEL_DATABASE_URL;
 }
@@ -112,6 +125,7 @@ export function prepareGuardedUtilityDatabase(purpose: 'preflight' | 'seed'): st
       : 'I_REVIEWED_PRODUCTION_SEED';
     if (optIn === expected) {
       process.env.DATABASE_URL = explicitUrl;
+      process.env.DIRECT_URL = explicitUrl;
       return explicitUrl;
     }
     throw new Error(
@@ -120,5 +134,6 @@ export function prepareGuardedUtilityDatabase(purpose: 'preflight' | 'seed'): st
   }
 
   process.env.DATABASE_URL = explicitUrl;
+  process.env.DIRECT_URL = explicitUrl;
   return explicitUrl;
 }
