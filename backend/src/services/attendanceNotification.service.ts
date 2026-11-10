@@ -476,35 +476,64 @@ export const notificationQueueWorker = new NotificationWorkerQueue();
 
 // Authentication OTPs always go to the supplied verified number, never through
 // attendance test-mode routing or its simulation fallback.
-export const sendOtpSms = async (phone: string, message: string): Promise<boolean> => {
+export type OtpSmsFailure = 'NOT_CONFIGURED' | 'INVALID_DESTINATION' | 'PROVIDER_REJECTED';
+export type OtpSmsResult = { success: true; provider: 'FAST2SMS' | 'TWILIO' } | { success: false; failure: OtpSmsFailure };
+
+const isConfiguredValue = (value?: string): boolean => Boolean(value?.trim() && !/^your_.*$/i.test(value.trim()));
+
+export const getOtpSmsProviderReadiness = () => {
+  const fast2smsConfigured = isConfiguredValue(process.env.FAST2SMS_API_KEY);
+  const twilioConfigured = isConfiguredValue(process.env.TWILIO_ACCOUNT_SID)
+    && isConfiguredValue(process.env.TWILIO_AUTH_TOKEN)
+    && /^\+[1-9]\d{9,14}$/.test(process.env.TWILIO_FROM_NUMBER?.trim() || '');
+  return {
+    ready: fast2smsConfigured || twilioConfigured,
+    fast2smsConfigured,
+    twilioConfigured,
+    priority: ['FAST2SMS', 'TWILIO'] as const,
+  };
+};
+
+export const sendOtpSmsWithResult = async (phone: string, message: string): Promise<OtpSmsResult> => {
   if (process.env.NODE_ENV === 'test' || process.env.PURE_MOCK_TEST === 'true') {
-    return true;
+    return { success: true, provider: 'FAST2SMS' };
   }
 
   const { isValid, normalized } = normalizePhoneNumber(phone);
-  if (!isValid) return false;
+  if (!isValid) return { success: false, failure: 'INVALID_DESTINATION' };
   const fast2smsApiKey = process.env.FAST2SMS_API_KEY;
-  if (fast2smsApiKey && fast2smsApiKey !== 'your_fast2sms_api_key') {
+  let providerAttempted = false;
+  if (isConfiguredValue(fast2smsApiKey)) {
+    providerAttempted = true;
     try {
       const axios = await import('axios');
       const result = await axios.default.post('https://www.fast2sms.com/dev/bulkV2', {
         route: 'q', message, language: 'english', flash: 0,
         numbers: normalized.replace(/^\+91/, '').replace(/^91/, ''),
       }, { headers: { authorization: fast2smsApiKey, 'Content-Type': 'application/json' }, timeout: 10000 });
-      if (result.data?.return === true) return true;
+      if (result.data?.return === true) return { success: true, provider: 'FAST2SMS' };
     } catch { /* Try configured Twilio provider. */ }
   }
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const auth = process.env.TWILIO_AUTH_TOKEN;
   const from = process.env.TWILIO_FROM_NUMBER;
-  if (sid && auth && from && sid !== 'your_twilio_account_sid') {
+  const twilioConfigured = isConfiguredValue(sid) && isConfiguredValue(auth) && /^\+[1-9]\d{9,14}$/.test(from?.trim() || '');
+  if (twilioConfigured) {
+    providerAttempted = true;
     try {
       const twilio = await import('twilio');
       await twilio.default(sid, auth).messages.create({ body: message, from, to: normalized });
-      return true;
-    } catch { return false; }
+      return { success: true, provider: 'TWILIO' };
+    } catch { /* Return a sanitized provider result. */ }
   }
-  return false;
+  return providerAttempted
+    ? { success: false, failure: 'PROVIDER_REJECTED' }
+    : { success: false, failure: 'NOT_CONFIGURED' };
+};
+
+export const sendOtpSms = async (phone: string, message: string): Promise<boolean> => {
+  const result = await sendOtpSmsWithResult(phone, message);
+  return result.success;
 };
 
 // =========================================================================

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { OtpPurpose } from '@prisma/client';
 import { prisma } from '../db';
-import { normalizePhoneNumber, sendOtpSms } from '../services/attendanceNotification.service';
+import { normalizePhoneNumber, sendOtpSmsWithResult } from '../services/attendanceNotification.service';
 import { sendOtpEmail } from '../services/mail.service';
 import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 
@@ -88,9 +88,18 @@ const maskEmail = (value: string) => {
 const maskPhone = (value: string) => `${value.slice(0, 3)}••••••${value.slice(-2)}`;
 const issueOtp = () => crypto.randomInt(0, 1_000_000).toString().padStart(6, '0');
 
-const dispatch = async (destination: string, channel: 'email' | 'mobile', otp: string, name: string, purpose: 'registration' | 'login') => {
-  if (channel === 'email') return (await sendOtpEmail({ recipientEmail: destination, cadetName: name, otp, purpose })).success;
-  return sendOtpSms(destination, `NCC AIT Pune ${purpose === 'login' ? 'login' : 'mobile verification'} OTP: ${otp}. Valid for 60 seconds. Do not share this code.`);
+type OtpDeliveryOutcome = { success: boolean; failure?: string };
+
+const dispatch = async (destination: string, channel: 'email' | 'mobile', otp: string, name: string, purpose: 'registration' | 'login'): Promise<OtpDeliveryOutcome> => {
+  if (channel === 'email') {
+    try {
+      const result = await sendOtpEmail({ recipientEmail: destination, cadetName: name, otp, purpose });
+      return { success: result.success, failure: result.success ? undefined : 'PROVIDER_REJECTED' };
+    } catch {
+      return { success: false, failure: 'PROVIDER_REJECTED' };
+    }
+  }
+  return sendOtpSmsWithResult(destination, `NCC AIT Pune ${purpose === 'login' ? 'login' : 'mobile verification'} OTP: ${otp}. Valid for 60 seconds. Do not share this code.`);
 };
 
 const createChallenge = async (purpose: OtpPurpose, destination: string, channel: 'email' | 'mobile', userId?: string, name = 'Cadet') => {
@@ -102,12 +111,23 @@ const createChallenge = async (purpose: OtpPurpose, destination: string, channel
   const challenge = await prisma.otpChallenge.create({
     data: { id, purpose, destination, userId, otpHash: `v2:${hashOtp(id, code, otpSecret)}`, expiresAt },
   });
-  const sent = await dispatch(destination, channel, code, name, purpose === 'LOGIN' ? 'login' : 'registration');
-  if (!sent) {
-    await prisma.otpChallenge.delete({ where: { id: challenge.id } });
-    throw new Error('OTP_DELIVERY_FAILED');
+  let deliveryFailure = 'PROVIDER_REJECTED';
+  try {
+    const delivery = await dispatch(destination, channel, code, name, purpose === 'LOGIN' ? 'login' : 'registration');
+    if (!delivery.success) deliveryFailure = delivery.failure || deliveryFailure;
+    if (delivery.success) return { challenge, channel };
+  } catch {
+    // Provider details are deliberately kept out of the API response.
   }
-  return { challenge, channel };
+  try {
+    await prisma.otpChallenge.delete({ where: { id: challenge.id } });
+  } catch {
+    await prisma.otpChallenge.updateMany({ where: { id: challenge.id, consumedAt: null }, data: { otpHash: null, consumedAt: new Date() } });
+  }
+  const error = new Error('OTP_DELIVERY_FAILED') as Error & { channel?: 'email' | 'mobile'; deliveryFailure?: string };
+  error.channel = channel;
+  error.deliveryFailure = deliveryFailure;
+  throw error;
 };
 
 export const requestRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
@@ -138,7 +158,16 @@ export const requestRegistrationOtp = async (req: Request, res: Response): Promi
     const now = new Date();
     res.json({ success: true, challengeId: challenge.id, destination: channel === 'email' ? maskEmail(destination) : maskPhone(destination), expiresAt: challenge.expiresAt, serverNow: now });
   } catch (error: any) {
-    res.status(error?.message === 'OTP_DELIVERY_FAILED' ? 503 : 500).json({ success: false, message: error?.message === 'OTP_DELIVERY_FAILED' ? 'Unable to send OTP. Please try again.' : 'Unable to start verification.' });
+    const deliveryFailed = error?.message === 'OTP_DELIVERY_FAILED';
+    const channel = req.body.channel === 'mobile' ? 'mobile' : 'email';
+    const message = !deliveryFailed
+      ? 'Unable to start verification.'
+      : channel === 'mobile' && error?.deliveryFailure === 'NOT_CONFIGURED'
+        ? 'SMS delivery is not configured. Please contact NCC administration.'
+        : channel === 'mobile'
+          ? 'We could not deliver the SMS verification code. Please try again later.'
+          : 'We could not deliver the email verification code. Please try again later.';
+    res.status(deliveryFailed ? 503 : 500).json({ success: false, message });
   }
 };
 
@@ -160,8 +189,17 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
     if (reserved.count !== 1) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
     const channel = challenge.purpose === OtpPurpose.REGISTRATION_MOBILE || (challenge.purpose === OtpPurpose.LOGIN && challenge.destination.startsWith('+')) ? 'mobile' : 'email';
     const user = challenge.userId ? await prisma.user.findUnique({ where: { id: challenge.userId }, select: { fullName: true } }) : null;
-    const sent = await dispatch(challenge.destination, channel, code, user?.fullName || String(req.body.name || 'Cadet'), challenge.purpose === OtpPurpose.LOGIN ? 'login' : 'registration');
-    if (!sent) { await prisma.otpChallenge.update({ where: { id: challenge.id }, data: { otpHash: null } }); res.status(503).json({ success: false, message: 'Unable to send OTP. Please try again.' }); return; }
+    const delivery = await dispatch(challenge.destination, channel, code, user?.fullName || String(req.body.name || 'Cadet'), challenge.purpose === OtpPurpose.LOGIN ? 'login' : 'registration');
+    if (!delivery.success) {
+      await prisma.otpChallenge.update({ where: { id: challenge.id }, data: { otpHash: null } });
+      const message = channel === 'mobile' && delivery.failure === 'NOT_CONFIGURED'
+        ? 'SMS delivery is not configured. Please contact NCC administration.'
+        : channel === 'mobile'
+          ? 'We could not deliver the SMS verification code. Please try again later.'
+          : 'We could not deliver the email verification code. Please try again later.';
+      res.status(503).json({ success: false, message });
+      return;
+    }
     const now = new Date(); res.json({ success: true, challengeId: challenge.id, expiresAt, serverNow: now });
   } catch { res.status(500).json({ success: false, message: 'Unable to resend OTP.' }); }
 };
@@ -239,12 +277,39 @@ export const startLoginOtp = async (req: Request, user: { id: string; fullName: 
   const isOfficer = user.role && user.role !== 'CADET';
   const useEmail = Boolean(user.email && (user.emailVerified || isOfficer));
   if (!useMobile && !useEmail) { res.status(403).json({ success: false, message: 'No verified contact on record. Contact the NCC administration to update your account.' }); return; }
-  const destination = useMobile ? normalizePhoneNumber(user.phone).normalized : user.email.toLowerCase();
-  const channel = useMobile ? 'mobile' : 'email';
-  const recentCount = await prisma.otpChallenge.count({ where: { purpose: OtpPurpose.LOGIN, destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
-  if (recentCount >= 5) { res.status(429).json({ success: false, message: 'Too many login codes requested. Please try again later.' }); return; }
+  const channels: Array<{ channel: 'mobile' | 'email'; destination: string }> = [];
+  if (useMobile) channels.push({ channel: 'mobile', destination: normalizePhoneNumber(user.phone).normalized });
+  if (useEmail) channels.push({ channel: 'email', destination: user.email.toLowerCase() });
+
+  // Check the preferred channel before invalidating an existing challenge. A
+  // rate-limited request must not consume a still-valid OTP challenge.
+  const preferred = channels[0];
+  const preferredRecentCount = await prisma.otpChallenge.count({ where: { purpose: OtpPurpose.LOGIN, destination: preferred.destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
+  if (preferredRecentCount >= 5) {
+    res.status(429).json({ success: false, message: 'Too many login codes requested. Please try again later.' });
+    return;
+  }
+
   await prisma.otpChallenge.updateMany({ where: { purpose: OtpPurpose.LOGIN, userId: user.id, consumedAt: null }, data: { otpHash: null, consumedAt: new Date() } });
-  const { challenge } = await createChallenge(OtpPurpose.LOGIN, destination, channel, user.id, user.fullName);
-  const now = new Date();
-  res.json({ success: true, otpRequired: true, challengeId: challenge.id, destination: useMobile ? maskPhone(destination) : maskEmail(destination), expiresAt: challenge.expiresAt, serverNow: now });
+  for (const { channel, destination } of channels) {
+    const recentCount = destination === preferred.destination
+      ? preferredRecentCount
+      : await prisma.otpChallenge.count({ where: { purpose: OtpPurpose.LOGIN, destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
+    if (recentCount >= 5) {
+      // Do not bypass the account/destination limit by falling back to another contact.
+      res.status(429).json({ success: false, message: 'Too many login codes requested. Please try again later.' });
+      return;
+    }
+    try {
+      const { challenge } = await createChallenge(OtpPurpose.LOGIN, destination, channel, user.id, user.fullName);
+      const maskedDestination = channel === 'mobile' ? maskPhone(destination) : maskEmail(destination);
+      const now = new Date();
+      res.json({ success: true, otpRequired: true, challengeId: challenge.id, destination: maskedDestination, expiresAt: challenge.expiresAt, serverNow: now });
+      return;
+    } catch (error: any) {
+      if (error?.message !== 'OTP_DELIVERY_FAILED') throw error;
+      // A failed primary SMS may use the already eligible verified email channel.
+    }
+  }
+  res.status(503).json({ success: false, message: 'Unable to deliver a login verification code. Please try again later or contact NCC administration.' });
 };

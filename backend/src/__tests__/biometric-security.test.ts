@@ -1,6 +1,7 @@
 import './test-isolation-guard';
 import assert from 'assert';
 import { prisma } from '../db';
+import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
 import * as attendanceNotificationService from '../services/attendanceNotification.service';
 import {
   issueVerificationChallenge,
@@ -49,6 +50,13 @@ async function runTestSuite() {
       },
     };
   }
+
+  recordResult('128-value biometric descriptor validation rejects wrong lengths, non-finite, and zero vectors',
+    isValidFaceDescriptor(new Array(128).fill(0.01))
+      && !isValidFaceDescriptor(new Array(127).fill(0.01))
+      && !isValidFaceDescriptor(new Array(129).fill(0.01))
+      && !isValidFaceDescriptor([...new Array(127).fill(0.01), Number.NaN])
+      && !isValidFaceDescriptor(new Array(128).fill(0)));
 
   // Preserve and mock notification service boundary
   const originalTriggerPresent = attendanceNotificationService.triggerPresentAttendanceNotifications;

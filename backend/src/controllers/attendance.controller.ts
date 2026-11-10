@@ -5,6 +5,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
 import { attendanceCadetInScope } from '../services/attendanceScope';
 import { assignedDrillPlatoonNames, drillInstructorCanAccessTarget } from '../services/drillInstructorScope';
+import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
 import {
   triggerPresentAttendanceNotifications,
   triggerAbsentAttendanceNotifications,
@@ -1585,13 +1586,17 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const { cadetId, descriptor, photoSnapshot, qualityScore } = req.body;
+    const { cadetId, descriptor, qualityScore } = req.body;
 
-    if (!cadetId || !Array.isArray(descriptor) || descriptor.length < 128) {
+    if (!cadetId || !isValidFaceDescriptor(descriptor)) {
       res.status(400).json({
         success: false,
-        message: 'Cadet ID and valid 128-element descriptor array are required.',
+        message: 'Cadet ID and a valid 128-value finite face descriptor are required.',
       });
+      return;
+    }
+    if (typeof qualityScore !== 'number' || !Number.isFinite(qualityScore) || qualityScore < 0 || qualityScore > 1) {
+      res.status(400).json({ success: false, message: 'A measured face detection confidence value is required.' });
       return;
     }
 
@@ -1611,21 +1616,19 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const template = await prisma.biometricTemplate.upsert({
-      where: { cadetId: cadet.id },
-      create: {
+    const existingTemplate = await prisma.biometricTemplate.findUnique({ where: { cadetId: cadet.id }, select: { id: true } });
+    if (existingTemplate) {
+      res.status(409).json({ success: false, code: 'BIOMETRIC_ALREADY_ENROLLED', message: 'This cadet already has a biometric template. Ask an administrator to review it.' });
+      return;
+    }
+
+    const template = await prisma.biometricTemplate.create({
+      data: {
         cadetId: cadet.id,
         descriptor: JSON.stringify(descriptor),
-        photoSnapshot: photoSnapshot || null,
-        qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.95,
+        photoSnapshot: null,
+        qualityScore,
         registeredBy: `${req.user.fullName} (${req.user.role})`,
-      },
-      update: {
-        descriptor: JSON.stringify(descriptor),
-        photoSnapshot: photoSnapshot || null,
-        qualityScore: typeof qualityScore === 'number' ? qualityScore : 0.95,
-        registeredBy: `${req.user.fullName} (${req.user.role})`,
-        updatedAt: new Date(),
       },
     });
 
@@ -1640,6 +1643,10 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       registeredAt: template.registeredAt,
     });
   } catch (error) {
+    if ((error as any)?.code === 'P2002') {
+      res.status(409).json({ success: false, code: 'BIOMETRIC_ALREADY_ENROLLED', message: 'This cadet already has a biometric template. Ask an administrator to review it.' });
+      return;
+    }
     console.error('enrollBiometricTemplate error:', error);
     res.status(500).json({ success: false, message: 'Failed to enroll biometric template' });
   }

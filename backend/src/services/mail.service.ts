@@ -10,6 +10,17 @@ interface SendOtpEmailParams {
 
 let transporter: Transporter | null = null;
 
+export const getEmailProviderReadiness = () => {
+  const hasValue = (value?: string) => Boolean(value?.trim() && !/^your_.*$/i.test(value.trim()));
+  const relayConfigured = hasValue(process.env.EMAIL_RELAY_URL || 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay')
+    && hasValue(process.env.RECOVERY_RELAY_SECRET);
+  const smtpConfigured = hasValue(process.env.SMTP_HOST)
+    && hasValue(process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL)
+    && hasValue(process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD)
+    && hasValue(process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER);
+  return { ready: relayConfigured || smtpConfigured, relayConfigured, smtpConfigured };
+};
+
 export const getTransporter = (): Transporter => {
   if (transporter) return transporter;
 
@@ -221,7 +232,7 @@ NCC Digital Command & Cadet Management System`;
         console.warn(`[MAIL SERVICE] Relay returned status ${resp.status}. Falling back to direct SMTP...`);
       }
     } catch (relayErr: any) {
-      console.warn('[MAIL SERVICE] HTTPS Relay failed or timed out:', relayErr?.message || relayErr);
+      console.warn('[MAIL SERVICE] HTTPS relay unavailable:', relayErr?.name || 'provider error');
     }
   } else {
     console.warn('[MAIL SERVICE] HTTPS relay skipped: RECOVERY_RELAY_SECRET is not configured.');
@@ -249,8 +260,10 @@ NCC Digital Command & Cadet Management System`;
     console.log(`[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Message accepted by mail provider (ID: ${info.messageId})`);
     return { success: true, messageId: info.messageId };
   } catch (smtpErr: any) {
-    console.error('[MAIL SERVICE] DIRECT_SMTP_FAILED:', smtpErr?.message || smtpErr);
+    const code = typeof smtpErr?.code === 'string' && /^[A-Z0-9_]{2,40}$/.test(smtpErr.code) ? smtpErr.code : 'SMTP_DELIVERY_FAILED';
+    const responseCode = Number.isInteger(smtpErr?.responseCode) ? smtpErr.responseCode : undefined;
+    console.error('[MAIL SERVICE] DIRECT_SMTP_FAILED:', JSON.stringify({ code, responseCode }));
 
-    return { success: false, error: smtpErr?.message || 'Email delivery failed' };
+    return { success: false, error: 'Email provider could not accept the message.' };
   }
 };

@@ -28,9 +28,19 @@ import { processNotificationDeliveries } from './services/notificationDelivery.s
 import { prisma } from './db';
 import { validateRuntimeConfig } from './runtimeConfig';
 import { checkReadiness } from './health';
+import { getEmailProviderReadiness } from './services/mail.service';
+import { getOtpSmsProviderReadiness } from './services/attendanceNotification.service';
 
 const app = express();
 const { port: PORT } = validateRuntimeConfig(process.env);
+
+const emailReadiness = getEmailProviderReadiness();
+console.info(`[OTP DELIVERY] Email provider configuration: ${emailReadiness.ready ? 'configured' : 'missing required settings'} (relay=${emailReadiness.relayConfigured}, smtp=${emailReadiness.smtpConfigured}).`);
+const smsReadiness = getOtpSmsProviderReadiness();
+console.info(`[OTP DELIVERY] SMS providers configured: ${[
+  smsReadiness.fast2smsConfigured ? 'Fast2SMS' : '',
+  smsReadiness.twilioConfigured ? 'Twilio' : '',
+].filter(Boolean).join(' → ') || 'none'}.`);
 
 // Security & Middleware
 app.use(helmet());

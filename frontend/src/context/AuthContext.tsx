@@ -24,7 +24,7 @@ interface AuthContextType {
   requestRegistrationOtp: (channel: 'email' | 'mobile', destination: string, name: string) => Promise<any>;
   verifyRegistrationOtp: (channel: 'email' | 'mobile', challengeId: string, otp: string) => Promise<any>;
   resendAuthOtp: (challengeId: string, name?: string) => Promise<any>;
-  registerCadet: (data: any) => Promise<{ success: boolean; message?: string; field?: string }>;
+  registerCadet: (data: any) => Promise<{ success: boolean; message?: string; field?: string; profilePhotoSaved?: boolean; biometricEnrolled?: boolean }>;
   logout: () => Promise<void>;
 }
 
@@ -130,13 +130,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestRegistrationOtp = async (channel: 'email' | 'mobile', destination: string, name: string) => {
     const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, destination, name }) });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ success: false, message: 'The verification service returned an unreadable response.' }));
     return { ...data, success: res.ok && data.success };
   };
 
   const verifyRegistrationOtp = async (channel: 'email' | 'mobile', challengeId: string, otp: string) => {
     const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, challengeId, otp }) });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({ success: false, message: 'The verification service returned an unreadable response.' }));
     return { ...data, success: res.ok && data.success };
   };
 
