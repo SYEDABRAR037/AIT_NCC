@@ -1,23 +1,22 @@
-name: NCC Authenticated Database Backup
+name: NCC Staging Authenticated Database Backup
 
 on:
   schedule:
-    # 02:00 IST (20:30 UTC) daily
+    # 02:00 IST (20:30 UTC) daily (Executes when present on repository default branch)
     - cron: '30 20 * * *'
   workflow_dispatch:
-    inputs:
-      target_env:
-        description: 'Target Environment (staging / production)'
-        required: true
-        default: 'staging'
-        type: choice
-        options:
-          - staging
-          - production
+    # Manual trigger restricted strictly to staging validation
+
+concurrency:
+  group: ncc-staging-backup-lock
+  cancel-in-progress: false
+
+permissions:
+  contents: write  # Minimum least-privilege required for GitHub Release asset publishing
 
 jobs:
-  backup:
-    name: Authenticated Backup & Dual-Upload
+  staging_backup:
+    name: Staging Authenticated Backup & Remote Verification Drill
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -26,49 +25,341 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Install PostgreSQL Client
+      - name: Install Pinned PostgreSQL 16 Server, Client & AWS CLI
         run: |
+          echo "=== Configuring PostgreSQL Official Repository & Installing Pinned PostgreSQL 16 ==="
+          sudo install -d /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update -qq
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-16 postgresql-client-16 awscli
 
-      - name: Resolve Staging Database Target
-        env:
-          INPUT_ENV: ${{ github.event.inputs.target_env || 'staging' }}
-          STAGING_URL: ${{ secrets.STAGING_DIRECT_URL }}
-          PROD_URL: ${{ secrets.PRODUCTION_DIRECT_URL }}
-        run: |
-          mkdir -p /tmp/backups
-          TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
-          
-          if [ "${INPUT_ENV}" = "production" ]; then
-            if [ -z "${PROD_URL}" ]; then
-              echo "::error::PRODUCTION_DIRECT_URL secret is not configured. Aborting."
-              exit 1
-            fi
-            echo "DIRECT_URL=${PROD_URL}" >> $GITHUB_ENV
-            echo "TARGET_ENV=production" >> $GITHUB_ENV
-          else
-            if [ -z "${STAGING_URL}" ]; then
-              echo "::error::STAGING_DIRECT_URL secret is not configured. Aborting."
-              exit 1
-            fi
-            echo "DIRECT_URL=${STAGING_URL}" >> $GITHUB_ENV
-            echo "TARGET_ENV=staging" >> $GITHUB_ENV
+          echo "=== Verifying AWS CLI ==="
+          aws --version || { echo "::error::AWS CLI installation failed"; exit 1; }
+
+          echo "=== Starting & Verifying Ephemeral Pinned PostgreSQL 16 Server ==="
+          sudo service postgresql start
+          pg_isready -h localhost -p 5432 || { echo "::error::PostgreSQL service failed to start"; exit 1; }
+          psql --version
+          RUNNER_PG_VER=$(sudo -u postgres psql -tAc "SELECT current_setting('server_version_num')::int / 10000;")
+          echo "Runner PostgreSQL Major Version: ${RUNNER_PG_VER}"
+          if [ "${RUNNER_PG_VER}" != "16" ]; then
+            echo "::error::Runner PostgreSQL server major version (${RUNNER_PG_VER}) is not pinned to expected PostgreSQL 16!"
+            exit 1
           fi
-          
+          echo "RUNNER_PG_VER=${RUNNER_PG_VER}" >> $GITHUB_ENV
+
+      - name: Generate Trusted Schema Manifest from Intended Baseline Migration
+        run: |
+          echo "=== Provisioning Ephemeral Baseline Reference Database on Runner ==="
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_reference_baseline;"
+          sudo -u postgres psql -c "CREATE DATABASE ncc_reference_baseline;"
+
+          echo "Applying intended baseline migration to reference database..."
+          MIGRATION_FILE="backend/prisma/migrations/20261107000000_init_baseline/migration.sql"
+          if [ ! -f "${MIGRATION_FILE}" ]; then
+            echo "::error::Baseline migration file not found at ${MIGRATION_FILE}"
+            exit 1
+          fi
+          MIGRATION_CHECKSUM=$(sha256sum "${MIGRATION_FILE}" | cut -d " " -f 1)
+          echo "Calculated Baseline Migration SHA-256: ${MIGRATION_CHECKSUM}"
+
+          sudo -u postgres psql -d ncc_reference_baseline -f "${MIGRATION_FILE}"
+
+          # Record baseline migration in _prisma_migrations ledger with real SHA-256 checksum
+          sudo -u postgres psql -d ncc_reference_baseline -c "
+            CREATE TABLE IF NOT EXISTS _prisma_migrations (
+                id VARCHAR(36) PRIMARY KEY,
+                checksum VARCHAR(64) NOT NULL,
+                finished_at TIMESTAMPTZ,
+                migration_name VARCHAR(255) NOT NULL,
+                logs TEXT,
+                rolled_back_at TIMESTAMPTZ,
+                started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                applied_steps_count INTEGER NOT NULL DEFAULT 0
+            );
+            INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, applied_steps_count)
+            VALUES ('00000000-0000-0000-0000-000000000001', '${MIGRATION_CHECKSUM}', now(), '20261107000000_init_baseline', 1);
+          "
+
+          # Extract canonical trusted manifest to JSON (Tables, Columns, Constraints, Indexes, Enums, Migration Ledger, Triggers, Routines, Sequences, RLS Table Flags, RLS Policies)
+          node -e '
+            const { execSync } = require("child_process");
+            const fs = require("fs");
+            function query(sql) {
+              return execSync(`sudo -u postgres psql -d ncc_reference_baseline -tAc "${sql.replace(/"/g, "\\\"")}"`).toString().trim();
+            }
+            const tables = query("SELECT table_name FROM information_schema.tables WHERE table_schema = '\''public'\'' ORDER BY table_name;").split("\n").filter(Boolean);
+            const columns = query("SELECT table_name || '\''|'\'' || column_name || '\''|'\'' || data_type || '\''|'\'' || udt_name || '\''|'\'' || is_nullable || '\''|'\'' || coalesce(column_default, '\''<none>'\'') FROM information_schema.columns WHERE table_schema = '\''public'\'' ORDER BY table_name, ordinal_position;").split("\n").filter(Boolean);
+            const constraints = query("SELECT t.relname || '\''|'\'' || c.conname || '\''|'\'' || c.contype::text || '\''|'\'' || pg_get_constraintdef(c.oid, true) FROM pg_constraint c JOIN pg_class t ON c.conrelid = t.oid JOIN pg_namespace n ON t.relnamespace = n.oid WHERE n.nspname = '\''public'\'' ORDER BY t.relname, c.conname;").split("\n").filter(Boolean);
+            const indexes = query("SELECT tablename || '\''|'\'' || indexname || '\''|'\'' || indexdef FROM pg_indexes WHERE schemaname = '\''public'\'' ORDER BY tablename, indexname;").split("\n").filter(Boolean);
+            const enums = query("SELECT t.typname || '\''|'\'' || string_agg(e.enumlabel, '\'','\'' ORDER BY e.enumsortorder) FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = '\''public'\'' GROUP BY t.typname ORDER BY t.typname;").split("\n").filter(Boolean);
+            const migrations = query("SELECT migration_name || '\''|'\'' || checksum || '\''|'\'' || (finished_at IS NOT NULL)::text || '\''|'\'' || (rolled_back_at IS NULL)::text || '\''|'\'' || applied_steps_count FROM _prisma_migrations ORDER BY migration_name;").split("\n").filter(Boolean);
+            const triggers = query("SELECT trigger_name || '\''|'\'' || event_manipulation || '\''|'\'' || event_object_table || '\''|'\'' || action_timing || '\''|'\'' || coalesce(action_statement, '\''<none>'\'') FROM information_schema.triggers WHERE trigger_schema = '\''public'\'' ORDER BY trigger_name, event_manipulation;").split("\n").filter(Boolean);
+            const routines = query("SELECT routine_name || '\''|'\'' || routine_type || '\''|'\'' || coalesce(data_type, '\''<void>'\'') || '\''|'\'' || coalesce(routine_definition, '\''<external>'\'') FROM information_schema.routines WHERE routine_schema = '\''public'\'' ORDER BY routine_name;").split("\n").filter(Boolean);
+            const sequences = query("SELECT s.relname || '\''|'\'' || coalesce(t.relname, '\''<none>'\'') || '\''|'\'' || coalesce(a.attname, '\''<none>'\'') FROM pg_class s JOIN pg_namespace n ON s.relnamespace = n.oid LEFT JOIN pg_depend d ON d.objid = s.oid AND d.deptype = '\''a'\'' LEFT JOIN pg_class t ON d.refobjid = t.oid LEFT JOIN pg_attribute a ON d.refobjid = a.attrelid AND d.refobjsubid = a.attnum WHERE n.nspname = '\''public'\'' AND s.relkind = '\''S'\'' ORDER BY s.relname;").split("\n").filter(Boolean);
+            const rls_tables = query("SELECT n.nspname || '\''|'\'' || c.relname || '\''|'\'' || c.relkind::text || '\''|'\'' || c.relrowsecurity::text || '\''|'\'' || c.relforcerowsecurity::text FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'' AND c.relkind IN ('\''r'\'', '\''p'\'') ORDER BY c.relname;").split("\n").filter(Boolean);
+            const rls_policies = query("SELECT polname || '\''|'\'' || c.relname || '\''|'\'' || polcmd::text || '\''|'\'' || array_to_string(polroles, '\'','\'') || '\''|'\'' || coalesce(pg_get_expr(polqual, polrelid), '\''<none>'\'') || '\''|'\'' || coalesce(pg_get_expr(polwithcheck, polrelid), '\''<none>'\'') FROM pg_policy p JOIN pg_class c ON p.polrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'' ORDER BY polname, c.relname;").split("\n").filter(Boolean);
+            const procs = query("SELECT n.nspname || '\''|'\'' || p.proname || '\''|'\'' || p.prokind::text || '\''|'\'' || pg_get_function_identity_arguments(p.oid) || '\''|'\'' || l.lanname || '\''|'\'' || coalesce(p.prosrc, '\''<none>'\'') FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid JOIN pg_language l ON p.prolang = l.oid WHERE n.nspname = '\''public'\'' AND p.prokind IN ('\''f'\'', '\''p'\'', '\''a'\'', '\''w'\'') AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.classid = '\''pg_proc'\''::regclass AND d.deptype = '\''e'\'') ORDER BY p.proname, pg_get_function_identity_arguments(p.oid);").split("\n").filter(Boolean);
+
+            const manifest = { tables, columns, constraints, indexes, enums, migrations, triggers, routines, procs, sequences, rls_tables, rls_policies };
+            fs.writeFileSync("/tmp/trusted_schema_manifest.json", JSON.stringify(manifest, null, 2));
+            console.log("Trusted Reference Schema Manifest generated successfully:");
+            console.log("  Tables: " + tables.length + ", Columns: " + columns.length + ", Constraints: " + constraints.length + ", Indexes: " + indexes.length + ", Enums: " + enums.length);
+            console.log("  Zero-Object Baseline Categories -> Triggers: " + triggers.length + ", Routines: " + routines.length + ", Procs (pg_proc): " + procs.length + ", Sequences: " + sequences.length + ", RLS Policies: " + rls_policies.length + ", RLS Table Flags: " + rls_tables.length);
+          '
+
+          # Teardown reference database immediately to maintain complete isolation
+          sudo -u postgres psql -c "DROP DATABASE ncc_reference_baseline;"
+
+      - name: Fail-Closed Staging Secret & Identity Validation
+        env:
+          PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+          STAGING_URL: ${{ secrets.STAGING_DIRECT_URL }}
+          ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+          R2_KEY_ID: ${{ secrets.STAGING_R2_ACCESS_KEY_ID }}
+          R2_SECRET: ${{ secrets.STAGING_R2_SECRET_ACCESS_KEY }}
+          CF_ACCOUNT_ID: ${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STAGING_HOST_ALLOWLIST: ${{ secrets.STAGING_HOST_ALLOWLIST }}
+        run: |
+          MISSING=0
+          if [ -z "${PROJECT_REF}" ]; then echo "::error::Missing mandatory secret STAGING_SUPABASE_PROJECT_REF"; MISSING=1; fi
+          if [ -z "${STAGING_URL}" ]; then echo "::error::Missing secret STAGING_DIRECT_URL"; MISSING=1; fi
+          if [ -z "${ENCRYPTION_KEY}" ]; then echo "::error::Missing secret BACKUP_ENCRYPTION_KEY"; MISSING=1; fi
+          if [ -z "${R2_KEY_ID}" ]; then echo "::error::Missing secret STAGING_R2_ACCESS_KEY_ID"; MISSING=1; fi
+          if [ -z "${R2_SECRET}" ]; then echo "::error::Missing secret STAGING_R2_SECRET_ACCESS_KEY"; MISSING=1; fi
+          if [ -z "${CF_ACCOUNT_ID}" ]; then echo "::error::Missing secret STAGING_CLOUDFLARE_ACCOUNT_ID"; MISSING=1; fi
+          if [ -z "${GH_TOKEN}" ]; then echo "::error::Missing GITHUB_TOKEN"; MISSING=1; fi
+          if [ -z "${STAGING_HOST_ALLOWLIST}" ]; then echo "::error::Missing mandatory secret STAGING_HOST_ALLOWLIST"; MISSING=1; fi
+
+          if [ $MISSING -ne 0 ]; then
+            echo "::error::Fail-closed guard tripped: Staging backup drill requires all staging credentials.";
+            exit 1
+          fi
+
+          # Cryptographic key format validation (Must be exact 64-char hex string)
+          node -e '
+            const keyHex = process.env.ENCRYPTION_KEY || "";
+            if (!/^[0-9a-fA-F]{64}$/.test(keyHex)) {
+              console.error("::error::BACKUP_ENCRYPTION_KEY must be a valid 64-character hexadecimal string.");
+              process.exit(1);
+            }
+          '
+
+          # Staging Database Host & Identity Pre-flight Guard
+          node -e '
+            const projectRef = (process.env.PROJECT_REF || "").trim().toLowerCase();
+            if (!/^[a-z0-9-]{6,40}$/.test(projectRef)) {
+              console.error("::error::STAGING_SUPABASE_PROJECT_REF must be a valid project reference matching ^[a-z0-9-]{6,40}$.");
+              process.exit(1);
+            }
+
+            const urlStr = process.env.STAGING_URL || "";
+            let parsed;
+            try {
+              parsed = new URL(urlStr);
+            } catch (e) {
+              console.error("::error::STAGING_DIRECT_URL is not a valid URL.");
+              process.exit(1);
+            }
+
+            const hostname = parsed.hostname.toLowerCase();
+            const dbName = parsed.pathname.replace(/^\//, "");
+            const username = parsed.username;
+            const allowlist = (process.env.STAGING_HOST_ALLOWLIST || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+
+            console.log("Validating target database host isolation...");
+
+            // Hard barrier 1: Unconditional rejection of production patterns (No exception for "staging" substring)
+            const prohibited = ["dpg-", "render.com", "production", "prod"];
+            for (const p of prohibited) {
+              if (hostname.includes(p)) {
+                console.error("::error::Target hostname unconditionally rejected for containing prohibited production pattern: " + p);
+                process.exit(1);
+              }
+            }
+
+            // Hard barrier 2: Disallow localhost/loopback in GitHub Actions CI execution
+            const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+            if (isCI && (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1")) {
+              console.error("::error::Localhost/loopback target is strictly forbidden in GitHub Actions workflow execution.");
+              process.exit(1);
+            }
+
+            // Hard barrier 3: Enforce strict mandatory allowlist membership
+            if (allowlist.length === 0) {
+              console.error("::error::STAGING_HOST_ALLOWLIST must be explicitly provided and non-empty.");
+              process.exit(1);
+            }
+            const inAllowlist = allowlist.some(allowed => hostname === allowed || hostname.endsWith("." + allowed));
+            if (!inAllowlist) {
+              console.error("::error::Hostname " + hostname + " is not in STAGING_HOST_ALLOWLIST.");
+              process.exit(1);
+            }
+
+            // Hard barrier 4: Cryptographically bind host/user to configured STAGING_SUPABASE_PROJECT_REF
+            if (hostname.endsWith(".pooler.supabase.com")) {
+              // Supavisor Session Pooler: user must be postgres.<project_ref>
+              const expectedUser = "postgres." + projectRef;
+              if (username !== expectedUser) {
+                console.error("::error::Supavisor pooler connection user (" + username + ") does not match expected project identity " + expectedUser);
+                process.exit(1);
+              }
+            } else if (hostname.endsWith(".supabase.co")) {
+              // Direct Supabase Connection: host must be db.<project_ref>.supabase.co
+              const expectedHost = "db." + projectRef + ".supabase.co";
+              if (hostname !== expectedHost) {
+                console.error("::error::Direct Supabase host (" + hostname + ") does not match expected project identity " + expectedHost);
+                process.exit(1);
+              }
+            } else {
+              // Any other host pattern is rejected in staging workflow
+              console.error("::error::Hostname " + hostname + " does not conform to authorized Supabase staging infrastructure.");
+              process.exit(1);
+            }
+
+            // Hard barrier 5: Database name must be postgres or match projectRef; reject any production naming
+            const lowerDb = dbName.toLowerCase();
+            if (lowerDb.includes("prod") || lowerDb.includes("production")) {
+              console.error("::error::Database name contains prohibited production keyword: " + dbName);
+              process.exit(1);
+            }
+            if (dbName !== "postgres" && dbName !== projectRef) {
+              console.error("::error::Unexpected database name: " + dbName + ". Expected postgres or project ref " + projectRef);
+              process.exit(1);
+            }
+
+            console.log("Target database host, user, and database name verified as mutually consistent with staging project " + projectRef);
+          '
+
+          mkdir -p /tmp/backups /tmp/verify_gh /tmp/verify_r2
+          TIMESTAMP=$(date -u +"%Y%m%d_%H%M%SZ")
+          IST_DATE=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %H:%M:%S IST")
+          RUN_TAG="staging_run${{ github.run_id }}_att${{ github.run_attempt }}"
+
+          # Lifecycle Tier Determination (Always produce Daily; calculate Weekly/Monthly retention copies using Indian Local Time)
+          DAY_OF_MONTH=$(TZ="Asia/Kolkata" date +"%d")
+          DAY_OF_WEEK=$(TZ="Asia/Kolkata" date +"%u")
+          IS_WEEKLY="false"
+          IS_MONTHLY="false"
+          if [ "${DAY_OF_WEEK}" = "7" ]; then IS_WEEKLY="true"; fi
+          if [ "${DAY_OF_MONTH}" = "01" ]; then IS_MONTHLY="true"; fi
+
+          echo "Backup Execution Timestamp (UTC): ${TIMESTAMP}"
+          echo "Indian Local Time (Asia/Kolkata):  ${IST_DATE}"
+          echo "IST Day of Month: ${DAY_OF_MONTH} (Monthly tier active: ${IS_MONTHLY})"
+          echo "IST Day of Week (1=Mon..7=Sun): ${DAY_OF_WEEK} (Weekly tier active: ${IS_WEEKLY})"
+
           echo "TIMESTAMP=${TIMESTAMP}" >> $GITHUB_ENV
-          echo "DUMP_FILE=/tmp/backups/ncc_${INPUT_ENV}_${TIMESTAMP}.dump" >> $GITHUB_ENV
+          echo "IST_DATE=${IST_DATE}" >> $GITHUB_ENV
+          echo "RUN_TAG=${RUN_TAG}" >> $GITHUB_ENV
+          echo "TARGET_ENV=staging" >> $GITHUB_ENV
+          echo "IS_WEEKLY=${IS_WEEKLY}" >> $GITHUB_ENV
+          echo "IS_MONTHLY=${IS_MONTHLY}" >> $GITHUB_ENV
+          echo "DUMP_FILE=/tmp/backups/ncc_staging_${TIMESTAMP}_${RUN_TAG}.dump" >> $GITHUB_ENV
+
+      - name: Pre-Flight PostgreSQL Client/Server Compatibility & Connected Database Identity Handshake
+        env:
+          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
+          PROJECT_REF: ${{ secrets.STAGING_SUPABASE_PROJECT_REF }}
+        run: |
+          echo "=== Auditing PostgreSQL Client & Server Version Compatibility ==="
+          DUMP_CLIENT_VER=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
+          RESTORE_CLIENT_VER=$(pg_restore --version | grep -oE '[0-9]+' | head -1)
+          echo "pg_dump Client Major Version: ${DUMP_CLIENT_VER}"
+          echo "pg_restore Client Major Version: ${RESTORE_CLIENT_VER}"
+          echo "Target Local Runner Server Major Version: ${RUNNER_PG_VER}"
+
+          echo "Executing read-only handshake transaction on staging database..."
+          psql "${DIRECT_URL}" -c "BEGIN READ ONLY; SELECT 1; ROLLBACK;" >/dev/null 2>&1 || {
+            echo "::error::Staging database read-only handshake transaction failed."
+            exit 1
+          }
+
+          # Safe structured parsing with pipe delimiter to prevent IPv6 addresses (which contain colons) from corruption
+          SOURCE_INFO=$(psql "${DIRECT_URL}" -tAc "SELECT current_database() || '|' || (current_setting('server_version_num')::int / 10000) || '|' || current_user || '|' || coalesce(inet_server_addr()::text, 'socket');")
+          SOURCE_DB=$(echo "${SOURCE_INFO}" | cut -d'|' -f1)
+          SOURCE_PG_VER=$(echo "${SOURCE_INFO}" | cut -d'|' -f2)
+          SOURCE_USER=$(echo "${SOURCE_INFO}" | cut -d'|' -f3)
+          SOURCE_ADDR=$(echo "${SOURCE_INFO}" | cut -d'|' -f4)
+
+          echo "Staging Connected Database Name: ${SOURCE_DB}"
+          echo "Staging Connected Database User: ${SOURCE_USER}"
+          echo "Staging Server Network Address: ${SOURCE_ADDR}"
+          echo "Staging Source PostgreSQL Major Version: ${SOURCE_PG_VER}"
+
+          # Fail-closed guard: Connected database must not be a production database
+          LOWER_DB=$(echo "${SOURCE_DB}" | tr '[:upper:]' '[:lower:]')
+          if [[ "${LOWER_DB}" =~ (production|prod) ]]; then
+            echo "::error::Connected database name '${SOURCE_DB}' matches prohibited production patterns!"
+            exit 1
+          fi
+
+          # Fail-closed guard: Connected database name must match expected staging database
+          if [ "${SOURCE_DB}" != "postgres" ] && [ "${SOURCE_DB}" != "${PROJECT_REF}" ]; then
+            echo "::error::Connected database name '${SOURCE_DB}' does not match authorized staging database name ('postgres' or '${PROJECT_REF}')."
+            exit 1
+          fi
+
+          # Fail-closed guard: Connected user must match authorized staging identity
+          if [ "${SOURCE_USER}" != "postgres" ] && [ "${SOURCE_USER}" != "postgres.${PROJECT_REF}" ]; then
+            echo "::error::Connected database user '${SOURCE_USER}' does not match authorized staging database identity ('postgres' or 'postgres.${PROJECT_REF}')."
+            exit 1
+          fi
+
+          # Fail-closed assertion: ensure all versions were detected
+          : "${DUMP_CLIENT_VER:?pg_dump client version was not detected}"
+          : "${RESTORE_CLIENT_VER:?pg_restore client version was not detected}"
+          : "${RUNNER_PG_VER:?Runner PostgreSQL server version was not detected}"
+          : "${SOURCE_PG_VER:?Source PostgreSQL server version was not detected}"
+
+          # Enforce numeric sanity across all 4 captured PostgreSQL components before comparison
+          for V in "${DUMP_CLIENT_VER}" "${RESTORE_CLIENT_VER}" "${RUNNER_PG_VER}" "${SOURCE_PG_VER}"; do
+            if ! [[ "${V}" =~ ^[0-9]+$ ]]; then
+              echo "::error::Failed to parse numeric PostgreSQL major version: '${V}'"
+              exit 1
+            fi
+          done
+
+          # Runner Assertion: Runner must be pinned to PostgreSQL 16
+          if [ "${RUNNER_PG_VER}" -ne 16 ]; then
+            echo "::error::Runner PostgreSQL server major version (${RUNNER_PG_VER}) is not pinned to expected PostgreSQL 16!"
+            exit 1
+          fi
+
+          # Compatibility Rule 1: Export client must support source server version
+          if [ "${DUMP_CLIENT_VER}" -lt "${SOURCE_PG_VER}" ]; then
+            echo "::error::pg_dump version (${DUMP_CLIENT_VER}) is older than source PostgreSQL server (${SOURCE_PG_VER}). Export is unsupported."
+            exit 1
+          fi
+
+          # Compatibility Rule 2: Restoration client must support dump format version
+          if [ "${RESTORE_CLIENT_VER}" -lt "${DUMP_CLIENT_VER}" ]; then
+            echo "::error::pg_restore version (${RESTORE_CLIENT_VER}) is older than pg_dump version (${DUMP_CLIENT_VER}). Restore is unsupported."
+            exit 1
+          fi
+
+          # Compatibility Rule 3: Restoration server version must be compatible with source server
+          if [ "${RUNNER_PG_VER}" -lt "${SOURCE_PG_VER}" ]; then
+            echo "::error::Runner PostgreSQL server (${RUNNER_PG_VER}) is older than source server (${SOURCE_PG_VER}). Restoration may fail."
+            exit 1
+          fi
+
+          echo "PostgreSQL client/server version compatibility verified across all 4 components (dump: ${DUMP_CLIENT_VER}, restore: ${RESTORE_CLIENT_VER}, source: ${SOURCE_PG_VER}, runner: ${RUNNER_PG_VER})."
 
       - name: Export Custom Compressed Dump via TLS
+        env:
+          DIRECT_URL: ${{ secrets.STAGING_DIRECT_URL }}
         run: |
-          # Safe execution without printing connection string or credentials
+          # Stream directly to custom compressed dump without logging connection strings
           pg_dump --format=custom --compress=9 --no-owner --no-acl "${DIRECT_URL}" -f "${DUMP_FILE}"
           DUMP_SIZE=$(stat -c%s "${DUMP_FILE}" 2>/dev/null || stat -f%z "${DUMP_FILE}")
-          echo "Dump created successfully (${DUMP_SIZE} bytes)."
+          echo "Staging database export completed (${DUMP_SIZE} bytes)."
 
-      - name: Encrypt with AES-256-GCM AEAD
+      - name: Encrypt with Authenticated AES-256-GCM (v002 AAD Bound)
         env:
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
         run: |
@@ -78,20 +369,20 @@ jobs:
             const dumpPath = process.env.DUMP_FILE;
             const encPath = dumpPath + ".enc";
             const keyHex = process.env.BACKUP_ENCRYPTION_KEY;
-            if (!keyHex || keyHex.length !== 64) {
-              console.error("BACKUP_ENCRYPTION_KEY must be a 64-character hex string (256-bit key)");
-              process.exit(1);
-            }
+
             const key = Buffer.from(keyHex, "hex");
             const iv = crypto.randomBytes(12); // 96-bit CSPRNG IV
-            const keyHeader = Buffer.from("v001", "ascii"); // 4-byte key version header
+            const keyHeader = Buffer.from("v002", "ascii"); // v002 format with AAD binding
+
             const plaintext = fs.readFileSync(dumpPath);
             const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+            cipher.setAAD(keyHeader); // Authenticate version header via Additional Authenticated Data
+
             const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-            const tag = cipher.getAuthTag(); // 16-byte MAC tag
+            const tag = cipher.getAuthTag(); // 16-byte Galois MAC tag
             const payload = Buffer.concat([keyHeader, iv, ciphertext, tag]);
             fs.writeFileSync(encPath, payload);
-            console.log("Authenticated encrypted archive created (" + payload.length + " bytes).");
+            console.log("Encrypted archive generated using v002 with AAD binding (" + payload.length + " bytes).");
           '
           echo "ENC_FILE=${DUMP_FILE}.enc" >> $GITHUB_ENV
 
@@ -99,52 +390,301 @@ jobs:
         run: |
           sha256sum "${DUMP_FILE}" > "${DUMP_FILE}.sha256"
           sha256sum "${ENC_FILE}" > "${ENC_FILE}.sha256"
-          echo "SHA-256 digests computed."
+          ORIG_DUMP_HASH=$(cut -d " " -f 1 "${DUMP_FILE}.sha256")
+          ORIG_ENC_HASH=$(cut -d " " -f 1 "${ENC_FILE}.sha256")
+          echo "ORIG_DUMP_HASH=${ORIG_DUMP_HASH}" >> $GITHUB_ENV
+          echo "ORIG_ENC_HASH=${ORIG_ENC_HASH}" >> $GITHUB_ENV
+          echo "Original Dump SHA-256: ${ORIG_DUMP_HASH}"
+          echo "Encrypted Archive SHA-256: ${ORIG_ENC_HASH}"
 
-      - name: Upload to GitHub Releases (Destination 1)
-        if: ${{ secrets.GITHUB_TOKEN != '' }}
+      - name: Upload to Staging GitHub Release (Destination 1 - Mandatory)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_NAME="backup-${{ env.TARGET_ENV }}-${{ env.TIMESTAMP }}"
+          TAG_NAME="staging-backup-${{ env.TIMESTAMP }}_${{ env.RUN_TAG }}"
+          echo "RELEASE_TAG=${TAG_NAME}" >> $GITHUB_ENV
           gh release create "${TAG_NAME}" "${ENC_FILE}" "${ENC_FILE}.sha256" \
-            --title "Encrypted Backup: ${{ env.TARGET_ENV }} ${{ env.TIMESTAMP }}" \
-            --notes "Automated AES-256-GCM authenticated backup for NCC AIT."
+            --title "Staging Encrypted Backup: ${TIMESTAMP} (${RUN_TAG})" \
+            --notes "Automated AES-256-GCM v002 authenticated staging backup for NCC AIT."
 
-      - name: Upload to Cloudflare R2 (Destination 2)
-        if: ${{ secrets.R2_ACCESS_KEY_ID != '' && secrets.R2_SECRET_ACCESS_KEY != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+      - name: Upload to Staging Cloudflare R2 Bucket (Destination 2 - Mandatory)
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          AWS_ENDPOINT_URL: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: https://${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
           AWS_DEFAULT_REGION: auto
         run: |
           FILENAME=$(basename "${ENC_FILE}")
-          aws s3 cp "${ENC_FILE}" "s3://ncc-institutional-backups/backups/daily/${FILENAME}"
-          aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-institutional-backups/backups/daily/${FILENAME}.sha256"
-          echo "Uploaded to Cloudflare R2: backups/daily/${FILENAME}"
+          echo "R2_FILENAME=${FILENAME}" >> $GITHUB_ENV
 
-      - name: Automated Verification Decryption Drill
+          # Always produce Daily backup tier
+          aws s3 cp "${ENC_FILE}" "s3://ncc-staging-backups/staging/backups/daily/${FILENAME}"
+          aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-staging-backups/staging/backups/daily/${FILENAME}.sha256"
+          echo "Successfully uploaded daily backup copy to s3://ncc-staging-backups/staging/backups/daily/${FILENAME}"
+
+          # If Sunday, also produce Weekly retention tier copy
+          if [ "${IS_WEEKLY}" = "true" ]; then
+            aws s3 cp "${ENC_FILE}" "s3://ncc-staging-backups/staging/backups/weekly/${FILENAME}"
+            aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-staging-backups/staging/backups/weekly/${FILENAME}.sha256"
+            echo "Successfully uploaded weekly retention copy to s3://ncc-staging-backups/staging/backups/weekly/${FILENAME}"
+          fi
+
+          # If 1st of month, also produce Monthly retention tier copy
+          if [ "${IS_MONTHLY}" = "true" ]; then
+            aws s3 cp "${ENC_FILE}" "s3://ncc-staging-backups/staging/backups/monthly/${FILENAME}"
+            aws s3 cp "${ENC_FILE}.sha256" "s3://ncc-staging-backups/staging/backups/monthly/${FILENAME}.sha256"
+            echo "Successfully uploaded monthly retention copy to s3://ncc-staging-backups/staging/backups/monthly/${FILENAME}"
+          fi
+
+      - name: "Remote Verification Step 1: Download from GitHub Releases"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/verify_gh
+          gh release download "${RELEASE_TAG}" --pattern "*.enc*"
+          echo "Downloaded release assets from GitHub:"
+          ls -la /tmp/verify_gh
+
+      - name: "Remote Verification Step 2: Download from Cloudflare R2 Bucket"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: https://${{ secrets.STAGING_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          AWS_DEFAULT_REGION: auto
+        run: |
+          cd /tmp/verify_r2
+          aws s3 cp "s3://ncc-staging-backups/staging/backups/daily/${R2_FILENAME}" "./${R2_FILENAME}"
+          aws s3 cp "s3://ncc-staging-backups/staging/backups/daily/${R2_FILENAME}.sha256" "./${R2_FILENAME}.sha256"
+          echo "Downloaded assets from Cloudflare R2 daily tier:"
+          ls -la /tmp/verify_r2
+
+      - name: "Remote Verification Step 3: Decrypt Downloaded Assets & Validate v001/v002"
         env:
           BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
         run: |
           node -e '
             const fs = require("fs");
             const crypto = require("crypto");
-            const encPath = process.env.ENC_FILE;
-            const dumpPath = process.env.DUMP_FILE;
             const key = Buffer.from(process.env.BACKUP_ENCRYPTION_KEY, "hex");
-            const encData = fs.readFileSync(encPath);
-            const keyHeader = encData.subarray(0, 4).toString("ascii");
-            if (keyHeader !== "v001") throw new Error("Key header mismatch");
-            const iv = encData.subarray(4, 16);
-            const tag = encData.subarray(encData.length - 16);
-            const ciphertext = encData.subarray(16, encData.length - 16);
-            const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-            decipher.setAuthTag(tag);
-            const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-            const originalHash = crypto.createHash("sha256").update(fs.readFileSync(dumpPath)).digest("hex");
-            const decHash = crypto.createHash("sha256").update(decrypted).digest("hex");
-            if (originalHash !== decHash) throw new Error("Decrypted hash mismatch!");
-            console.log("Decryption and integrity tag verified successfully. SHA-256 matches bit-for-bit.");
+            const expectedEncHash = process.env.ORIG_ENC_HASH;
+            const expectedDumpHash = process.env.ORIG_DUMP_HASH;
+            const r2Filename = process.env.R2_FILENAME;
+
+            const targets = [
+              { name: "GitHub Release", path: "/tmp/verify_gh/" + r2Filename },
+              { name: "Cloudflare R2", path: "/tmp/verify_r2/" + r2Filename }
+            ];
+
+            for (const target of targets) {
+              console.log("Verifying downloaded copy from: " + target.name);
+              if (!fs.existsSync(target.path)) throw new Error("Missing downloaded file: " + target.path);
+
+              // Independent .sha256 sidecar manifest validation
+              const sidecarPath = target.path + ".sha256";
+              if (!fs.existsSync(sidecarPath)) throw new Error("Missing downloaded checksum sidecar: " + sidecarPath);
+              const sidecarContent = fs.readFileSync(sidecarPath, "utf8").trim();
+              const sidecarHash = sidecarContent.split(/\s+/)[0];
+
+              const encData = fs.readFileSync(target.path);
+              if (encData.length < 32) throw new Error("Payload too short to be a valid backup");
+
+              const actualEncHash = crypto.createHash("sha256").update(encData).digest("hex");
+              if (actualEncHash !== expectedEncHash) {
+                throw new Error(target.name + " downloaded ciphertext hash mismatch against original export!");
+              }
+              console.log("  [PASS] Ciphertext SHA-256 match: " + actualEncHash.substring(0, 16) + "...");
+
+              if (sidecarHash !== actualEncHash) {
+                throw new Error(target.name + " downloaded .sha256 sidecar digest (" + sidecarHash + ") does not match actual ciphertext SHA-256 (" + actualEncHash + ")!");
+              }
+              if (sidecarHash !== expectedEncHash) {
+                throw new Error(target.name + " downloaded .sha256 sidecar digest (" + sidecarHash + ") does not match expected export hash (" + expectedEncHash + ")!");
+              }
+              console.log("  [PASS] Downloaded .sha256 sidecar independently verified: " + sidecarHash.substring(0, 16) + "...");
+
+              const keyHeader = encData.subarray(0, 4);
+              const headerStr = keyHeader.toString("ascii");
+              const iv = encData.subarray(4, 16);
+              const tag = encData.subarray(encData.length - 16);
+              const ciphertext = encData.subarray(16, encData.length - 16);
+
+              let decrypted;
+              if (headerStr === "v002") {
+                // v002 format: Authenticated with Additional Authenticated Data (AAD)
+                const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+                decipher.setAAD(keyHeader);
+                decipher.setAuthTag(tag);
+                decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+                console.log("  [PASS] Decrypted using v002 format (AAD bound).");
+              } else if (headerStr === "v001") {
+                // v001 legacy format: Decrypted without AAD
+                const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+                decipher.setAuthTag(tag);
+                decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+                console.log("  [PASS] Decrypted using v001 legacy format (no AAD).");
+              } else {
+                throw new Error("Unsupported backup format version header: " + headerStr);
+              }
+
+              const actualDumpHash = crypto.createHash("sha256").update(decrypted).digest("hex");
+              if (actualDumpHash !== expectedDumpHash) {
+                throw new Error(target.name + " decrypted plaintext hash mismatch!");
+              }
+              console.log("  [PASS] Authenticated AES-256-GCM Galois MAC verified.");
+              console.log("  [PASS] Decrypted plaintext SHA-256 match: " + actualDumpHash.substring(0, 16) + "...");
+              fs.writeFileSync(target.path + ".decrypted", decrypted);
+            }
+            console.log("\nRemote dual-destination download, decryption, and integrity audit: 100% SUCCESSFUL.");
           '
+
+      - name: "Remote Verification Step 4: Ephemeral PostgreSQL Restoration & Deep Catalog Audit"
+        run: |
+          echo "=== Provisioning Ephemeral Disposable Databases on Runner Localhost ==="
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_verify_gh_restore;"
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_verify_r2_restore;"
+          sudo -u postgres psql -c "CREATE DATABASE ncc_verify_gh_restore;"
+          sudo -u postgres psql -c "CREATE DATABASE ncc_verify_r2_restore;"
+
+          AUDIT_SCRIPT='
+            set -e
+            DB=$1
+            LABEL=$2
+            echo "--- Deep Deterministic Schema Equivalence Audit on Restored Database: ${LABEL} (${DB}) ---"
+
+            # 1. Exact Manifest Equivalence Comparison against Trusted Baseline Manifest
+            node -e "
+              const { execSync } = require(\"child_process\");
+              const fs = require(\"fs\");
+              const targetDb = process.argv[1];
+              const targetLabel = process.argv[2];
+
+              const manifestPath = \"/tmp/trusted_schema_manifest.json\";
+              if (!fs.existsSync(manifestPath)) {
+                console.error(\"::error::Trusted schema manifest not found at \" + manifestPath);
+                process.exit(1);
+              }
+              const trusted = JSON.parse(fs.readFileSync(manifestPath, \"utf8\"));
+
+              function query(sql) {
+                return execSync(\`sudo -u postgres psql -d \${targetDb} -tAc \"\${sql.replace(/\"/g, \"\\\\\\\"\")}\"\`).toString().trim();
+              }
+
+              const actualTables = query(\"SELECT table_name FROM information_schema.tables WHERE table_schema = '\''public'\'' ORDER BY table_name;\").split(\"\n\").filter(Boolean);
+              const actualColumns = query(\"SELECT table_name || '\''|'\'' || column_name || '\''|'\'' || data_type || '\''|'\'' || udt_name || '\''|'\'' || is_nullable || '\''|'\'' || coalesce(column_default, '\''<none>'\'') FROM information_schema.columns WHERE table_schema = '\''public'\'' ORDER BY table_name, ordinal_position;\").split(\"\n\").filter(Boolean);
+              const actualConstraints = query(\"SELECT t.relname || '\''|'\'' || c.conname || '\''|'\'' || c.contype::text || '\''|'\'' || pg_get_constraintdef(c.oid, true) FROM pg_constraint c JOIN pg_class t ON c.conrelid = t.oid JOIN pg_namespace n ON t.relnamespace = n.oid WHERE n.nspname = '\''public'\'' ORDER BY t.relname, c.conname;\").split(\"\n\").filter(Boolean);
+              const actualIndexes = query(\"SELECT tablename || '\''|'\'' || indexname || '\''|'\'' || indexdef FROM pg_indexes WHERE schemaname = '\''public'\'' ORDER BY tablename, indexname;\").split(\"\n\").filter(Boolean);
+              const actualEnums = query(\"SELECT t.typname || '\''|'\'' || string_agg(e.enumlabel, '\'','\'' ORDER BY e.enumsortorder) FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = '\''public'\'' GROUP BY t.typname ORDER BY t.typname;\").split(\"\n\").filter(Boolean);
+              const actualMigrations = query(\"SELECT migration_name || '\''|'\'' || checksum || '\''|'\'' || (finished_at IS NOT NULL)::text || '\''|'\'' || (rolled_back_at IS NULL)::text || '\''|'\'' || applied_steps_count FROM _prisma_migrations ORDER BY migration_name;\").split(\"\n\").filter(Boolean);
+              const actualTriggers = query(\"SELECT trigger_name || '\''|'\'' || event_manipulation || '\''|'\'' || event_object_table || '\''|'\'' || action_timing || '\''|'\'' || coalesce(action_statement, '\''<none>'\'') FROM information_schema.triggers WHERE trigger_schema = '\''public'\'' ORDER BY trigger_name, event_manipulation;\").split(\"\n\").filter(Boolean);
+              const actualRoutines = query(\"SELECT routine_name || '\''|'\'' || routine_type || '\''|'\'' || coalesce(data_type, '\''<void>'\'') || '\''|'\'' || coalesce(routine_definition, '\''<external>'\'') FROM information_schema.routines WHERE routine_schema = '\''public'\'' ORDER BY routine_name;\").split(\"\n\").filter(Boolean);
+              const actualSequences = query(\"SELECT s.relname || '\''|'\'' || coalesce(t.relname, '\''<none>'\'') || '\''|'\'' || coalesce(a.attname, '\''<none>'\'') FROM pg_class s JOIN pg_namespace n ON s.relnamespace = n.oid LEFT JOIN pg_depend d ON d.objid = s.oid AND d.deptype = '\''a'\'' LEFT JOIN pg_class t ON d.refobjid = t.oid LEFT JOIN pg_attribute a ON d.refobjid = a.attrelid AND d.refobjsubid = a.attnum WHERE n.nspname = '\''public'\'' AND s.relkind = '\''S'\'' ORDER BY s.relname;\").split(\"\n\").filter(Boolean);
+              const actualRlsTables = query(\"SELECT n.nspname || '\''|'\'' || c.relname || '\''|'\'' || c.relkind::text || '\''|'\'' || c.relrowsecurity::text || '\''|'\'' || c.relforcerowsecurity::text FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'' AND c.relkind IN ('\''r'\'', '\''p'\'') ORDER BY c.relname;\").split(\"\n\").filter(Boolean);
+              const actualRlsPolicies = query(\"SELECT polname || '\''|'\'' || c.relname || '\''|'\'' || polcmd::text || '\''|'\'' || array_to_string(polroles, '\'','\'') || '\''|'\'' || coalesce(pg_get_expr(polqual, polrelid), '\''<none>'\'') || '\''|'\'' || coalesce(pg_get_expr(polwithcheck, polrelid), '\''<none>'\'') FROM pg_policy p JOIN pg_class c ON p.polrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'' ORDER BY polname, c.relname;\").split(\"\n\").filter(Boolean);
+              const actualProcs = query(\"SELECT n.nspname || '\''|'\'' || p.proname || '\''|'\'' || p.prokind::text || '\''|'\'' || pg_get_function_identity_arguments(p.oid) || '\''|'\'' || l.lanname || '\''|'\'' || coalesce(p.prosrc, '\''<none>'\'') FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid JOIN pg_language l ON p.prolang = l.oid WHERE n.nspname = '\''public'\'' AND p.prokind IN ('\''f'\'', '\''p'\'', '\''a'\'', '\''w'\'') AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.classid = '\''pg_proc'\''::regclass AND d.deptype = '\''e'\'') ORDER BY p.proname, pg_get_function_identity_arguments(p.oid);\").split(\"\n\").filter(Boolean);
+
+              function diffList(name, expected, actual) {
+                if (JSON.stringify(expected) === JSON.stringify(actual)) {
+                  console.log(\`  [PASS] \${name} exact bit-for-bit match (\${actual.length} items).\`);
+                  return;
+                }
+                const missing = expected.filter(x => !actual.includes(x));
+                const unexpected = actual.filter(x => !expected.includes(x));
+                console.error(\`::error::\${targetLabel} \${name} schema discrepancy detected!\`);
+                if (missing.length > 0) console.error(\"  Missing definitions: \" + JSON.stringify(missing.slice(0, 5)));
+                if (unexpected.length > 0) console.error(\"  Unexpected definitions: \" + JSON.stringify(unexpected.slice(0, 5)));
+                process.exit(1);
+              }
+
+              diffList(\"Tables\", trusted.tables, actualTables);
+              diffList(\"Columns (Names, Types, Nullability, Defaults)\", trusted.columns, actualColumns);
+              diffList(\"Constraints (PK, FK, Unique, Actions)\", trusted.constraints, actualConstraints);
+              diffList(\"Indexes (Names, Definitions)\", trusted.indexes, actualIndexes);
+              diffList(\"PostgreSQL Enum Types & Labels\", trusted.enums, actualEnums);
+              diffList(\"Migration History Ledger\", trusted.migrations, actualMigrations);
+              diffList(\"Custom Triggers\", trusted.triggers, actualTriggers);
+              diffList(\"User-Defined Routines / Functions (information_schema)\", trusted.routines, actualRoutines);
+              diffList(\"User-Defined Callable Objects (pg_proc: Functions, Procedures, Aggregates, Windows)\", trusted.procs, actualProcs);
+              diffList(\"Custom Sequences & Ownership Dependencies\", trusted.sequences, actualSequences);
+              diffList(\"Table & Partitioned Table RLS Enabled/Forced Security Flags\", trusted.rls_tables, actualRlsTables);
+              diffList(\"Row Level Security Policies\", trusted.rls_policies, actualRlsPolicies);
+
+              // Explicit Zero-Object Assertions: confirm zero on restored database (no silent omission)
+              if (actualTriggers.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: contains \${actualTriggers.length} unexpected triggers.\`);
+                process.exit(1);
+              }
+              if (actualRoutines.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: contains \${actualRoutines.length} unexpected information_schema routines.\`);
+                process.exit(1);
+              }
+              if (actualProcs.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: contains \${actualProcs.length} unexpected pg_proc user callable objects (functions/procedures/aggregates/windows).\`);
+                process.exit(1);
+              }
+              if (actualSequences.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: contains \${actualSequences.length} unexpected sequences.\`);
+                process.exit(1);
+              }
+              if (actualRlsPolicies.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: contains \${actualRlsPolicies.length} unexpected RLS policies.\`);
+                process.exit(1);
+              }
+              const unexpectedRlsEnabled = actualRlsTables.filter(t => !t.endsWith(\"|false|false\"));
+              if (unexpectedRlsEnabled.length !== 0) {
+                console.error(\`::error::\${targetLabel} failed zero-object invariant: relation has unexpected active RLS (ordinary or partitioned): \` + JSON.stringify(unexpectedRlsEnabled));
+                process.exit(1);
+              }
+              console.log(\`  [PASS] Explicit zero-object invariants confirmed for \${targetLabel} (0 triggers, 0 routines, 0 procs/aggregates, 0 sequences, 0 RLS policies, 0 RLS-enabled relations).\`);
+            " "${DB}" "${LABEL}"
+
+            # 2. Key Aggregate Count Invariants
+            TABLE_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema = '\''public'\'';")
+            COL_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.columns WHERE table_schema = '\''public'\'';")
+            FK_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_type = '\''FOREIGN KEY'\'' AND table_schema = '\''public'\'';")
+            PK_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.table_constraints WHERE constraint_type = '\''PRIMARY KEY'\'' AND table_schema = '\''public'\'';")
+            IDX_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM pg_indexes WHERE schemaname = '\''public'\'';")
+            TRG_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.triggers WHERE trigger_schema = '\''public'\'';")
+            ROUTINE_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.routines WHERE routine_schema = '\''public'\'';")
+            PROC_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE n.nspname = '\''public'\'' AND p.prokind IN ('\''f'\'', '\''p'\'', '\''a'\'', '\''w'\'') AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.classid = '\''pg_proc'\''::regclass AND d.deptype = '\''e'\'');")
+            SEQ_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM information_schema.sequences WHERE sequence_schema = '\''public'\'';")
+            RLS_POL_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM pg_policy p JOIN pg_class c ON p.polrelid = c.oid JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'';")
+            RLS_TAB_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON c.relnamespace = n.oid WHERE n.nspname = '\''public'\'' AND c.relkind IN ('\''r'\'', '\''p'\'') AND (c.relrowsecurity OR c.relforcerowsecurity);")
+
+            echo "  [Counts] Tables: ${TABLE_COUNT}/40, Columns: ${COL_COUNT}/397, FKs: ${FK_COUNT}/44, PKs: ${PK_COUNT}/40, Indexes: ${IDX_COUNT}/115, Triggers: ${TRG_COUNT}/0, Routines: ${ROUTINE_COUNT}/0, Procs: ${PROC_COUNT}/0, Sequences: ${SEQ_COUNT}/0, RLS Policies: ${RLS_POL_COUNT}/0, RLS Relations: ${RLS_TAB_COUNT}/0"
+            if [ "${TABLE_COUNT}" != "40" ] || [ "${COL_COUNT}" != "397" ] || [ "${FK_COUNT}" != "44" ] || [ "${PK_COUNT}" != "40" ] || [ "${IDX_COUNT}" != "115" ] || [ "${TRG_COUNT}" != "0" ] || [ "${ROUTINE_COUNT}" != "0" ] || [ "${PROC_COUNT}" != "0" ] || [ "${SEQ_COUNT}" != "0" ] || [ "${RLS_POL_COUNT}" != "0" ] || [ "${RLS_TAB_COUNT}" != "0" ]; then
+              echo "::error::Aggregate catalog count invariant tripped for ${LABEL}"
+              exit 1
+            fi
+
+            # 3. Representative Synthetic Relational Hierarchy & Foreign Key Check (Exact Counts)
+            PLATOON_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM \"Platoon\" WHERE name IN ('\''Senior Division'\'', '\''Senior Wing'\'');")
+            ANO_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM \"User\" WHERE role = '\''ADMIN_ANO'\'' AND status = '\''ACTIVE'\'';")
+            PS_ASSIGN_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM \"User\" u JOIN \"PlatoonSeniorAssignment\" psa ON u.id = psa.\"platoonSeniorId\" JOIN \"Platoon\" p ON psa.\"platoonId\" = p.id WHERE u.role = '\''PLATOON_SENIOR'\'' AND u.status = '\''ACTIVE'\'';")
+            MENTOR_ASSIGN_COUNT=$(sudo -u postgres psql -d ${DB} -tAc "SELECT count(*) FROM \"User\" mentor JOIN \"SeniorAssignment\" sa ON mentor.id = sa.\"seniorId\" JOIN \"User\" cadet ON sa.\"cadetId\" = cadet.id WHERE mentor.role = '\''SENIOR'\'' AND cadet.role = '\''CADET'\'' AND mentor.status = '\''ACTIVE'\'';")
+
+            echo "  [Synthetic Relational Foreign Keys] Platoons: ${PLATOON_COUNT}/2, Active ANO: ${ANO_COUNT}/1, Platoon Senior Assignments: ${PS_ASSIGN_COUNT}/1, Senior Mentor Assignments: ${MENTOR_ASSIGN_COUNT}/1"
+            if [ "${PLATOON_COUNT}" != "2" ] || [ "${ANO_COUNT}" != "1" ] || [ "${PS_ASSIGN_COUNT}" != "1" ] || [ "${MENTOR_ASSIGN_COUNT}" != "1" ]; then
+              echo "::error::Synthetic unit and command hierarchy relationship verification failed for ${LABEL}"
+              exit 1
+            fi
+
+            echo "  [PASS] Deep catalog equivalence and relational integrity 100% verified for ${LABEL}."
+          '
+
+          echo "Restoring GitHub Release copy..."
+          sudo -u postgres pg_restore --no-owner --no-acl -d ncc_verify_gh_restore "/tmp/verify_gh/${R2_FILENAME}.decrypted"
+          bash -c "${AUDIT_SCRIPT}" _ ncc_verify_gh_restore "GitHub Release Copy"
+
+          echo "Restoring Cloudflare R2 copy..."
+          sudo -u postgres pg_restore --no-owner --no-acl -d ncc_verify_r2_restore "/tmp/verify_r2/${R2_FILENAME}.decrypted"
+          bash -c "${AUDIT_SCRIPT}" _ ncc_verify_r2_restore "Cloudflare R2 Copy"
+
+      - name: Teardown Ephemeral Restoration Databases
+        if: always()
+        run: |
+          echo "=== Tearing Down Ephemeral Restoration Databases (Always Executed) ==="
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_reference_baseline;" || true
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_verify_gh_restore;" || true
+          sudo -u postgres psql -c "DROP DATABASE IF EXISTS ncc_verify_r2_restore;" || true
+          rm -rf /tmp/backups /tmp/verify_gh /tmp/verify_r2 /tmp/trusted_schema_manifest.json || true
+          echo "Disposable restoration drill cleanup completed."

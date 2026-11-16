@@ -395,8 +395,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       return;
     }
 
-    if (formData.password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters long.');
+    if (formData.password.length < 12 || !/[a-z]/.test(formData.password) || !/[A-Z]/.test(formData.password) || !/[0-9]/.test(formData.password) || !/[^A-Za-z0-9]/.test(formData.password)) {
+      setErrorMsg('Use at least 12 characters with uppercase and lowercase letters, a number, and a symbol.');
       return;
     }
 
@@ -802,6 +802,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 <input id="register-field-11"
                   type="password"
                   name="password"
+                  minLength={12}
+                  maxLength={72}
                   required
                   placeholder="••••••••••••"
                   value={formData.password}
@@ -817,6 +819,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 <input id="register-field-12"
                   type="password"
                   name="confirmPassword"
+                  minLength={12}
+                  maxLength={72}
                   required
                   placeholder="••••••••••••"
                   value={formData.confirmPassword}

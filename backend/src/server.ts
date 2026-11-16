@@ -19,6 +19,7 @@ import dutyRoutes from './routes/duty.routes';
 import campRoutes from './routes/camp.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import serviceRecordRoutes from './routes/serviceRecord.routes';
+import performanceRoutes from './routes/performance.routes';
 import rankRoutes from './routes/rank.routes';
 import mediaRoutes from './routes/media.routes';
 import searchRoutes from './routes/search.routes';
@@ -112,6 +113,7 @@ app.use('/api/duties', dutyRoutes);
 app.use('/api/camps', campRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/service-record', serviceRecordRoutes);
+app.use('/api/performance', performanceRoutes);
 app.use('/api/ranks', rankRoutes);
 app.use('/api', mediaRoutes);
 

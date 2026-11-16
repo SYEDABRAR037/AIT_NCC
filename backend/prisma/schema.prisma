@@ -88,6 +88,9 @@ model User {
   authSessions       AuthSession[]
   drillInstructorAssignments DrillInstructorAssignment[]
   recoveryChallenges RecoveryChallenge[]
+  performanceAssessmentsGiven PerformanceAssessment[] @relation("PerformanceEvaluator")
+  performanceAssessmentsReceived PerformanceAssessment[] @relation("PerformanceCadet")
+  performanceSnapshots PerformanceScoreSnapshot[]
 
   @@index([role])
   @@index([status])
@@ -226,6 +229,39 @@ model RecoveryChallenge {
   @@index([userId, createdAt])
   @@index([lookupHash, createdAt])
   @@index([expiresAt])
+}
+
+model PerformanceAssessment {
+  id             String   @id @default(uuid())
+  cadetId        String
+  evaluatorId    String
+  category       String   // DRILL | FITNESS | TRAINING | CAMP_EVENT | CERT_ACHIEVEMENT | DISCIPLINE_LEADERSHIP
+  score          Float
+  title          String
+  feedback       String?
+  assessmentDate DateTime @default(now())
+  createdAt      DateTime @default(now())
+  cadet          User     @relation("PerformanceCadet", fields: [cadetId], references: [id], onDelete: Cascade)
+  evaluator      User     @relation("PerformanceEvaluator", fields: [evaluatorId], references: [id], onDelete: Restrict)
+  @@index([cadetId, category, assessmentDate])
+  @@index([evaluatorId])
+}
+
+model PerformanceScoreSnapshot {
+  id             String   @id @default(uuid())
+  cadetId        String
+  period         String   // MONTHLY | QUARTERLY | ANNUAL | SERVICE
+  periodStart    DateTime
+  periodEnd      DateTime
+  overallScore   Float?
+  grade          String?
+  completeness   Float
+  categories     Json
+  sourceDigest   String
+  calculatedAt   DateTime @default(now())
+  cadet          User     @relation(fields: [cadetId], references: [id], onDelete: Cascade)
+  @@unique([cadetId, period, periodStart, sourceDigest])
+  @@index([cadetId, periodStart])
 }
 
 model Notice {
@@ -738,6 +774,7 @@ model OtpChallenge {
   consumedAt     DateTime?
   attemptCount   Int        @default(0)
   sendCount      Int        @default(1)
+  rememberMe     Boolean    @default(false)
   lastSentAt     DateTime   @default(now())
   createdAt      DateTime   @default(now())
   user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -32,7 +32,7 @@ export const resolveApiUrl = (endpoint: string): string => {
 };
 
 export const getAuthToken = (): string | null => {
-  const token = localStorage.getItem('token') || localStorage.getItem('ncc_auth_token');
+  const token = localStorage.getItem('token') || localStorage.getItem('ncc_auth_token') || sessionStorage.getItem('token') || sessionStorage.getItem('ncc_auth_token');
   return token;
 };
 
@@ -109,6 +109,8 @@ export const safeApiFetch = async <T = any>(
         localStorage.removeItem('token');
         localStorage.removeItem('ncc_auth_token');
         localStorage.removeItem('ncc_current_user');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('ncc_auth_token');
       } catch {}
     }
     return { ok: res.ok, status: res.status, data };
