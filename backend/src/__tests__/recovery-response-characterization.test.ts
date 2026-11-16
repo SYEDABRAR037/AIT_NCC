@@ -18,10 +18,11 @@ const fakePrisma: any = {
     findUnique: async ({ where }: any) => challenges.get(where.id) || null,
     create: async ({ data }: any) => {
       const id = `synthetic-recovery-${++challengeSequence}`;
-      const value = { id, ...data, createdAt: new Date(), usedAt: null, verifiedAt: null, user: data.userId ? syntheticUser : null };
+      const value = { id, sendCount: 1, ...data, createdAt: new Date(), usedAt: null, verifiedAt: null, user: data.userId ? syntheticUser : null };
       challenges.set(id, value);
       return value;
     },
+    delete: async ({ where }: any) => { const value = challenges.get(where.id); challenges.delete(where.id); return value; },
     updateMany: async ({ where, data }: any) => {
       const value = challenges.get(where.id);
       if (!value) return { count: 0 };
@@ -82,7 +83,9 @@ const run = async (): Promise<void> => {
   mailDispatchSucceeds = false;
   const mailFailure = await invoke(syntheticUser.regimentalNumber, 'synthetic-mail-failure-ip');
   mailDispatchSucceeds = true;
-  assert.deepStrictEqual(comparable(mailFailure.body), comparable(known.body));
+  assert.strictEqual(mailFailure.statusCode, 503, 'Provider failure must be visible as a controlled delivery error.');
+  assert.deepStrictEqual(mailFailure.body, { success: false, message: 'Unable to deliver a recovery code right now. Please try again later.' });
+  assert.strictEqual(challenges.size, 0, 'An undeliverable initial recovery challenge must be removed.');
   assert.strictEqual(dispatchCount, 2, 'The mocked provider was invoked once for the eligible request.');
 
   challenges.set(known.body.recoveryId, knownChallenge);

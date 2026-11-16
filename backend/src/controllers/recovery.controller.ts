@@ -89,15 +89,30 @@ export const requestPasswordResetOtp = async (req: Request, res: Response): Prom
         deliveryStatus: user && !accountLimited ? 'QUEUED' : 'SUPPRESSED',
       },
     });
-    // Send after the same generic response for known, unknown, cooldown, and provider-error cases.
-    // The challenge row records eventual provider outcome without exposing it to the requester.
+    // Only advance a matching account to OTP verification after the mail provider
+    // has accepted delivery. Provider errors stay server-side; failed challenges
+    // are removed (or invalidated if deletion itself fails).
     if (user && !accountLimited) {
-      void recoveryOtpDispatcher.dispatch({ recipientEmail: user.email, cadetName: user.fullName, otp: otpNumber })
-        .then(async (sent) => {
-          await prisma.recoveryChallenge.updateMany({ where: { id: challenge.id, userId: user.id }, data: { deliveryStatus: sent ? 'SENT' : 'FAILED' } });
-          if (sent) await prisma.auditLog.create({ data: { actorId: user.id, actorName: user.fullName || user.email, action: 'PASSWORD_RECOVERY_INITIATED', targetType: 'PASSWORD_RECOVERY', targetId: challenge.id } }).catch(() => {});
-        })
-        .catch(() => prisma.recoveryChallenge.updateMany({ where: { id: challenge.id, userId: user.id }, data: { deliveryStatus: 'FAILED' } }).catch(() => {}));
+      let sent = false;
+      try {
+        sent = await recoveryOtpDispatcher.dispatch({ recipientEmail: user.email, cadetName: user.fullName, otp: otpNumber });
+      } catch {
+        // Do not expose provider exceptions or credentials to the requester.
+      }
+      if (!sent) {
+        try {
+          await prisma.recoveryChallenge.delete({ where: { id: challenge.id } });
+        } catch {
+          await prisma.recoveryChallenge.updateMany({
+            where: { id: challenge.id, userId: user.id, usedAt: null },
+            data: { usedAt: new Date(), deliveryStatus: 'FAILED' },
+          });
+        }
+        res.status(503).json({ success: false, message: 'Unable to deliver a recovery code right now. Please try again later.' });
+        return;
+      }
+      await prisma.recoveryChallenge.updateMany({ where: { id: challenge.id, userId: user.id }, data: { deliveryStatus: 'SENT' } }).catch(() => {});
+      await prisma.auditLog.create({ data: { actorId: user.id, actorName: user.fullName || user.email, action: 'PASSWORD_RECOVERY_INITIATED', targetType: 'PASSWORD_RECOVERY', targetId: challenge.id } }).catch(() => {});
     }
     res.json({
       success: true,
@@ -149,9 +164,24 @@ export const resendPasswordResetOtp = async (req: Request, res: Response): Promi
     });
     if (updated.count !== 1) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
     if (previous.userId && previous.user) {
-      void recoveryOtpDispatcher.dispatch({ recipientEmail: previous.user.email, cadetName: previous.user.fullName, otp: otpNumber })
-        .then((sent) => prisma.recoveryChallenge.updateMany({ where: { id: previous.id, userId: previous.userId }, data: { deliveryStatus: sent ? 'SENT' : 'FAILED' } }))
-        .catch(() => prisma.recoveryChallenge.updateMany({ where: { id: previous.id, userId: previous.userId }, data: { deliveryStatus: 'FAILED' } }));
+      let sent = false;
+      try {
+        sent = await recoveryOtpDispatcher.dispatch({ recipientEmail: previous.user.email, cadetName: previous.user.fullName, otp: otpNumber });
+      } catch {
+        // Do not expose provider exceptions or credentials to the requester.
+      }
+      if (!sent) {
+        await prisma.recoveryChallenge.updateMany({
+          where: { id: previous.id, userId: previous.userId, usedAt: null, verifiedAt: null, lastSentAt: issuedAt },
+          data: { usedAt: new Date(), deliveryStatus: 'FAILED' },
+        });
+        res.status(503).json({ success: false, message: 'Unable to deliver a recovery code right now. Please try again later.' });
+        return;
+      }
+      await prisma.recoveryChallenge.updateMany({
+        where: { id: previous.id, userId: previous.userId, usedAt: null, verifiedAt: null, lastSentAt: issuedAt },
+        data: { deliveryStatus: 'SENT' },
+      }).catch(() => {});
     }
     res.json({ success: true, challengeAccepted: true, nextStep: 'VERIFY_OTP', message: 'If the details match an eligible account and delivery is available, a verification code will be sent to its registered email address.', recoveryId: previous.id, verificationId: previous.id, maskedEmail: 'your registered email', expiresAt: expiresAt.toISOString(), serverNow: issuedAt.toISOString() });
   } catch (error) {

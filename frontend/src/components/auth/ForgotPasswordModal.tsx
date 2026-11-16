@@ -50,6 +50,9 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
     if (/too many|attempt limit|maximum.*attempt/i.test(text)) {
       return 'Too many attempts. Please request a new verification code.';
     }
+    if (/unable to deliver|delivery failed|email.*unavailable/i.test(text)) {
+      return 'We could not deliver the verification code. Please try again later.';
+    }
     if (/expired/i.test(text)) return 'This verification code has expired. Please request a new one.';
     if (/invalid.*(otp|verification)|(?:otp|verification code).*invalid/i.test(text)) {
       return 'Invalid verification code. Please try again.';
