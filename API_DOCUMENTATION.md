@@ -9,6 +9,16 @@
 
 Most endpoints use JSON. Media endpoints may use multipart form data. Parameter names written as `:name` are path parameters. Query/body fields and result shapes vary by controller; inspect the linked controller for the exact contract. Authenticated routes use a bearer token (or configured auth cookie) and role middleware where listed. Error handlers generally return `{ success: false, message }`.
 
+## Cadet performance analytics (new)
+
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| GET | `/api/performance/me` | Authenticated cadet; own record | Calculate period scorecard from verified attendance and formal assessment records; return attendance counts, feedback, camp/certificate evidence and append-only score snapshot. Query `period=MONTHLY|QUARTERLY|ANNUAL|SERVICE`, optional `date=YYYY-MM-DD`. |
+| GET | `/api/performance/:cadetId` | Authenticated staff plus backend assignment scope | Same scorecard for an assigned cadet. ADMIN_ANO has institutional access; Seniors, Platoon Seniors and Drill Instructors are scoped to their assignments. |
+| POST | `/api/performance/assessments` | ANO/Admin, Drill Instructor, Platoon Senior or Senior; category allowlist and cadet scope enforced | Body: `{ cadetId, category, score, title, feedback?, assessmentDate? }`. `score` must be 0–100. Categories: `DRILL`, `FITNESS`, `TRAINING`, `CAMP_EVENT`, `CERT_ACHIEVEMENT`, `DISCIPLINE_LEADERSHIP`; each role has a narrower allowed category list. |
+
+Initial weights and performance bands are internal defaults in `performance.service.ts`; they are not official NCC criteria. Current implementation does not yet expose weight/band administration, manual adjustments, report exports, or platoon/company comparison endpoints.
+
 ## Route inventory
 
 | Method | Path | Access | Purpose group | Source |

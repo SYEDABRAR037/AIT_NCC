@@ -32,6 +32,7 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
   const [duties, setDuties] = useState<any[]>([]);
   const [leaves, setLeaves] = useState<any[]>([]);
   const [serviceRecord, setServiceRecord] = useState<any | null>(null);
+  const [performance, setPerformance] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +47,10 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
         const attendanceCounts = historical.attendanceSummary || {};
         const total = (attendanceCounts.PRESENT || 0) + (attendanceCounts.ABSENT || 0) + (attendanceCounts.EXCUSED || 0);
         setServiceRecord(record);
+        const performanceEndpoint = propUser?.id ? `/api/performance/${encodeURIComponent(propUser.id)}` : '/api/performance/me';
+        safeApiFetch(performanceEndpoint).then(({ ok: performanceOk, data: performanceData }) => {
+          if (performanceOk && performanceData?.success) setPerformance(performanceData);
+        }).catch(() => undefined);
         setAttendanceStats({ present: attendanceCounts.PRESENT || 0, total, percentage: total ? Math.round(((attendanceCounts.PRESENT || 0) / total) * 100) : 0 });
         setCertificates(historical.certificates || []);
         setCamps(historical.camps || []);
@@ -267,6 +272,27 @@ export const CadetProfileView: React.FC<CadetProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      <section className="institutional-card" style={{ borderTop: '4px solid var(--navy-primary)' }} aria-label="Cadet performance analytics">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div><h3 style={{ color: 'var(--navy-primary)', margin: 0 }}>Overall NCC Performance</h3><p style={{ color: 'var(--navy-text-muted)', fontSize: '0.8rem', margin: '0.35rem 0 0' }}>Internal indicator based on verified records; not an official NCC certificate grade.</p></div>
+          <div style={{ textAlign: 'right' }}><strong style={{ fontSize: '2rem', color: 'var(--navy-primary)' }}>{performance?.scorecard?.score == null ? '—' : performance.scorecard.score}</strong><div style={{ fontWeight: 700 }}>{performance?.scorecard?.grade || 'Not assessed'}</div></div>
+        </div>
+        {performance ? <>
+          <div style={{ margin: '0.75rem 0 1rem', fontSize: '0.83rem', color: 'var(--navy-text-muted)' }}>Data completeness: {performance.scorecard.completeness}% of configured category weight · Period: {performance.period.type.toLowerCase()}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.8rem' }}>
+            {Object.entries(performance.scorecard.categories).map(([key, value]: [string, any]) => <div key={key} style={{ padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: '0.6rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', fontWeight: 700 }}><span>{key.replace(/_/g, ' ')}</span><span>{value.score == null ? 'Not assessed' : `${Math.round(value.score)}%`}</span></div>
+              {value.score != null && <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 8, marginTop: 8 }}><div style={{ width: `${Math.max(0, Math.min(100, value.score))}%`, height: '100%', background: 'var(--navy-primary)', borderRadius: 8 }} /></div>}
+            </div>)}
+          </div>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.82rem' }}><span>Verified sessions: {performance.attendance.present + performance.attendance.absent} counted</span><span>Present: {performance.attendance.present}</span><span>Absent: {performance.attendance.absent}</span><span>Excused: {performance.attendance.excused}</span><span>Camp records: {performance.participation.camps.length}</span><span>Valid certificates: {performance.participation.certificates.length}</span></div>
+          <details style={{ marginTop: '0.9rem' }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>Assessment history and feedback ({performance.assessments.length})</summary>
+            {performance.assessments.length ? performance.assessments.map((assessment: any) => <div key={assessment.id} style={{ padding: '0.65rem 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.82rem' }}><strong>{assessment.title}</strong> · {assessment.category.replace(/_/g, ' ')} · {assessment.score}/100 · {new Date(assessment.assessmentDate).toLocaleDateString()}<div>{assessment.feedback || 'No feedback recorded'} · {assessment.evaluator.fullName}</div></div>) : <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)' }}>No formal category assessments are recorded yet. Those categories remain unassessed.</p>}
+          </details>
+          {performance.history.length > 1 && <details style={{ marginTop: '0.75rem' }}><summary style={{ cursor: 'pointer', fontWeight: 700 }}>Score snapshots</summary>{performance.history.map((item: any) => <div key={item.id} style={{ paddingTop: 6, fontSize: '0.82rem' }}>{new Date(item.calculatedAt).toLocaleDateString()}: {item.overallScore == null ? 'Not assessed' : `${item.overallScore} · ${item.grade}`}</div>)}</details>}
+        </> : <p style={{ color: 'var(--navy-text-muted)', fontSize: '0.85rem' }}>Performance data is unavailable. The scoring feature requires the additive database migration to be applied.</p>}
+      </section>
 
       {/* Official NCC Records Summary (Attendance, Camps, Duties, Certificates, Leaves) */}
       <div className="institutional-card">

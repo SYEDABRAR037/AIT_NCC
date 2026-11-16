@@ -20,6 +20,8 @@
 | Flutter | `cd mobile && flutter test` | 48 tests passed. | PASS |
 | Flutter static analysis | `cd mobile && flutter analyze` | No issues found. | PASS |
 | Local browser | Open `http://localhost:3000/` | HTTP 200; homepage landmarks and sections rendered. | PASS |
+| Performance scoring | `cd backend && npx ts-node src/__tests__/performance-calculation.test.ts` | Missing data, renormalized weights, category state and grade bands checked against independent expected values. | PASS |
+| Performance feature builds | Backend `npm run build`; frontend `npm run build` after feature addition | Backend Prisma generation/TypeScript and frontend TypeScript/Vite completed; Vite retains existing large-chunk advisory. | PASS |
 
 The backend suite emitted **82 explicitly counted passing checks** across six scripts; two additional scripts completed successfully but report assertions as grouped summaries, so no aggregate assertion count is invented. The first backend suite attempt occurred before Prisma client generation and failed to compile; after running the backend build, the full suite succeeded.
 
@@ -40,6 +42,7 @@ The backend suite emitted **82 explicitly counted passing checks** across six sc
 | Feature/integration | Reason | Status |
 |---|---|---|
 | Express `/api/health` and readiness | API not running on port 5050. | BLOCKED |
+| Performance API and persisted snapshots | Additive migration is authored but not applied; API is not running against an isolated database. Port 5000 belongs to another local service. | BLOCKED |
 | PostgreSQL queries/migrations | No read/write test performed; local data was not inspected. Docker daemon unavailable. | BLOCKED |
 | Login/OTP/recovery with live API | Requires API, synthetic isolated DB and safe provider routing. | BLOCKED |
 | Registration and review journey | Would create records; no isolated database was started. | BLOCKED |

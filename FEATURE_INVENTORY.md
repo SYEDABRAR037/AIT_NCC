@@ -4,6 +4,7 @@ Grouped inventory of user-facing and system capabilities found in the repository
 
 | # | Feature area | Purpose and access | Main implementation / integration | Audit status |
 |---:|---|---|---|---|
+| 28 | Cadet performance scorecard | In 360° profile: internal score/grade, category breakdown, weighted completeness, attendance and assessment feedback, camp/certificate evidence, score snapshots; role-scoped backend APIs accept formal assessments. | `frontend/src/components/shells/CadetProfileView.tsx`; `backend/src/controllers/performance.controller.ts`; `backend/src/services/performance.service.ts`; `backend/prisma/schema.prisma` | BUILD PASS; calculation unit cases PASS; API/database runtime BLOCKED pending migration and local API/isolated DB. Configurable weights, manual adjustment approvals, comparisons and PDF/XLSX exports are not implemented. |
 | 1 | Public homepage and hero | Unit introduction and entry points at `/`. | `frontend/src/App.tsx`, `components/home/*` | PASS: rendered locally |
 | 2 | Header, mobile navigation, footer | Section links, role menu, external links and help link. | `Header.tsx`, `Footer.tsx`, CSS | PASS: mobile drawer and role menu opened |
 | 3 | Unit overview and NCC history | Public institutional context, mission, affiliation and contact. | About/UnitIntroduction components | PASS: rendered |
