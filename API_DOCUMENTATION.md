@@ -2,12 +2,22 @@
 
 **Inventory date:** 16 November 2026
 **Base URL:** local development uses `http://localhost:5050`; Vite proxies frontend `/api` requests to that server.
-**Declared routes:** 154 (includes route aliases and duplicate media paths mounted through two routers).
+**Declared routes:** 161 (includes route aliases and duplicate media paths mounted through two routers).
 **Runtime verification:** No API process was started; routes below are statically inventoried from Express routers. Do not interpret this list as live endpoint availability.
 
 ## Common request and response conventions
 
 Most endpoints use JSON. Media endpoints may use multipart form data. Parameter names written as `:name` are path parameters. Query/body fields and result shapes vary by controller; inspect the linked controller for the exact contract. Authenticated routes use a bearer token (or configured auth cookie) and role middleware where listed. Error handlers generally return `{ success: false, message }`.
+
+## Authentication and authorization
+
+- Login accepts email, regimental number or college roll number plus password. The backend loads role and status from `User`; public registration always creates `CADET` / `UNDER_REVIEW`. Frontend role values do not grant backend access.
+- Registration requires email and mobile OTP proofs. OTP values are HMAC-hashed with `OTP_SECRET`, expire in 60 seconds, cap at five attempts, and use rate limits/cooldowns. SMS is used only with a verified phone and configured provider; verified email is the fallback.
+- Passwords require at least 12 characters, upper/lowercase, a number, a symbol, and no more than 72 UTF-8 bytes (bcrypt limit); hashes use bcrypt cost 12.
+- Login creates durable `AuthSession` rows and an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production). Default sessions last 12 hours and use browser session storage. “Remember me” sessions last 30 days and use local storage. The API still returns bearer tokens for existing clients, so browser JavaScript can access the token; cookie-only web auth remains a security improvement to pursue.
+- Password recovery uses single-use OTP challenges. Account lookup and provider failure share a generic acknowledgment to reduce account enumeration. Successful reset/change revokes active sessions and pending login OTPs.
+- `GET /api/auth/sessions` lists the signed-in user's active sessions; `DELETE /api/auth/sessions/:sessionId` revokes one owned session; `POST /api/auth/sessions/revoke-all` revokes all; `POST /api/auth/password/change` validates current/new password and revokes all sessions.
+- Rate limiting uses bounded process-local stores plus database challenge counters. It does not coordinate across multiple backend replicas. Authentication events are recorded in `AuditLog`; admin failed-login review, security notifications and device metadata are not implemented.
 
 ## Cadet performance analytics (new)
 
@@ -69,6 +79,10 @@ Initial weights and performance bands are internal defaults in `performance.serv
 | POST | `/api/auth/login/verify-otp` | Public auth/recovery endpoint; apply endpoint validation and rate limits. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |
 | POST | `/api/auth/logout` | Public auth/recovery endpoint; apply endpoint validation and rate limits. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |
 | GET | `/api/auth/me` | Bearer/cookie token required. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |
+| GET | `/api/auth/sessions` | Authenticated; current user only. | List active sessions and identify current session. |
+| DELETE | `/api/auth/sessions/:sessionId` | Authenticated; session ownership is checked. | Revoke one of the current user's active sessions. |
+| POST | `/api/auth/sessions/revoke-all` | Authenticated; current user only. | Revoke all active sessions and outstanding login OTPs. |
+| POST | `/api/auth/password/change` | Authenticated; current user only. | Change own password after current-password check; revoke sessions/OTP and require sign-in again. |
 | POST | `/api/auth/otp/resend` | Public auth/recovery endpoint; apply endpoint validation and rate limits. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |
 | POST | `/api/auth/recovery/request-otp` | Public auth/recovery endpoint; apply endpoint validation and rate limits. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |
 | POST | `/api/auth/recovery/resend-otp` | Public auth/recovery endpoint; apply endpoint validation and rate limits. | auth | [auth.routes.ts](backend/src/auth.routes.ts) |

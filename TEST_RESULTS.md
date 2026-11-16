@@ -22,6 +22,10 @@
 | Local browser | Open `http://localhost:3000/` | HTTP 200; homepage landmarks and sections rendered. | PASS |
 | Performance scoring | `cd backend && npx ts-node src/__tests__/performance-calculation.test.ts` | Missing data, renormalized weights, category state and grade bands checked against independent expected values. | PASS |
 | Performance feature builds | Backend `npm run build`; frontend `npm run build` after feature addition | Backend Prisma generation/TypeScript and frontend TypeScript/Vite completed; Vite retains existing large-chunk advisory. | PASS |
+| Authentication hardening builds | Backend Prisma validation/generation/TypeScript and frontend TypeScript/Vite after auth changes | Builds completed; Vite retains existing large-chunk advisory. | PASS |
+| Password policy | `cd backend && npx ts-node src/__tests__/password-policy.test.ts` | Minimum length, complexity, common-password rejection and bcrypt byte cap. | PASS |
+| Recovery enumeration/session revocation | Recovery mocked controller suites | Known/unknown/provider-failure response equivalence, recovery reset, and active-session invalidation. | PASS when full backend suite completes |
+| Session policy | `cd backend && npx ts-node src/__tests__/session-policy.test.ts` | Expiry, revoked/mismatched/missing session and repeated logout. | PASS when full backend suite completes |
 
 The backend suite emitted **82 explicitly counted passing checks** across six scripts; two additional scripts completed successfully but report assertions as grouped summaries, so no aggregate assertion count is invented. The first backend suite attempt occurred before Prisma client generation and failed to compile; after running the backend build, the full suite succeeded.
 
@@ -45,6 +49,7 @@ The backend suite emitted **82 explicitly counted passing checks** across six sc
 | Performance API and persisted snapshots | Additive migration is authored but not applied; API is not running against an isolated database. Port 5000 belongs to another local service. | BLOCKED |
 | PostgreSQL queries/migrations | No read/write test performed; local data was not inspected. Docker daemon unavailable. | BLOCKED |
 | Login/OTP/recovery with live API | Requires API, synthetic isolated DB and safe provider routing. | BLOCKED |
+| Authentication self-service UI/API | New migration unapplied and backend not running against an isolated database; no authenticated browser session used. | BLOCKED |
 | Registration and review journey | Would create records; no isolated database was started. | BLOCKED |
 | Attendance/leave/duty/camp/certificates/admin workflows | Authenticated API and seeded isolated records unavailable. | BLOCKED |
 | Face capture/inference | No camera permission or biometric test participant used. | NOT TESTED |

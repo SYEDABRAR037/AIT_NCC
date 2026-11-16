@@ -1,0 +1,1 @@
+ALTER TABLE "OtpChallenge" ADD COLUMN "rememberMe" BOOLEAN NOT NULL DEFAULT false;

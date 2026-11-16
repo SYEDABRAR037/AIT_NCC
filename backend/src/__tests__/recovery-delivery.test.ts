@@ -13,6 +13,7 @@ const user = {
 };
 let identitySequence = 1;
 const challenges = new Map<string, any>();
+const existingSessions: Array<{ id: string; userId: string; revokedAt: Date | null }> = [{ id: 'pre-reset-session', userId: user.id, revokedAt: null }];
 const dispatchedOtps: string[] = [];
 let mailResult: 'success' | 'failure' | 'throw' = 'success';
 let sequence = 0;
@@ -22,6 +23,14 @@ const matchesUser = (where: any) => {
   return false;
 };
 const fakePrisma: any = {
+  authSession: {
+    updateMany: async ({ where, data }: any) => {
+      let count = 0;
+      for (const session of existingSessions) if (session.userId === where.userId && session.revokedAt === null) { session.revokedAt = data.revokedAt; count++; }
+      return { count };
+    },
+  },
+  otpChallenge: { updateMany: async () => ({ count: 0 }) },
   user: {
     findFirst: async ({ where }: any) => matchesUser(where) ? { ...user } : null,
     update: async ({ data }: any) => { Object.assign(user, data); return user; },
@@ -110,17 +119,18 @@ const run = async () => {
   await verifyPasswordResetOtp(req({ recoveryId: challenge.id, otp: firstOtp }), wrongRes);
   assert.strictEqual(wrongRes.statusCode, 400, 'The previous OTP is invalid after resend.');
 
-  // Provider false and exception both produce a safe error and no usable challenge.
+  // Provider false and exception remain indistinguishable from unknown accounts and leave no usable challenge.
   for (const [index, outcome] of (['failure', 'throw'] as const).entries()) {
     identify();
     challenges.clear();
     mailResult = outcome;
     const failed: any = response();
     await requestPasswordResetOtp(req({ email: user.email, regimentalNumber: user.regimentalNumber }), failed);
-    assert.strictEqual(failed.statusCode, 503);
-    assert.strictEqual(failed.body.message, 'Unable to deliver a recovery code right now. Please try again later.');
+    assert.strictEqual(failed.statusCode, 200);
+    assert.strictEqual(failed.body.challengeAccepted, true);
+    assert.match(failed.body.message, /If the details match an eligible account/);
     assert.strictEqual(challenges.size, 0, `Failed initial delivery ${index} must leave no challenge.`);
-    assert.doesNotMatch(JSON.stringify(failed.body), /OTP|smtp|provider|secret|password|\d{6}/i);
+    assert.doesNotMatch(JSON.stringify(failed.body), /smtp|provider|secret|password|\b\d{6}\b/i);
   }
 
   identify(); challenges.clear(); mailResult = 'success';
@@ -131,7 +141,8 @@ const run = async () => {
   mailResult = 'failure';
   const failedResend: any = response();
   await resendPasswordResetOtp(req({ recoveryId: failedResendChallenge.id }), failedResend);
-  assert.strictEqual(failedResend.statusCode, 503);
+  assert.strictEqual(failedResend.statusCode, 200);
+  assert.strictEqual(failedResend.body.challengeAccepted, true);
   assert.ok(failedResendChallenge.usedAt instanceof Date, 'Failed resend invalidates the reserved OTP.');
   const failedCodeCheck: any = response();
   await verifyPasswordResetOtp(req({ recoveryId: failedResendChallenge.id, otp: dispatchedOtps.at(-1) }), failedCodeCheck);
@@ -154,6 +165,7 @@ const run = async () => {
   assert.strictEqual(reset.body.passwordReset, true);
   assert.strictEqual(await bcrypt.compare(newPassword, user.passwordHash), true);
   assert.strictEqual(await bcrypt.compare('OldPassword!123', user.passwordHash), false);
+  assert.ok(existingSessions[0].revokedAt instanceof Date, 'password recovery revokes all existing sessions');
   const oldLogin: any = response();
   await login(req({ identifier: user.regimentalNumber, password: 'OldPassword!123' }), oldLogin);
   assert.strictEqual(oldLogin.statusCode, 401);

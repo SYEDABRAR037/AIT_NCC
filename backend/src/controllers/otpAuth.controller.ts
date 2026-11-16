@@ -102,14 +102,14 @@ const dispatch = async (destination: string, channel: 'email' | 'mobile', otp: s
   return sendOtpSmsWithResult(destination, `NCC AIT Pune ${purpose === 'login' ? 'login' : 'mobile verification'} OTP: ${otp}. Valid for 60 seconds. Do not share this code.`);
 };
 
-const createChallenge = async (purpose: OtpPurpose, destination: string, channel: 'email' | 'mobile', userId?: string, name = 'Cadet') => {
+const createChallenge = async (purpose: OtpPurpose, destination: string, channel: 'email' | 'mobile', userId?: string, name = 'Cadet', rememberMe = false) => {
   const otpSecret = getOtpSecret();
   if (!otpSecret) throw new Error('OTP_SECRET_MISSING');
   const code = issueOtp();
   const id = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + TTL_MS);
   const challenge = await prisma.otpChallenge.create({
-    data: { id, purpose, destination, userId, otpHash: `v2:${hashOtp(id, code, otpSecret)}`, expiresAt },
+    data: { id, purpose, destination, userId, rememberMe, otpHash: `v2:${hashOtp(id, code, otpSecret)}`, expiresAt },
   });
   let deliveryFailure = 'PROVIDER_REJECTED';
   try {
@@ -256,10 +256,13 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
     const consumed = await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null, otpHash: challenge.otpHash, expiresAt: { gt: new Date() } }, data: { otpHash: null, consumedAt: new Date() } });
     if (consumed.count !== 1) { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
     const user = challenge.user;
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const sessionDurationMs = challenge.rememberMe ? 30 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
+    const expiresAt = new Date(Date.now() + sessionDurationMs);
     const session = await prisma.authSession.create({ data: { userId: user.id, expiresAt } });
-    const token = jwt.sign({ userId: user.id, role: user.role, status: user.status, sid: session.id }, jwtSecret, { expiresIn: '7d' });
-    res.cookie('ncc_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 7 * 24 * 60 * 60 * 1000 });
+    const token = jwt.sign({ userId: user.id, role: user.role, status: user.status, sid: session.id }, jwtSecret, { expiresIn: Math.floor(sessionDurationMs / 1000) });
+    const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const };
+    res.cookie('ncc_token', token, challenge.rememberMe ? { ...cookieOptions, maxAge: sessionDurationMs } : cookieOptions);
+    await prisma.auditLog.create({ data: { actorId: user.id, actorName: user.fullName, action: 'AUTH_LOGIN_SUCCEEDED', targetType: 'AUTH_SESSION', targetId: session.id } }).catch(() => {});
     res.json({ success: true, message: 'Authentication successful.', token, user: {
       id: user.id, fullName: user.fullName, regimentalNumber: user.regimentalNumber, collegeRollNumber: user.collegeRollNumber,
       email: user.email, phone: user.phone, year: user.year, branch: user.branch, platoonName: user.platoonName,
@@ -301,7 +304,7 @@ export const startLoginOtp = async (req: Request, user: { id: string; fullName: 
       return;
     }
     try {
-      const { challenge } = await createChallenge(OtpPurpose.LOGIN, destination, channel, user.id, user.fullName);
+      const { challenge } = await createChallenge(OtpPurpose.LOGIN, destination, channel, user.id, user.fullName, req.body?.rememberMe === true);
       const maskedDestination = channel === 'mobile' ? maskPhone(destination) : maskEmail(destination);
       const now = new Date();
       res.json({ success: true, otpRequired: true, challengeId: challenge.id, destination: maskedDestination, expiresAt: challenge.expiresAt, serverNow: now });

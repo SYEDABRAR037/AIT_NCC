@@ -152,6 +152,12 @@ Added an internal NCC cadet performance scorecard to the 360° profile, an addit
 
 The implementation builds and the pure calculation cases pass. The migration has not been applied and the API is not running locally, so the new authenticated workflow has not been verified against a database. The current slice also does not yet include configurable weights/bands, manual adjustment approval, recommendations, cross-cadet comparisons, or PDF/Excel exports. Existing local frontend `/` responds with HTTP 200 at port 3000; the Vite proxy targets port 5050, where no API process was listening during this check. The unrelated process on port 5000 is not the NCC API.
 
+### Authentication hardening update (16 November 2026)
+
+Extended the existing auth flow with stronger password validation, 12-hour default / 30-day remembered sessions, own-session listing/revocation, password change, active-session and login-OTP invalidation after password reset/change, selected auth audit events, show/hide password, and an Account Security screen. Recovery provider failures now use the same generic acknowledgment as unknown accounts. Added `OtpChallenge.rememberMe` with additive migration `20261116010000_auth_session_hardening`.
+
+Prisma and frontend/backend builds are being verified along with isolated auth tests. No backend was started against the configured `.env` database/provider; the new migration is not applied. Live role-by-role login workflows remain unverified. Rate limits are process-local across replicas, bearer tokens are still returned for compatible clients and stored in browser storage, and admin failed-login review/security notifications remain incomplete.
+
 - [FEATURE_INVENTORY.md](FEATURE_INVENTORY.md)
 - [BUG_FIX_LOG.md](BUG_FIX_LOG.md)
 - [TEST_RESULTS.md](TEST_RESULTS.md)

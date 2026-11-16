@@ -19,8 +19,8 @@ interface AuthContextType {
   user: UserProfile | null;
   token: string | null;
   isLoading: boolean;
-  login: (identifier: string, password: string) => Promise<{ success: boolean; otpRequired?: boolean; challengeId?: string; destination?: string; expiresAt?: string; serverNow?: string; message?: string; status?: string; user?: UserProfile }>;
-  verifyLoginOtp: (challengeId: string, otp: string) => Promise<{ success: boolean; message?: string; user?: UserProfile }>;
+  login: (identifier: string, password: string, rememberMe?: boolean) => Promise<{ success: boolean; otpRequired?: boolean; challengeId?: string; destination?: string; expiresAt?: string; serverNow?: string; message?: string; status?: string; user?: UserProfile }>;
+  verifyLoginOtp: (challengeId: string, otp: string, rememberMe?: boolean) => Promise<{ success: boolean; message?: string; user?: UserProfile }>;
   requestRegistrationOtp: (channel: 'email' | 'mobile', destination: string, name: string) => Promise<any>;
   verifyRegistrationOtp: (channel: 'email' | 'mobile', challengeId: string, otp: string) => Promise<any>;
   resendAuthOtp: (challengeId: string, name?: string) => Promise<any>;
@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Restore authenticated session on mount
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('ncc_auth_token') || localStorage.getItem('token');
+      const storedToken = localStorage.getItem('ncc_auth_token') || localStorage.getItem('token') || sessionStorage.getItem('ncc_auth_token') || sessionStorage.getItem('token');
       if (storedToken) {
         const apiBase = getApiBaseUrl();
         try {
@@ -60,6 +60,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Token expired or invalid on backend
               localStorage.removeItem('ncc_auth_token');
               localStorage.removeItem('token');
+              sessionStorage.removeItem('ncc_auth_token');
+              sessionStorage.removeItem('token');
               localStorage.removeItem('ncc_current_user');
               setToken(null);
               setUser(null);
@@ -75,13 +77,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initAuth();
   }, []);
 
-  const login = async (identifier: string, password: string) => {
+  const storeCredentials = (data: any, rememberMe: boolean) => {
+    const storage = rememberMe ? localStorage : sessionStorage;
+    const otherStorage = rememberMe ? sessionStorage : localStorage;
+    otherStorage.removeItem('ncc_auth_token'); otherStorage.removeItem('token');
+    storage.setItem('ncc_auth_token', data.token); storage.setItem('token', data.token);
+    localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
+    setToken(data.token); setUser(data.user);
+  };
+
+  const login = async (identifier: string, password: string, rememberMe = false) => {
     const apiBase = getApiBaseUrl();
     try {
       const res = await fetch(`${apiBase}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, rememberMe }),
       });
 
       const contentType = res.headers.get('content-type');
@@ -90,11 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (res.ok && data.success && data.otpRequired) {
           return { success: true, otpRequired: true, challengeId: data.challengeId, destination: data.destination, expiresAt: data.expiresAt, serverNow: data.serverNow, message: data.message };
         } else if (res.ok && data.success) {
-          localStorage.setItem('ncc_auth_token', data.token);
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
-          setToken(data.token);
-          setUser(data.user);
+          storeCredentials(data, rememberMe);
           return { success: true, message: data.message, user: data.user };
         } else {
           return {
@@ -115,15 +122,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const verifyLoginOtp = async (challengeId: string, otp: string) => {
+  const verifyLoginOtp = async (challengeId: string, otp: string, rememberMe = false) => {
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/auth/login/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challengeId, otp }) });
       const data = await res.json();
       if (!res.ok || !data.success) return { success: false, message: data.message || 'Code verification failed.' };
-      localStorage.setItem('ncc_auth_token', data.token);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('ncc_current_user', JSON.stringify(data.user));
-      setToken(data.token); setUser(data.user);
+      storeCredentials(data, rememberMe);
       return { success: true, message: data.message, user: data.user };
     } catch { return { success: false, message: 'Authentication service is unavailable.' }; }
   };
@@ -195,6 +199,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       localStorage.removeItem('ncc_auth_token');
       localStorage.removeItem('token');
+      sessionStorage.removeItem('ncc_auth_token');
+      sessionStorage.removeItem('token');
       localStorage.removeItem('ncc_current_user');
       setToken(null);
       setUser(null);

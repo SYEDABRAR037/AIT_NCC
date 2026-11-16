@@ -83,8 +83,8 @@ const run = async (): Promise<void> => {
   mailDispatchSucceeds = false;
   const mailFailure = await invoke(syntheticUser.regimentalNumber, 'synthetic-mail-failure-ip');
   mailDispatchSucceeds = true;
-  assert.strictEqual(mailFailure.statusCode, 503, 'Provider failure must be visible as a controlled delivery error.');
-  assert.deepStrictEqual(mailFailure.body, { success: false, message: 'Unable to deliver a recovery code right now. Please try again later.' });
+  assert.strictEqual(mailFailure.statusCode, 200, 'Provider failure uses the same response as account lookup to prevent enumeration.');
+  assert.deepStrictEqual(comparable(mailFailure.body), comparable(unknown.body));
   assert.strictEqual(challenges.size, 0, 'An undeliverable initial recovery challenge must be removed.');
   assert.strictEqual(dispatchCount, 2, 'The mocked provider was invoked once for the eligible request.');
 

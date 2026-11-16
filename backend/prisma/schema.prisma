@@ -774,6 +774,7 @@ model OtpChallenge {
   consumedAt     DateTime?
   attemptCount   Int        @default(0)
   sendCount      Int        @default(1)
+  rememberMe     Boolean    @default(false)
   lastSentAt     DateTime   @default(now())
   createdAt      DateTime   @default(now())
   user           User?      @relation(fields: [userId], references: [id], onDelete: Cascade)

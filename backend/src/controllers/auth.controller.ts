@@ -10,13 +10,24 @@ import { normalizePhoneNumber } from '../services/attendanceNotification.service
 import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
 import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
 import { revokePresentedSession } from '../services/sessionPolicy';
+import { validatePassword } from '../services/passwordPolicy';
 
 const failedLoginAttempts = new ProcessLocalRateLimitStore(20_000);
 const LOGIN_FAILURE_LIMIT = 10;
 const LOGIN_FAILURE_WINDOW_MS = 15 * 60_000;
+// A process-random hash equalizes bcrypt work for nonexistent identifiers without a hardcoded password.
+const dummyLoginHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 12);
 
 const loginIdentifierKey = (identifier: string): string =>
   `login:identifier:${crypto.createHash('sha256').update(identifier.toLowerCase()).digest('hex')}`;
+
+const recordLoginFailure = async (identifier: string, actorId?: string) => {
+  const digest = crypto.createHash('sha256').update(identifier.toLowerCase()).digest('hex');
+  await prisma.auditLog.create({ data: {
+    actorId: actorId || 'UNKNOWN', actorName: actorId ? 'Account holder' : 'Unknown principal',
+    action: 'AUTH_LOGIN_FAILED', targetType: 'AUTHENTICATION', details: JSON.stringify({ identifierDigest: digest }),
+  } }).catch(() => {});
+};
 
 const rejectThrottledLogin = async (res: Response, key: string): Promise<boolean> => {
   // Atomically reserve a credential attempt before password verification. A shared
@@ -58,6 +69,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+    const passwordCheck = validatePassword(password);
+    if (!passwordCheck.valid) { res.status(400).json({ success: false, field: 'password', message: passwordCheck.message }); return; }
 
     // 2. Mandatory Biometric Validation (Phase 13)
     if (!isValidFaceDescriptor(faceDescriptor)) {
@@ -129,7 +142,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 4. Password Hashing
-    const salt = await bcrypt.genSalt(10);
+    const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
     // Profile photo & biometric snapshot normalization
@@ -263,6 +276,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (!user) {
+      await bcrypt.compare(password, dummyLoginHash);
+      await recordLoginFailure(cleanIdentifier);
       res.status(401).json({
         success: false,
         message: 'Invalid institutional credentials.',
@@ -276,6 +291,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Verify Password Hash
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
+      await recordLoginFailure(cleanIdentifier, user.id);
       res.status(401).json({
         success: false,
         message: 'Invalid institutional credentials.',
@@ -388,7 +404,8 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId?: string; sid?: string };
         if (decoded.sid && decoded.userId && !revoked.has(decoded.sid)) {
-          await revokePresentedSession(prisma.authSession, decoded);
+          const didRevoke = await revokePresentedSession(prisma.authSession, decoded);
+          if (didRevoke) await prisma.auditLog.create({ data: { actorId: decoded.userId, actorName: 'Authenticated account', action: 'AUTH_LOGOUT', targetType: 'AUTH_SESSION', targetId: decoded.sid } }).catch(() => {});
           revoked.add(decoded.sid);
         }
       } catch {
@@ -401,4 +418,55 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     success: true,
     message: 'Institutional session terminated. Logged out successfully.',
   });
+};
+
+export const listMySessions = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
+  const sessions = await prisma.authSession.findMany({
+    where: { userId: req.user.id, revokedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' }, take: 50,
+    select: { id: true, createdAt: true, expiresAt: true, revokedAt: true },
+  });
+  res.json({ success: true, sessions: sessions.map((session) => ({ ...session, current: session.id === req.authSessionId })) });
+};
+
+export const revokeMySession = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
+  const sessionId = String(req.params.sessionId || '');
+  const changed = await prisma.authSession.updateMany({ where: { id: sessionId, userId: req.user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+  if (changed.count !== 1) { res.status(404).json({ success: false, message: 'Active session not found.' }); return; }
+  await prisma.auditLog.create({ data: { actorId: req.user.id, actorName: req.user.fullName, action: 'AUTH_SESSION_REVOKED', targetType: 'AUTH_SESSION', targetId: sessionId } }).catch(() => {});
+  res.json({ success: true, message: 'Session revoked.' });
+};
+
+export const revokeAllMySessions = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
+  const now = new Date();
+  const [revoked] = await prisma.$transaction([
+    prisma.authSession.updateMany({ where: { userId: req.user.id, revokedAt: null, expiresAt: { gt: now } }, data: { revokedAt: now } }),
+    prisma.otpChallenge.updateMany({ where: { userId: req.user.id, purpose: 'LOGIN', consumedAt: null }, data: { otpHash: null, consumedAt: now } }),
+    prisma.auditLog.create({ data: { actorId: req.user.id, actorName: req.user.fullName, action: 'AUTH_SESSIONS_REVOKED_ALL', targetType: 'USER_ACCOUNT', targetId: req.user.id } }),
+  ]);
+  res.clearCookie('ncc_token');
+  res.json({ success: true, revokedCount: revoked.count, message: 'All active sessions were revoked. Sign in again to continue.' });
+};
+
+export const changeMyPassword = async (req: AuthRequest, res: Response): Promise<void> => {
+  if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') { res.status(400).json({ success: false, message: 'Provide your current and new password.' }); return; }
+  const passwordCheck = validatePassword(newPassword);
+  if (!passwordCheck.valid) { res.status(400).json({ success: false, field: 'newPassword', message: passwordCheck.message }); return; }
+  const account = await prisma.user.findUnique({ where: { id: req.user.id }, select: { passwordHash: true } });
+  if (!account || !(await bcrypt.compare(currentPassword, account.passwordHash))) { res.status(401).json({ success: false, message: 'Current password is incorrect.' }); return; }
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: req.user.id }, data: { passwordHash } }),
+    prisma.authSession.updateMany({ where: { userId: req.user.id, revokedAt: null }, data: { revokedAt: now } }),
+    prisma.otpChallenge.updateMany({ where: { userId: req.user.id, purpose: 'LOGIN', consumedAt: null }, data: { otpHash: null, consumedAt: now } }),
+    prisma.auditLog.create({ data: { actorId: req.user.id, actorName: req.user.fullName, action: 'PASSWORD_CHANGED', targetType: 'USER_ACCOUNT', targetId: req.user.id } }),
+  ]);
+  res.clearCookie('ncc_token');
+  res.json({ success: true, message: 'Password changed. All sessions were revoked; sign in again with your new password.' });
 };

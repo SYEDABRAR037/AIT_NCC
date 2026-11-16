@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, LogIn, Shield, AlertCircle } from 'lucide-react';
+import { X, LogIn, Shield, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
@@ -15,6 +15,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const { login, verifyLoginOtp, resendAuthOtp } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [accountStatus, setAccountStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +54,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     setSubmitting(true);
 
     try {
-      const res = await login(identifier, password);
+      const res = await login(identifier, password, rememberMe);
       if (res.success && res.otpRequired && res.challengeId && res.destination && res.expiresAt && res.serverNow) {
         setLoginOtp({ id: res.challengeId, destination: res.destination, expiresAt: res.expiresAt, serverNow: res.serverNow });
         setOtpCooldown(30);
@@ -73,7 +75,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     if (!loginOtp) return;
     setErrorMsg(null); setSubmitting(true);
     try {
-      const result = await verifyLoginOtp(loginOtp.id, otp);
+      const result = await verifyLoginOtp(loginOtp.id, otp, rememberMe);
       if (!result.success || !result.user) { setErrorMsg(result.message || 'Code verification failed.'); return; }
       onLoginSuccess(result.user.role); onClose();
     } finally { setSubmitting(false); }
@@ -185,7 +187,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           ) : <form onSubmit={handleSubmit} aria-busy={submitting} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div>
               <label htmlFor="login-identifier" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--navy-primary)', marginBottom: '0.35rem' }}>
-                REGIMENTAL NUMBER *
+                EMAIL OR REGIMENTAL NUMBER *
               </label>
               <input
                 type="text"
@@ -209,12 +211,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 PASSWORD *
               </label>
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="login-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
+                autoComplete="current-password"
                 style={{
                   width: '100%',
                   padding: '0.7rem 0.85rem',
@@ -223,7 +226,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   fontSize: '0.92rem',
                 }}
               />
+              <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} style={{ marginTop: '0.4rem', border: 0, background: 'transparent', color: 'var(--navy-primary)', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.8rem' }}>
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}{showPassword ? 'Hide password' : 'Show password'}
+              </button>
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--navy-text-muted)' }}>
+              <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} /> Remember me on this device
+            </label>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-0.35rem' }}>
               <button

@@ -264,8 +264,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
       return;
     }
 
-    if (newPassword.length < 6) {
-      setErrorMsg('Password must be at least 6 characters long.');
+    if (newPassword.length < 12 || !/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      setErrorMsg('Use at least 12 characters with uppercase and lowercase letters, a number, and a symbol.');
       return;
     }
 
@@ -547,6 +547,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 </label>
                 <input id="forgotpassword-field-3"
                   type="password"
+                  minLength={12}
+                  maxLength={72}
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -567,6 +569,8 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({
                 </label>
                 <input id="forgotpassword-field-4"
                   type="password"
+                  minLength={12}
+                  maxLength={72}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}

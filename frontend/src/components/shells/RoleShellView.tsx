@@ -45,6 +45,7 @@ import { InquiryDeskView } from './InquiryDeskView';
 import { safeApiFetch } from '../../utils/api';
 import { MediaManagementView } from './MediaManagementView';
 import { DigitalIdView } from '../digitalId/DigitalIdView';
+import { AccountSecurityView } from './AccountSecurityView';
 
 
 interface RoleShellViewProps {
@@ -1193,6 +1194,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'notices', name: 'Institutional Notices' },
             { id: 'audit', name: 'Audit Logs' },
             { id: 'media', name: 'Photo Archives & Rank Holders' },
+            { id: 'security', name: 'Account Security' },
           ],
         };
       case 'PLATOON_SENIOR':
@@ -1212,6 +1214,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'certificates', name: 'My Certificates' },
             { id: 'media', name: 'Photo Archives' },
+            { id: 'security', name: 'Account Security' },
           ],
         };
       case 'SENIOR':
@@ -1231,6 +1234,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'timeline', name: 'Activity Timeline' },
             { id: 'certificates', name: 'My Certificates' },
             { id: 'media', name: 'Photo Archives' },
+            { id: 'security', name: 'Account Security' },
           ],
         };
       case 'DRILL_INSTRUCTOR':
@@ -1243,6 +1247,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'attendance', name: 'Parade & Drill Attendance' },
             { id: 'duties', name: 'Duty & Ceremonial Detail' },
             { id: 'timeline', name: 'Unit Activity Timeline' },
+            { id: 'security', name: 'Account Security' },
           ],
         };
       case 'CADET':
@@ -1264,6 +1269,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
             { id: 'certificates', name: 'Certificates' },
             { id: 'leave', name: 'Leave Applications' },
             { id: 'notices', name: 'Unit Notices & Orders' },
+            { id: 'security', name: 'Account Security' },
           ],
         };
     }
@@ -1535,6 +1541,7 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
           }}
         >
           <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+            {activeTab === 'security' && <AccountSecurityView />}
             {activeTab === 'overview' && <PendingActionsView onOpen={setActiveTab} />}
             {activeTab === 'digital-id' && role === 'CADET' && <DigitalIdView token={token} />}
             {activeTab === 'media' && ['ADMIN_ANO', 'PLATOON_SENIOR', 'SENIOR'].includes(role) && <MediaManagementView role={role} />}

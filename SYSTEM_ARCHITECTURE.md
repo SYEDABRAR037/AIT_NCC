@@ -41,7 +41,11 @@ Prisma schema: `backend/prisma/schema.prisma` (39 models). It stores account/ses
 
 ## Authentication and authorization
 
-The web and mobile clients authenticate through the Express API. Source supports JWT plus cookie parsing, durable auth sessions, password hashing, OTP login/registration/recovery and role-scoped actions. Roles include `ADMIN_ANO`, `DRILL_INSTRUCTOR`, `PLATOON_SENIOR`, `SENIOR`, and `CADET`. Most private routers install `authenticateToken`; `requireRole` applies role limits. Controller/policy tests are isolated/mocked in this audit.
+The existing Express auth routes handle registration, password login, OTP verification, recovery, logout, profile lookup, session management and password changes. Roles (`ADMIN_ANO`, `DRILL_INSTRUCTOR`, `PLATOON_SENIOR`, `SENIOR`, `CADET`) are loaded from the database after JWT verification; public enrollment fixes the role to `CADET` and status to `UNDER_REVIEW`.
+
+Registration/login OTPs are HMAC-hashed with `OTP_SECRET`, expire after 60 seconds, cap attempts at five, and use email/mobile provider adapters. Login creates durable `AuthSession` rows and an HttpOnly SameSite=Lax cookie (Secure in production). Standard sessions last 12 hours; explicit “Remember me” sessions last 30 days. Passwords use bcrypt cost 12 with a 12-character complexity policy and bcrypt's 72-byte cap. Password reset/change revokes active sessions and pending login OTPs. Users can list and revoke their own sessions in the Account Security screen.
+
+Selected auth actions are stored in `AuditLog`. Rate-limit stores are process-local, so attempts are not coordinated across multiple API replicas. The API continues to return bearer tokens for the Flutter client and existing integrations; the web client stores these in session/local storage, leaving a JavaScript token exposure that a cookie-only web flow could remove. Admin login-history review, security notifications, session device metadata, and live role-by-role end-to-end verification remain incomplete. New `OtpChallenge.rememberMe` requires the additive migration `20261116010000_auth_session_hardening`. Auth tests here are isolated/mocked and do not certify a live database/provider.
 
 ## AI, face processing and integrations
 
