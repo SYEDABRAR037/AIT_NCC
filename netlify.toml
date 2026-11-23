@@ -47,3 +47,11 @@
 [context."codex/ncc-release-candidate-20261028".environment]
   VITE_PUBLIC_PREVIEW_MODE = "true"
   NCC_PUBLIC_PREVIEW_MODE = "true"
+
+# A narrowly scoped API-backed staging build. The build script independently
+# verifies the branch, context, flags, and exact backend URL before using it.
+[context.ncc-staging.environment]
+  NCC_STAGING_API_MODE = "true"
+  VITE_PUBLIC_PREVIEW_MODE = "false"
+  NCC_PUBLIC_PREVIEW_MODE = "false"
+  VITE_API_BASE_URL = "https://ait-ncc-backend.onrender.com"
