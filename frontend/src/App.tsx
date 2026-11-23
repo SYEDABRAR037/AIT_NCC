@@ -17,6 +17,7 @@ import { ContactSection } from './components/home/ContactSection';
 import { Footer } from './components/home/Footer';
 import { MeetOurSeniors } from './components/home/MeetOurSeniors';
 import { HelpButton } from './components/common/HelpButton';
+import { isPublicPreviewMode } from './utils/api';
 
 const LoginModal = React.lazy(() => import('./components/auth/LoginModal').then((module) => ({ default: module.LoginModal })));
 const RegisterModal = React.lazy(() => import('./components/auth/RegisterModal').then((module) => ({ default: module.RegisterModal })));
@@ -31,11 +32,13 @@ const RouteLoadingFallback: React.FC = () => (
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
+  const previewMode = isPublicPreviewMode();
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [activeShellRole, setActiveShellRole] = useState<string | null>(null);
 
   const handleSelectShell = (role: string) => {
+    if (previewMode) return;
     if (user && user.role === role) setActiveShellRole(role);
     else {
       setActiveShellRole(null);
@@ -49,11 +52,19 @@ const AppContent: React.FC = () => {
 
   const currentRole = activeShellRole || (user ? user.role : null);
   if (window.location.pathname.startsWith('/verify-id/')) {
+    if (previewMode) {
+      return <main className="public-preview-blocked" role="status">Digital ID verification is unavailable in this public preview.</main>;
+    }
     return <Suspense fallback={<RouteLoadingFallback />}><DigitalIdVerification /></Suspense>;
   }
 
   return (
     <div className="app-root">
+      {previewMode && (
+        <div role="status" aria-live="polite" style={{ padding: '0.7rem 1rem', textAlign: 'center', color: '#16324f', background: '#fff3cd', borderBottom: '1px solid #e6cc7a', fontWeight: 700 }}>
+          Public preview — portal login, registration, inquiries, attendance, and administrative actions are disabled.
+        </div>
+      )}
       <a className="skip-link" href={currentRole ? '#role-main-content' : '#main-content'}>
         Skip to main content
       </a>
@@ -72,6 +83,7 @@ const AppContent: React.FC = () => {
             onOpenLogin={() => setLoginModalOpen(true)}
             onOpenRegister={() => setRegisterModalOpen(true)}
             onSelectShell={handleSelectShell}
+            previewMode={previewMode}
           />
 
           <main id="main-content" tabIndex={-1}>
@@ -114,10 +126,11 @@ const AppContent: React.FC = () => {
             <JoinNCC
               onOpenRegister={() => setRegisterModalOpen(true)}
               onOpenLogin={() => setLoginModalOpen(true)}
+              previewMode={previewMode}
             />
 
             {/* Unit Liaison & Contact */}
-            <ContactSection onOpenLogin={() => setLoginModalOpen(true)} />
+            <ContactSection onOpenLogin={() => setLoginModalOpen(true)} previewMode={previewMode} />
           </main>
 
           {/* Deep Navy Institutional Footer matching reference */}
@@ -126,7 +139,7 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Modals */}
-      {loginModalOpen && (
+      {!previewMode && loginModalOpen && (
         <Suspense fallback={null}>
           <LoginModal
             isOpen
@@ -136,13 +149,13 @@ const AppContent: React.FC = () => {
         </Suspense>
       )}
 
-      {registerModalOpen && (
+      {!previewMode && registerModalOpen && (
         <Suspense fallback={null}>
           <RegisterModal isOpen onClose={() => setRegisterModalOpen(false)} />
         </Suspense>
       )}
 
-      <HelpButton />
+      {!previewMode && <HelpButton />}
     </div>
   );
 };

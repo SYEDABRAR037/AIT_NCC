@@ -5,9 +5,10 @@ import { getApiBaseUrl } from '../../utils/api';
 
 interface ContactSectionProps {
   onOpenLogin?: () => void;
+  previewMode?: boolean;
 }
 
-export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) => {
+export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin, previewMode = false }) => {
   const { user, token } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -21,8 +22,9 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
   const [institutionalInfo, setInstitutionalInfo] = useState<{ address: string; email: string; phone: string; timings: string }>({ address: '', email: '', phone: '', timings: '' });
 
   useEffect(() => {
+    if (previewMode) return;
     fetch(`${getApiBaseUrl()}/api/public/institutional-info`).then((response) => response.ok ? response.json() : null).then((data) => { if (data?.success && data.info) setInstitutionalInfo({ address: data.info.address || '', email: data.info.email || '', phone: data.info.phone || '', timings: data.info.timings || '' }); }).catch(() => undefined);
-  }, []);
+  }, [previewMode]);
 
   // Auto-populate when user is logged in
   useEffect(() => {
@@ -122,7 +124,15 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
             <a href="https://www.aitpune.com" target="_blank" rel="noopener noreferrer">Visit the official AIT website</a>
           </div>
 
-          {/* Right Column: Database-Backed Inquiry Form */}
+          {previewMode ? (
+          <div className="institutional-card" role="note">
+            <h3 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', marginBottom: '0.75rem' }}>Public preview</h3>
+            <p style={{ margin: 0, lineHeight: 1.6, color: 'var(--color-text-secondary)' }}>
+              Inquiry submission is disabled in this preview. No personal information is collected here.
+            </p>
+          </div>
+          ) : (
+          /* Right Column: Database-Backed Inquiry Form */
           <div className="institutional-card" style={{ position: 'relative' }}>
             <h3 style={{ fontSize: '1.3rem', color: 'var(--navy-primary)', marginBottom: '0.75rem' }}>
               Institutional Inquiry Protocol
@@ -334,6 +344,7 @@ export const ContactSection: React.FC<ContactSectionProps> = ({ onOpenLogin }) =
               </button>
             </form>
           </div>
+          )}
         </div>
       </div>
     </section>

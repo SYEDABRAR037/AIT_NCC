@@ -9,12 +9,14 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onOpenRegister: () => void;
   onSelectShell: (role: string) => void;
+  previewMode?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onOpenLogin,
   onOpenRegister,
   onSelectShell,
+  previewMode = false,
 }) => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -143,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* ZONE 3 — RIGHT: ROLE SHELLS, LOGIN, REGISTER */}
         <div className="ref-header-actions">
           {/* Role Dashboards Outline Dropdown Button */}
-          <div
+          {!previewMode && <div
             className="ref-shells-dropdown"
             ref={dropdownRef}
             onKeyDown={(event) => {
@@ -183,10 +185,10 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           {/* User Auth Buttons */}
-          {user ? (
+          {!previewMode && (user ? (
             <div className="ref-auth-logged">
               <button
                 className="ref-btn-command"
@@ -222,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({
                 Register
               </button>
             </div>
-          )}
+          ))}
 
           {/* Mobile Menu Toggle */}
           <button
@@ -258,7 +260,7 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
             </nav>
 
-            <div className="ref-mobile-roles">
+            {!previewMode && <div className="ref-mobile-roles">
               <div className="ref-mobile-roles-title">ROLE PANELS</div>
               {roles.map((r) => (
                 <button
@@ -273,9 +275,9 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>{r.name}</span>
                 </button>
               ))}
-            </div>
+            </div>}
 
-            <div className="ref-mobile-auth">
+            {!previewMode && <div className="ref-mobile-auth">
               {user ? (
                 <>
                   <div className="ref-mobile-user-tag">
@@ -326,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       )}

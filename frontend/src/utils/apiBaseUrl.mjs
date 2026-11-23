@@ -1,7 +1,10 @@
 const normalize = (value) => typeof value === 'string' ? value.trim().replace(/\/+$/, '') : '';
 
 /** Build config is authoritative; saved overrides remain available when unset. */
-export function resolveApiBaseUrl({ envUrl, savedBase, windowBase, hostname }) {
+export function resolveApiBaseUrl({ envUrl, savedBase, windowBase, hostname, previewMode = false }) {
+  // Public preview builds must ignore both configured URLs and stale browser overrides.
+  if (previewMode) return '';
+
   const configured = normalize(envUrl);
   if (configured) return configured;
 
@@ -10,7 +13,5 @@ export function resolveApiBaseUrl({ envUrl, savedBase, windowBase, hostname }) {
 
   const globalBase = normalize(windowBase);
   if (globalBase) return globalBase;
-
-  if (hostname && hostname.includes('netlify.app')) return 'https://ait-ncc.onrender.com';
   return '';
 }

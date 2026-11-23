@@ -19,18 +19,26 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
     X-DNS-Prefetch-Control = "off"
     X-Permitted-Cross-Domain-Policies = "none"
-    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ait-ncc.onrender.com https://fonts.googleapis.com https://fonts.gstatic.com; media-src 'self' blob:; worker-src 'self' blob:; upgrade-insecure-requests"
-
-[[redirects]]
-  from = "/api/*"
-  to = "https://ait-ncc.onrender.com/api/:splat"
-  status = 200
-  force = true
+    # CSP is emitted by the build script so deploy previews can use a stricter,
+    # context-specific connect-src without changing the production policy.
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Public previews are static-only. Netlify headers/redirects are global when
+# declared here, so preview-specific files are emitted into dist at build time.
+[context.deploy-preview.environment]
+  VITE_PUBLIC_PREVIEW_MODE = "true"
+  NCC_PUBLIC_PREVIEW_MODE = "true"
+
+[context.branch-deploy.environment]
+  VITE_PUBLIC_PREVIEW_MODE = "true"
+  NCC_PUBLIC_PREVIEW_MODE = "true"
+
+[context."codex/ncc-release-candidate-20261028".environment]
+  VITE_PUBLIC_PREVIEW_MODE = "true"
+  NCC_PUBLIC_PREVIEW_MODE = "true"
