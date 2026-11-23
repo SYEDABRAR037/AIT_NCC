@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { handler } from './recovery.ts';
+import { handler as emailRelayHandler } from './email-relay.ts';
 import { isRecoveryAction, resolveRecoveryApiTarget } from './recoverySecurity.ts';
+import { isPublicPreview } from './previewContext.mjs';
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
@@ -18,6 +20,9 @@ const event = {
 try {
   assert.equal(isRecoveryAction('request-otp'), true);
   assert.equal(isRecoveryAction('other'), false);
+  assert.equal(isPublicPreview({ SITE_NAME: 'ait-ncc-public-preview', CONTEXT: 'production' }), true);
+  assert.equal(isPublicPreview({ SITE_NAME: 'another-site', CONTEXT: 'production', BRANCH: 'codex/ncc-release-candidate-20261028' }), true);
+  assert.equal(isPublicPreview({ SITE_NAME: 'another-site', CONTEXT: 'production', BRANCH: 'main' }), false);
   assert.equal(resolveRecoveryApiTarget(undefined, 'request-otp'), null);
   assert.equal(resolveRecoveryApiTarget('not a URL', 'request-otp'), null);
   assert.equal(resolveRecoveryApiTarget('file:///tmp', 'request-otp'), null);
@@ -33,6 +38,7 @@ try {
   assert.equal(modalSource.includes('/.netlify/functions/recovery'), false, 'ForgotPasswordModal must not contain hardcoded Netlify function recovery URL');
 
   Object.assign(process.env, { NETLIFY: 'true', CONTEXT: 'production', NODE_ENV: 'production' });
+  process.env.SITE_NAME = 'ait-ncc-public-preview';
 
   delete process.env.RECOVERY_API_BASE_URL;
   process.env.DATABASE_URL = 'present-but-unused';
@@ -51,8 +57,18 @@ try {
   assert.equal(invalidUrl.statusCode, 503);
   assert.equal(fetchCalls, 0);
 
+  process.env.RECOVERY_API_BASE_URL = 'https://api.example.test';
+  const previewRecovery = await handler(event, {}, () => {});
+  assert.equal(previewRecovery.statusCode, 503);
+  assert.equal(fetchCalls, 0);
+  const previewEmail = await emailRelayHandler({ httpMethod: 'POST', headers: {}, body: '{}' }, {}, () => {});
+  assert.equal(previewEmail.statusCode, 503);
+  assert.equal(fetchCalls, 0);
+
   delete process.env.NETLIFY;
   delete process.env.NODE_ENV;
+  delete process.env.SITE_NAME;
+  process.env.RECOVERY_API_BASE_URL = 'http://api.example.test';
   const deployedContextHttpUrl = await handler(event, {}, () => {});
   assert.equal(deployedContextHttpUrl.statusCode, 503);
   assert.equal(fetchCalls, 0);

@@ -3,13 +3,16 @@ const path = require('path');
 
 const previewContexts = new Set(['deploy-preview', 'branch-deploy']);
 const previewBranches = new Set(['codex/ncc-release-candidate-20261028']);
+const deployContext = (process.env.CONTEXT || '').trim().toLowerCase();
+const deployBranch = (process.env.BRANCH || '').trim();
 const isPublicPreview = process.env.VITE_PUBLIC_PREVIEW_MODE === 'true'
   || process.env.NCC_PUBLIC_PREVIEW_MODE === 'true'
-  || previewContexts.has((process.env.CONTEXT || '').trim().toLowerCase())
-  || previewBranches.has((process.env.BRANCH || '').trim());
+  || previewContexts.has(deployContext)
+  || previewBranches.has(deployBranch)
+  || (deployContext === 'production' && deployBranch === 'main');
 const targetUrl = isPublicPreview
   ? ''
-  : process.env.VITE_API_BASE_URL || process.env.BACKEND_URL || 'https://ait-ncc.onrender.com';
+  : process.env.VITE_API_BASE_URL || process.env.BACKEND_URL || '';
 const distDirectory = path.resolve(__dirname, '../dist');
 const redirectsFile = path.join(distDirectory, '_redirects');
 const headersFile = path.join(distDirectory, '_headers');
@@ -55,9 +58,13 @@ if (isPublicPreview) {
   fs.rmSync(path.join(distDirectory, 'models'), { recursive: true, force: true });
 }
 
-const connectSources = isPublicPreview
-  ? "'self' https://fonts.googleapis.com https://fonts.gstatic.com"
-  : `'self' ${new URL(targetUrl).origin} https://fonts.googleapis.com https://fonts.gstatic.com`;
+const backendOrigin = targetUrl ? new URL(targetUrl).origin : '';
+const connectSources = [
+  "'self'",
+  ...(backendOrigin ? [backendOrigin] : []),
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+].join(' ');
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",

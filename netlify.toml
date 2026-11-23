@@ -31,6 +31,11 @@
 
 # Public previews are static-only. Netlify headers/redirects are global when
 # declared here, so preview-specific files are emitted into dist at build time.
+[context.production.environment]
+  # This site's production branch is a public static preview, not an API-backed deployment.
+  VITE_PUBLIC_PREVIEW_MODE = "true"
+  NCC_PUBLIC_PREVIEW_MODE = "true"
+
 [context.deploy-preview.environment]
   VITE_PUBLIC_PREVIEW_MODE = "true"
   NCC_PUBLIC_PREVIEW_MODE = "true"

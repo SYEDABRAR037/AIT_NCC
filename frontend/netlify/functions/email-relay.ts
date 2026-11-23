@@ -1,14 +1,11 @@
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import nodemailer from 'nodemailer';
+import { isPublicPreview } from './previewContext.mjs';
 
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
 const SENDER_EMAIL = process.env.SMTP_FROM_EMAIL || SMTP_USER;
 const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET;
-const isPublicPreview = (): boolean => process.env.NCC_PUBLIC_PREVIEW_MODE === 'true'
-  || ['deploy-preview', 'branch-deploy'].includes((process.env.CONTEXT || '').trim().toLowerCase())
-  || process.env.BRANCH === 'codex/ncc-release-candidate-20261028';
-
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   // Never let a preview inherit SMTP credentials and send real mail.
   if (isPublicPreview()) {

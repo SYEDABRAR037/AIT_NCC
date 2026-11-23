@@ -1,5 +1,6 @@
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import { isRecoveryAction, resolveRecoveryApiTarget } from './recoverySecurity.ts';
+import { isPublicPreview } from './previewContext.mjs';
 
 const responseHeaders = {
   'Content-Type': 'application/json',
@@ -19,10 +20,6 @@ const isLocalDevelopment = (): boolean => {
   if (process.env.NETLIFY === 'true' || process.env.CONTEXT) return false;
   return process.env.NODE_ENV === 'development';
 };
-
-const isPublicPreview = (): boolean => process.env.NCC_PUBLIC_PREVIEW_MODE === 'true'
-  || ['deploy-preview', 'branch-deploy'].includes((process.env.CONTEXT || '').trim().toLowerCase())
-  || process.env.BRANCH === 'codex/ncc-release-candidate-20261028';
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   if (event.httpMethod === 'OPTIONS') {
