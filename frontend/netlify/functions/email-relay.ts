@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
+const SENDER_EMAIL = process.env.SMTP_FROM_EMAIL || SMTP_USER;
 const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET;
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
@@ -50,9 +51,10 @@ export const handler: Handler = async (event: HandlerEvent, _context: HandlerCon
     }
 
     const authPass = (smtpPass || process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || '').replace(/\s+/g, '');
-    const authUser = (smtpUser || SMTP_USER).trim();
+    const authUser = String(smtpUser || SMTP_USER || '').trim();
+    const senderEmail = String(SENDER_EMAIL || authUser).trim();
 
-    if (!authPass || !authUser || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
+    if (!authPass || !authUser || !senderEmail || !recipientEmail || !/^\d{6}$/.test(String(otp || ''))) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
@@ -148,7 +150,7 @@ Official Account Recovery System`;
 `;
 
     const info = await transporter.sendMail({
-      from: `"${SENDER_NAME}" <${SENDER_EMAIL}>`,
+      from: `"${SENDER_NAME}" <${senderEmail}>`,
       to: recipientEmail,
       subject: emailSubject,
       text: emailText,

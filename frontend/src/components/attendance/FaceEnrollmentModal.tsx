@@ -157,6 +157,8 @@ export const FaceEnrollmentModal: React.FC<FaceEnrollmentModalProps> = ({
           cadetId: cadet.id,
           descriptor,
           qualityScore,
+          biometricConsent: consent,
+          replaceExisting: true,
         }),
       });
 

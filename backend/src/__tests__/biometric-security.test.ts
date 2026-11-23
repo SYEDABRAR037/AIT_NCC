@@ -2,13 +2,25 @@ import './test-isolation-guard';
 import assert from 'assert';
 import { prisma } from '../db';
 import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
+import { encryptBiometricPayload, BIOMETRIC_CONSENT_PURPOSE, BIOMETRIC_DESCRIPTOR_FORMAT } from '../services/biometricCrypto.service';
 import * as attendanceNotificationService from '../services/attendanceNotification.service';
 import {
-  issueVerificationChallenge,
-  verifyFaceAttendance,
+  issueVerificationChallenge as issueVerificationChallengeHandler,
+  verifyFaceAttendance as verifyFaceAttendanceHandler,
   getEligibleBiometrics,
   markAttendance,
+  revokeBiometricConsent,
 } from '../controllers/attendance.controller';
+
+// Controller unit tests model the authenticated middleware's durable session context.
+const issueVerificationChallenge = (req: any, res: any) => issueVerificationChallengeHandler({
+  ...req,
+  authSessionId: req.authSessionId || `auth-session-${req.user?.id || 'fixture'}`,
+}, res);
+const verifyFaceAttendance = (req: any, res: any) => verifyFaceAttendanceHandler({
+  ...req,
+  authSessionId: req.authSessionId || `auth-session-${req.user?.id || 'fixture'}`,
+}, res);
 
 // ============================================================================
 // NCC BIOMETRIC ATTENDANCE SECURITY TEST SUITE (PHASE 2 HARDENING)
@@ -25,6 +37,20 @@ async function runTestSuite() {
 
   let passed = 0;
   let failed = 0;
+  const testKeyring = { activeKeyId: 'unit', keys: { unit: Buffer.alloc(32, 11) } };
+  const testModel = { modelName: 'fixture-model', modelVersion: 'fixture-v1' };
+  process.env.BIOMETRIC_ENCRYPTION_KEYS = JSON.stringify({ unit: testKeyring.keys.unit.toString('base64') });
+  process.env.BIOMETRIC_ENCRYPTION_ACTIVE_KEY_ID = 'unit';
+  process.env.BIOMETRIC_MODEL_NAME = testModel.modelName;
+  process.env.BIOMETRIC_MODEL_VERSION = testModel.modelVersion;
+  process.env.BIOMETRIC_CONSENT_POLICY_VERSION = 'fixture-policy-v1';
+  const encryptedTestTemplate = (cadetId: string, vector: number[]) => encryptBiometricPayload({
+    descriptor: vector,
+    ...testModel,
+    descriptorFormat: BIOMETRIC_DESCRIPTOR_FORMAT,
+    captureStatus: 'TEST_ONLY',
+    consent: { purpose: BIOMETRIC_CONSENT_PURPOSE, policyVersion: 'fixture-policy-v1', consentedAt: new Date(0).toISOString(), subjectId: cadetId, recordedById: 'fixture', recordedByRole: 'TEST' },
+  }, cadetId, testKeyring);
 
   function recordResult(testName: string, success: boolean, details?: string) {
     if (success) {
@@ -546,6 +572,30 @@ async function runTestSuite() {
   }
 
   // --------------------------------------------------------------------------
+  // Integration Test 15b: Cadet query is scoped before biometric comparison
+  // --------------------------------------------------------------------------
+  try {
+    process.env.ENABLE_BIOMETRIC_ATTENDANCE = 'true';
+    (prisma.seniorAssignment as any).findMany = async () => [{ cadetId: 'authorized-cadet' }];
+    (prisma.user as any).findMany = async () => [{ id: 'authorized-cadet', fullName: 'Authorized Cadet', regimentalNumber: 'MH24SDA100001', platoonName: 'ALPHA' }];
+    let templateQuery: any;
+    (prisma.biometricTemplate as any).findMany = async (args: any) => {
+      templateQuery = args;
+      return [{ cadetId: 'authorized-cadet', descriptor: encryptedTestTemplate('authorized-cadet', new Array(128).fill(0.99)), registeredBy: 'unit-encrypted-fixture', cadet: { id: 'authorized-cadet', fullName: 'Authorized Cadet', regimentalNumber: 'MH24SDA100001', status: 'ACTIVE', role: 'CADET' } }];
+    };
+    const challengeRes = createMockRes();
+    await issueVerificationChallenge({ params: { sessionId: 'session-scope' }, user: { id: 'operator-1', role: 'SENIOR', fullName: 'Senior Operator' } } as any, challengeRes as any);
+    const verifyRes = createMockRes();
+    await verifyFaceAttendance({ params: { sessionId: 'session-scope' }, user: { id: 'operator-1', role: 'SENIOR', fullName: 'Senior Operator' }, body: { descriptor: new Array(128).fill(0.01), challengeToken: challengeRes.body.challengeToken } } as any, verifyRes as any);
+    assert.deepStrictEqual(templateQuery.where.cadetId.in, ['authorized-cadet']);
+    assert.strictEqual(verifyRes.statusCode, 422);
+    assert(!JSON.stringify(verifyRes.body).includes('OUT_OF_SCOPE'));
+    recordResult('Integration Test 15b: Cross-platoon candidates excluded before descriptor comparison', true);
+  } catch (err: any) {
+    recordResult('Integration Test 15b: Cross-platoon biometric scope', false, err.message);
+  }
+
+  // --------------------------------------------------------------------------
   // Integration Test 16: Approved leave conflict simulation
   // --------------------------------------------------------------------------
   try {
@@ -558,10 +608,13 @@ async function runTestSuite() {
     await issueVerificationChallenge(challengeReq, challengeRes as any);
     const token = challengeRes.body.challengeToken;
 
+    (prisma.user as any).findMany = async () => [{ id: 'cadet-leave-id', fullName: 'Leave Cadet', regimentalNumber: 'MH24SDA111111', platoonName: 'ALPHA' }];
+
     (prisma.biometricTemplate as any).findMany = async () => [
       {
         cadetId: 'cadet-leave-id',
-        descriptor: JSON.stringify(new Array(128).fill(0.1)),
+        descriptor: encryptedTestTemplate('cadet-leave-id', new Array(128).fill(0.1)),
+        registeredBy: 'isolated-unit-fixture',
         cadet: {
           id: 'cadet-leave-id',
           fullName: 'Leave Cadet',
@@ -610,10 +663,13 @@ async function runTestSuite() {
     await issueVerificationChallenge(challengeReq, challengeRes as any);
     const token = challengeRes.body.challengeToken;
 
+    (prisma.user as any).findMany = async () => [{ id: 'cadet-dup-id', fullName: 'Duplicate Cadet', regimentalNumber: 'MH24SDA222222', platoonName: 'ALPHA' }];
+
     (prisma.biometricTemplate as any).findMany = async () => [
       {
         cadetId: 'cadet-dup-id',
-        descriptor: JSON.stringify(new Array(128).fill(0.2)),
+        descriptor: encryptedTestTemplate('cadet-dup-id', new Array(128).fill(0.2)),
+        registeredBy: 'isolated-unit-fixture',
         cadet: {
           id: 'cadet-dup-id',
           fullName: 'Duplicate Cadet',
@@ -662,10 +718,13 @@ async function runTestSuite() {
     await issueVerificationChallenge(challengeReq, challengeRes as any);
     const token = challengeRes.body.challengeToken;
 
+    (prisma.user as any).findMany = async () => [{ id: 'cadet-enrolled-1', fullName: 'Enrolled Cadet', regimentalNumber: 'MH24SDA333333', platoonName: 'ALPHA' }];
+
     (prisma.biometricTemplate as any).findMany = async () => [
       {
         cadetId: 'cadet-enrolled-1',
-        descriptor: JSON.stringify(new Array(128).fill(0.9)), // Enrolled template has 0.9
+        descriptor: encryptedTestTemplate('cadet-enrolled-1', new Array(128).fill(0.9)), // Isolated test vector
+        registeredBy: 'isolated-unit-fixture',
         cadet: {
           id: 'cadet-enrolled-1',
           fullName: 'Enrolled Cadet',
@@ -690,6 +749,82 @@ async function runTestSuite() {
     recordResult('Integration Test 18: Non-matching synthetic descriptor rejected (422 FACE_NOT_VERIFIED)', true);
   } catch (err: any) {
     recordResult('Integration Test 18: Synthetic descriptor matching failure', false, err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  // Integration Test 18b: Two first biometric marks race on the existing unique key
+  // --------------------------------------------------------------------------
+  try {
+    process.env.ENABLE_BIOMETRIC_ATTENDANCE = 'true';
+    const raceSession = {
+      id: 'session-biometric-race', status: 'ACTIVE', targetPlatoon: 'ALPHA',
+      date: new Date(), expectedCount: 1, activity: 'Synthetic race test', title: 'Synthetic race test',
+    };
+    (prisma.trainingSession as any).findUnique = async () => raceSession;
+    (prisma.user as any).findMany = async () => [{
+      id: 'cadet-biometric-race', fullName: 'Race Fixture', regimentalNumber: 'TEST-RACE-01',
+      collegeRollNumber: 'TEST-ROLL-01', platoonName: 'ALPHA', phone: null,
+      role: 'CADET', status: 'ACTIVE',
+    }];
+    (prisma.seniorAssignment as any).findMany = async () => [{ cadetId: 'cadet-biometric-race' }];
+    (prisma.biometricTemplate as any).findMany = async () => [{
+      cadetId: 'cadet-biometric-race',
+      descriptor: encryptedTestTemplate('cadet-biometric-race', new Array(128).fill(0.3)),
+      registeredBy: 'isolated-unit-fixture',
+      cadet: {
+        id: 'cadet-biometric-race', fullName: 'Race Fixture', regimentalNumber: 'TEST-RACE-01',
+        collegeRollNumber: 'TEST-ROLL-01', platoonName: 'ALPHA', status: 'ACTIVE', role: 'CADET', phone: null,
+      },
+    }];
+    (prisma.leave as any).findFirst = async () => null;
+
+    let outerReads = 0;
+    let releaseOuterReads!: () => void;
+    const bothOuterReads = new Promise<void>((resolve) => { releaseOuterReads = resolve; });
+    (prisma.trainingAttendance as any).findUnique = async () => {
+      outerReads += 1;
+      if (outerReads === 2) releaseOuterReads();
+      await bothOuterReads;
+      return null;
+    };
+
+    let rowClaimed = false;
+    (prisma.$transaction as any) = async (cb: any) => cb({
+      trainingAttendance: {
+        findUnique: async () => rowClaimed ? { id: 'attendance-biometric-race', status: 'PRESENT', createdAt: new Date() } : null,
+        create: async () => {
+          if (rowClaimed) throw { code: 'P2002' };
+          rowClaimed = true;
+          return { id: 'attendance-biometric-race', sessionId: raceSession.id, cadetId: 'cadet-biometric-race', status: 'PRESENT' };
+        },
+        updateMany: async () => ({ count: 0 }),
+        count: async () => rowClaimed ? 1 : 0,
+      },
+      trainingSession: { update: async () => ({ id: raceSession.id, presentCount: 1 }) },
+      auditLog: { create: async () => ({ id: 'audit-biometric-race' }) },
+    });
+
+    const challengeResponses = [createMockRes(), createMockRes()];
+    await Promise.all(challengeResponses.map((res) => issueVerificationChallenge({
+      params: { sessionId: raceSession.id },
+      user: { id: 'operator-race', role: 'SENIOR', fullName: 'Synthetic Operator' },
+    } as any, res as any)));
+    const verificationResponses = await Promise.all(challengeResponses.map(async (challengeRes) => {
+      const res = createMockRes();
+      await verifyFaceAttendance({
+        params: { sessionId: raceSession.id },
+        user: { id: 'operator-race', role: 'SENIOR', fullName: 'Synthetic Operator' },
+        body: { descriptor: new Array(128).fill(0.3), challengeToken: challengeRes.body.challengeToken },
+      } as any, res as any);
+      return res;
+    }));
+    const statuses = verificationResponses.map((res) => res.statusCode).sort();
+    assert.deepStrictEqual(statuses, [200, 409]);
+    assert.strictEqual(verificationResponses.filter((res) => res.body?.success === true).length, 1);
+    assert.strictEqual(rowClaimed, true, 'only one synthetic attendance row is claimed');
+    recordResult('Integration Test 18b: Concurrent biometric marks return one success and one duplicate conflict', true);
+  } catch (err: any) {
+    recordResult('Integration Test 18b: Concurrent biometric first mark', false, err.message);
   }
 
   console.log('\n---------------------------------------------------------------');
@@ -731,6 +866,7 @@ async function runTestSuite() {
       trainingSession: {
         update: async () => ({ id: 'session-man-active', presentCount: 1 }),
       },
+      auditLog: { create: async () => ({ id: 'mock-audit-manual' }) },
     };
     return cb(txMock);
   };
@@ -1009,6 +1145,7 @@ async function runTestSuite() {
         trainingSession: {
           update: async () => ({ id: 'session-concurrent-man', presentCount: 1 }),
         },
+        auditLog: { create: async () => ({ id: 'mock-audit-concurrent' }) },
       };
       return cb(txMock);
     };
@@ -1076,6 +1213,77 @@ async function runTestSuite() {
     recordResult('Manual Test 27: Rejected requests cause zero side effects or audit entries', true);
   } catch (err: any) {
     recordResult('Manual Test 27: Side effect safety', false, err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  // Manual Test 27b: Required audit failure rolls back the attendance write
+  // --------------------------------------------------------------------------
+  try {
+    (prisma.trainingSession as any).findUnique = async () => ({
+      id: 'session-audit-failure', status: 'ACTIVE', date: new Date(), expectedCount: 1,
+      title: 'Synthetic audit test', activity: 'Test', targetPlatoon: 'Alpha',
+    });
+    (prisma.user as any).findFirst = async () => sampleActiveCadet;
+    (prisma.leave as any).findFirst = async () => null;
+    (prisma.trainingAttendance as any).findUnique = async () => null;
+    let committed = false;
+    (prisma.$transaction as any) = async (cb: any) => {
+      let stagedAttendance = false;
+      const txMock = {
+        trainingAttendance: {
+          upsert: async () => { stagedAttendance = true; return { id: 'attendance-audit-failure', cadet: sampleActiveCadet }; },
+          count: async () => 1,
+        },
+        trainingSession: { update: async () => ({ id: 'session-audit-failure', presentCount: 1 }) },
+        auditLog: { create: async () => { throw new Error('Synthetic audit sink failure'); } },
+      };
+      try {
+        const result = await cb(txMock);
+        committed = stagedAttendance;
+        return result;
+      } catch (error) {
+        stagedAttendance = false;
+        throw error;
+      }
+    };
+    const res = createMockRes();
+    await markAttendance({
+      params: { sessionId: 'session-audit-failure' },
+      user: { id: 'officer-1', role: 'ADMIN_ANO', fullName: 'Capt ANO' },
+      body: { cadetId: 'cadet-man-1', status: 'PRESENT' },
+    } as any, res as any);
+    assert.strictEqual(res.statusCode, 500);
+    assert.strictEqual(committed, false, 'attendance write must not commit when required audit write fails');
+    recordResult('Manual Test 27b: Audit failure fails the request and rolls back attendance transaction', true);
+  } catch (err: any) {
+    recordResult('Manual Test 27b: Audit failure rollback', false, err.message);
+  }
+
+  // --------------------------------------------------------------------------
+  // Security Tests 28-29: Own-consent deletion and cross-account denial
+  // --------------------------------------------------------------------------
+  try {
+    let deletedCadetId = '';
+    let revocationAuditAction = '';
+    (prisma.$transaction as any) = async (cb: any) => cb({
+      biometricTemplate: { deleteMany: async ({ where }: any) => { deletedCadetId = where.cadetId; return { count: 1 }; } },
+      auditLog: { create: async ({ data }: any) => { revocationAuditAction = data.action; return { id: 'audit-test' }; } },
+    });
+    const denied = createMockRes();
+    await revokeBiometricConsent({ params: { cadetId: 'another-cadet' }, user: { id: 'cadet-self', role: 'CADET', fullName: 'Cadet' } } as any, denied as any);
+    assert.strictEqual(denied.statusCode, 403);
+    assert.strictEqual(deletedCadetId, '');
+    recordResult('Security Test 28: Cadet cannot revoke another cadet biometric consent', true);
+
+    const revoked = createMockRes();
+    await revokeBiometricConsent({ params: { cadetId: 'cadet-self' }, user: { id: 'cadet-self', role: 'CADET', fullName: 'Cadet' } } as any, revoked as any);
+    assert.strictEqual(revoked.statusCode, 200);
+    assert.strictEqual(deletedCadetId, 'cadet-self');
+    assert.strictEqual(revocationAuditAction, 'BIOMETRIC_CONSENT_REVOKED');
+    assert.strictEqual(revoked.body.deleted, true);
+    recordResult('Security Test 29: Own consent revocation deletes template and writes audit event', true);
+  } catch (err: any) {
+    recordResult('Security Tests 28-29: Consent revocation', false, err.message);
   }
 
   // Restore notification boundary mocks

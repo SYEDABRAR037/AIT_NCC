@@ -30,9 +30,11 @@ export const revokePresentedSession = async (
 
 /** Accepts pre-session JWTs only during the finite compatibility rollout. */
 export const isSessionActive = (claims: SessionClaims, record: SessionRecord | null, now = new Date()): boolean => {
-  if (!claims.sid) return true;
+  // A signed JWT without a durable session ID cannot be revoked server-side.
+  // Accepting it would make logout/session revocation advisory only.
+  if (!claims.sid || !claims.userId) return false;
   return Boolean(
-    claims.userId && record && record.id === claims.sid && record.userId === claims.userId &&
+    record && record.id === claims.sid && record.userId === claims.userId &&
     !record.revokedAt && record.expiresAt.getTime() > now.getTime()
   );
 };

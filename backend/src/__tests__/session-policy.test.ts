@@ -10,8 +10,9 @@ assertStatus({ userId: 'user-1', sid: 'session-1' }, { ...valid, expiresAt: new 
 assertStatus({ userId: 'user-1', sid: 'session-1' }, { ...valid, revokedAt: now }, false);
 assertStatus({ userId: 'other-user', sid: 'session-1' }, valid, false);
 assertStatus({ userId: 'user-1', sid: 'missing-session' }, null, false);
-// Compatibility for already issued seven-day tokens during the rollout.
-assertStatus({ userId: 'user-1' }, null, true);
+// Sessionless legacy tokens have no revocable server-side state and fail closed.
+assertStatus({ userId: 'user-1' }, null, false);
+assertStatus({ sid: 'session-1' }, valid, false);
 
 const run = async (): Promise<void> => {
   let revokedAt: Date | null = null;

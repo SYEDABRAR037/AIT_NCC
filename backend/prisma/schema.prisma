@@ -6,6 +6,7 @@ datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
+  schemas   = ["public", "app_private"]
 }
 
 enum Role {
@@ -14,6 +15,7 @@ enum Role {
   PLATOON_SENIOR
   SENIOR
   CADET
+  @@schema("public")
 }
 
 enum AccountStatus {
@@ -26,6 +28,7 @@ enum AccountStatus {
   REJECTED
   INACTIVE
   PASSED_OUT
+  @@schema("public")
 }
 
 model User {
@@ -75,6 +78,8 @@ model User {
   conductedInspections TurnoutInspection[] @relation("InspectorRecords")
   certificates        Certificate[]        @relation("CadetCertificates")
   biometricTemplate   BiometricTemplate?
+  challengeSubjects   BiometricVerificationChallenge[] @relation("ChallengeSubject")
+  biometricChallengeQuota BiometricChallengeSubjectQuota? @relation("ChallengeQuotaSubject")
   attendanceNotifications AttendanceNotification[]
   inquiryReplies      InquiryReply[]       @relation("UserInquiryReplies")
   passwordResets      PasswordReset[]
@@ -94,6 +99,7 @@ model User {
 
   @@index([role])
   @@index([status])
+  @@schema("public")
 }
 
 
@@ -111,6 +117,7 @@ model ReviewRecord {
 
   @@index([cadetId])
   @@index([reviewerId])
+  @@schema("public")
 }
 
 model GalleryPhoto {
@@ -126,6 +133,7 @@ model GalleryPhoto {
   updatedAt   DateTime @updatedAt
 
   @@index([isPublished, createdAt])
+  @@schema("public")
 }
 
 model RankHolder {
@@ -137,6 +145,7 @@ model RankHolder {
   isActive  Boolean  @default(false)
   sortOrder Int
   updatedAt DateTime @updatedAt
+  @@schema("public")
 }
 
 model InstitutionalInfo {
@@ -147,6 +156,7 @@ model InstitutionalInfo {
   timings     String?
   updatedById String?
   updatedAt   DateTime @updatedAt
+  @@schema("public")
 }
 
 model SeniorAssignment {
@@ -159,6 +169,7 @@ model SeniorAssignment {
   cadet      User     @relation("AssignedCadet", fields: [cadetId], references: [id], onDelete: Cascade)
 
   @@index([seniorId])
+  @@schema("public")
 }
 
 model PlatoonSeniorAssignment {
@@ -171,6 +182,7 @@ model PlatoonSeniorAssignment {
   platoon         Platoon  @relation(fields: [platoonId], references: [id], onDelete: Cascade)
 
   @@unique([platoonSeniorId, platoonId])
+  @@schema("public")
 }
 
 model DrillInstructorAssignment {
@@ -184,6 +196,7 @@ model DrillInstructorAssignment {
 
   @@unique([drillInstructorId, platoonId])
   @@index([platoonId])
+  @@schema("public")
 }
 
 model Platoon {
@@ -194,6 +207,7 @@ model Platoon {
 
   platoonSeniors PlatoonSeniorAssignment[]
   drillInstructors DrillInstructorAssignment[]
+  @@schema("public")
 }
 
 model AuthSession {
@@ -205,8 +219,12 @@ model AuthSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  biometricChallenges BiometricVerificationChallenge[]
+
   @@index([userId, expiresAt])
   @@index([expiresAt])
+  @@unique([id, userId], map: "AuthSession_id_userId_key")
+  @@schema("public")
 }
 
 model RecoveryChallenge {
@@ -229,6 +247,7 @@ model RecoveryChallenge {
   @@index([userId, createdAt])
   @@index([lookupHash, createdAt])
   @@index([expiresAt])
+  @@schema("public")
 }
 
 model PerformanceAssessment {
@@ -245,6 +264,7 @@ model PerformanceAssessment {
   evaluator      User     @relation("PerformanceEvaluator", fields: [evaluatorId], references: [id], onDelete: Restrict)
   @@index([cadetId, category, assessmentDate])
   @@index([evaluatorId])
+  @@schema("public")
 }
 
 model PerformanceScoreSnapshot {
@@ -262,6 +282,7 @@ model PerformanceScoreSnapshot {
   cadet          User     @relation(fields: [cadetId], references: [id], onDelete: Cascade)
   @@unique([cadetId, period, periodStart, sourceDigest])
   @@index([cadetId, periodStart])
+  @@schema("public")
 }
 
 model Notice {
@@ -275,6 +296,7 @@ model Notice {
   targetPlatoon String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  @@schema("public")
 }
 
 model Event {
@@ -294,6 +316,7 @@ model Event {
   createdAt     DateTime @default(now())
 
   participants EventParticipant[]
+  @@schema("public")
 }
 
 model EventParticipant {
@@ -307,6 +330,7 @@ model EventParticipant {
   cadet User  @relation(fields: [cadetId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, cadetId])
+  @@schema("public")
 }
 
 model Achievement {
@@ -319,6 +343,7 @@ model Achievement {
   isPublic    Boolean  @default(true)
   isVerified  Boolean  @default(true)
   createdAt   DateTime @default(now())
+  @@schema("public")
 }
 
 model Camp {
@@ -344,6 +369,7 @@ model Camp {
 
   participants CampParticipant[]
   documents    CampDocument[]
+  @@schema("public")
 }
 
 model CampDocument {
@@ -355,6 +381,7 @@ model CampDocument {
   camp      Camp     @relation(fields: [campId], references: [id], onDelete: Cascade)
 
   @@index([campId])
+  @@schema("public")
 }
 
 model CampParticipant {
@@ -369,6 +396,7 @@ model CampParticipant {
   cadet User @relation(fields: [cadetId], references: [id], onDelete: Cascade)
 
   @@unique([campId, cadetId])
+  @@schema("public")
 }
 
 model Leave {
@@ -390,6 +418,7 @@ model Leave {
 
   @@index([cadetId])
   @@index([status])
+  @@schema("public")
 }
 
 model LeaveReviewRecord {
@@ -407,6 +436,7 @@ model LeaveReviewRecord {
 
   @@index([leaveId])
   @@index([reviewerId])
+  @@schema("public")
 }
 
 model Request {
@@ -432,6 +462,7 @@ model Request {
   @@index([cadetId])
   @@index([status])
   @@index([requestType])
+  @@schema("public")
 }
 
 model RequestHistoryRecord {
@@ -450,6 +481,7 @@ model RequestHistoryRecord {
 
   @@index([requestId])
   @@index([officerId])
+  @@schema("public")
 }
 
 model InquiryReply {
@@ -467,6 +499,7 @@ model InquiryReply {
   @@index([requestId])
   @@index([senderId])
   @@index([createdAt])
+  @@schema("public")
 }
 
 model TimelineEvent {
@@ -486,6 +519,7 @@ model TimelineEvent {
   @@index([cadetId])
   @@index([category])
   @@index([eventDate])
+  @@schema("public")
 }
 
 model Duty {
@@ -508,6 +542,7 @@ model Duty {
 
   @@index([assignedCadetId])
   @@index([dutyDate])
+  @@schema("public")
 }
 
 model AuditLog {
@@ -522,6 +557,7 @@ model AuditLog {
 
   @@index([actorId])
   @@index([action])
+  @@schema("public")
 }
 
 model RankHistory {
@@ -539,6 +575,7 @@ model RankHistory {
 
   @@index([cadetId, changedAt])
   @@index([changedById])
+  @@schema("public")
 }
 
 model Notification {
@@ -570,6 +607,7 @@ model Notification {
   @@index([userId, createdAt])
   @@index([emailStatus, pushStatus, nextDeliveryAt])
   @@index([targetRole, createdAt])
+  @@schema("public")
 }
 
 model NotificationPreferences {
@@ -579,6 +617,7 @@ model NotificationPreferences {
   pushEnabled  Boolean  @default(false)
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@schema("public")
 }
 
 model WebPushSubscription {
@@ -591,6 +630,7 @@ model WebPushSubscription {
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@schema("public")
 }
 
 model NotificationRead {
@@ -603,6 +643,7 @@ model NotificationRead {
 
   @@unique([notificationId, userId])
   @@index([userId, readAt])
+  @@schema("public")
 }
 
 model TrainingSession {
@@ -623,10 +664,15 @@ model TrainingSession {
   absentCount   Int      @default(0)
   date          DateTime @default(now())
   createdAt     DateTime @default(now())
+  attendanceWindowStartAt DateTime? @db.Timestamptz(6) @map("attendance_window_start_at")
+  attendanceWindowEndAt   DateTime? @db.Timestamptz(6) @map("attendance_window_end_at")
+  attendanceWindowTimeZoneId String? @db.VarChar(64) @map("attendance_window_time_zone_id")
 
   attendance  TrainingAttendance[]
   inspections TurnoutInspection[]
   attendanceNotifications AttendanceNotification[]
+  biometricChallenges BiometricVerificationChallenge[]
+  @@schema("public")
 }
 
 model TrainingAttendance {
@@ -645,6 +691,7 @@ model TrainingAttendance {
   cadet   User            @relation(fields: [cadetId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, cadetId])
+  @@schema("public")
 }
 
 model BiometricTemplate {
@@ -660,6 +707,7 @@ model BiometricTemplate {
   cadet User @relation(fields: [cadetId], references: [id], onDelete: Cascade)
 
   @@index([cadetId])
+  @@schema("public")
 }
 
 model TurnoutInspection {
@@ -680,6 +728,7 @@ model TurnoutInspection {
 
   @@index([cadetId])
   @@index([inspectorId])
+  @@schema("public")
 }
 
 model Certificate {
@@ -705,6 +754,7 @@ model Certificate {
   @@index([cadetId])
   @@index([certificateNo])
   @@index([certificateType])
+  @@schema("public")
 }
 
 model AttendanceNotification {
@@ -736,6 +786,7 @@ model AttendanceNotification {
   @@index([cadetId])
   @@index([status])
   @@index([eventType])
+  @@schema("public")
 }
 
 model PasswordReset {
@@ -754,12 +805,166 @@ model PasswordReset {
 
   @@index([userId])
   @@index([expiresAt])
+  @@schema("public")
 }
 
 enum OtpPurpose {
   REGISTRATION_EMAIL
   REGISTRATION_MOBILE
   LOGIN
+  @@schema("public")
+}
+
+enum BiometricChallengePurpose {
+  ATTENDANCE_1_TO_1
+
+  @@map("biometric_challenge_purpose")
+  @@schema("app_private")
+}
+
+enum BiometricChallengeIntegrityState {
+  BLOCKED
+  READY
+
+  @@map("biometric_challenge_integrity_state")
+  @@schema("app_private")
+}
+
+enum BiometricChallengeIntegrityActorKind {
+  SYSTEM
+  SERVICE
+  DATABASE_OPERATOR
+
+  @@map("biometric_challenge_integrity_actor_kind")
+  @@schema("app_private")
+}
+
+// Operational policy is intentionally represented by rows, not schema defaults.
+// If the active policy or singleton quota row is absent/invalid, challenge
+// issue, consume, and cleanup routines must fail closed. Do not seed policy
+// values until separately approved. Partial indexes and cross-table checks are
+// reserved for reviewed custom migration SQL (P0.3).
+model BiometricChallengePolicy {
+  policyVersion            String   @id @map("policy_version")
+  policyHash               String   @unique(map: "biometric_challenge_policy_policy_hash_key") @db.Char(64) @map("policy_hash")
+  maxChallengeTtlMs        BigInt   @map("max_challenge_ttl_ms")
+  globalOutstandingLimit   Int      @map("global_outstanding_limit")
+  subjectOutstandingLimit  Int      @map("subject_outstanding_limit")
+  retainedLimit            Int      @map("retained_limit")
+  globalTokenCapacity      Decimal  @db.Decimal(18, 6) @map("global_token_capacity")
+  globalRefillPerSecond    Decimal  @db.Decimal(18, 6) @map("global_refill_per_second")
+  subjectTokenCapacity     Decimal  @db.Decimal(18, 6) @map("subject_token_capacity")
+  subjectRefillPerSecond   Decimal  @db.Decimal(18, 6) @map("subject_refill_per_second")
+  consumedRetentionMs      BigInt   @map("consumed_retention_ms")
+  expiredRetentionMs       BigInt   @map("expired_retention_ms")
+  cleanupBatchLimit        Int      @map("cleanup_batch_limit")
+  cleanupSubjectLimit      Int      @map("cleanup_subject_limit")
+  createdAt                DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6) @map("created_at")
+
+  globalQuotas BiometricChallengeGlobalQuota[]
+  challenges   BiometricVerificationChallenge[]
+  integrityGate   BiometricChallengeIntegrityGate[]
+  integrityEvents BiometricChallengeIntegrityEvent[]
+
+  @@map("biometric_challenge_policy")
+  @@schema("app_private")
+}
+
+model BiometricChallengeGlobalQuota {
+  singletonKey          String   @id @map("singleton_key")
+  activePolicyVersion   String   @map("active_policy_version")
+  globalOutstanding     Int      @default(0) @map("global_outstanding")
+  retainedCount         Int      @default(0) @map("retained_count")
+  globalTokenBalance    Decimal  @db.Decimal(18, 6) @map("global_token_balance")
+  globalRefilledAt      DateTime @db.Timestamptz(6) @map("global_refilled_at")
+  updatedAt             DateTime @db.Timestamptz(6) @map("updated_at")
+
+  activePolicy BiometricChallengePolicy @relation(fields: [activePolicyVersion], references: [policyVersion], onDelete: Restrict)
+
+  @@map("biometric_challenge_global_quota")
+  @@schema("app_private")
+}
+
+model BiometricChallengeSubjectQuota {
+  subjectUserId String   @id @map("subject_user_id")
+  outstanding   Int      @default(0)
+  tokenBalance  Decimal  @db.Decimal(18, 6) @map("token_balance")
+  refilledAt    DateTime @db.Timestamptz(6) @map("refilled_at")
+  updatedAt     DateTime @db.Timestamptz(6) @map("updated_at")
+
+  subjectUser User @relation("ChallengeQuotaSubject", fields: [subjectUserId], references: [id], onDelete: Restrict)
+
+  @@map("biometric_challenge_subject_quota")
+  @@schema("app_private")
+}
+
+model BiometricVerificationChallenge {
+  id                String                    @id
+  tokenHash         String                    @unique(map: "biometric_challenge_token_hash_key") @db.VarChar(64) @map("token_hash")
+  subjectUserId     String                    @map("subject_user_id")
+  trainingSessionId String                    @map("training_session_id")
+  authSessionId     String                    @map("auth_session_id")
+  policyVersion     String                    @map("policy_version")
+  purpose           BiometricChallengePurpose
+  createdAt         DateTime                  @db.Timestamptz(3) @map("created_at")
+  expiresAt         DateTime                  @db.Timestamptz(3) @map("expires_at")
+  consumedAt        DateTime?                 @db.Timestamptz(3) @map("consumed_at")
+
+  subjectUser    User                     @relation("ChallengeSubject", fields: [subjectUserId], references: [id], onDelete: Restrict)
+  trainingSession TrainingSession          @relation(fields: [trainingSessionId], references: [id], onDelete: Restrict)
+  authSession    AuthSession              @relation(fields: [authSessionId, subjectUserId], references: [id, userId], onDelete: Restrict, map: "biometric_challenge_auth_owner_fk")
+  policy         BiometricChallengePolicy @relation(fields: [policyVersion], references: [policyVersion], onDelete: Restrict)
+
+  @@index([expiresAt, id], map: "biometric_challenge_cleanup_expiry_idx")
+  @@index([authSessionId, id], map: "biometric_challenge_auth_session_idx")
+  @@index([trainingSessionId, id], map: "biometric_challenge_training_session_idx")
+  @@map("biometric_verification_challenge")
+  @@schema("app_private")
+}
+
+// This row has no Prisma state default: only a reviewed database routine may
+// transition it. Missing rows or non-READY states must deny biometric writes.
+// The migration seeds BLOCKED/NOT_CONFIGURED; this is not an operational policy.
+model BiometricChallengeIntegrityGate {
+  singletonKey   String                               @id @map("singleton_key")
+  state          BiometricChallengeIntegrityState
+  reasonCode     String                               @map("reason_code")
+  policyVersion  String?                              @map("policy_version")
+  stateRevision  BigInt                               @default(1) @map("state_revision")
+  changedAt      DateTime                             @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6) @map("changed_at")
+  actorKind      BiometricChallengeIntegrityActorKind @map("actor_kind")
+  actorPrincipal String                               @map("actor_principal")
+  actorUserId    String?                              @map("actor_user_id")
+  auditReference String?                              @map("audit_reference")
+
+  policy BiometricChallengePolicy?       @relation(fields: [policyVersion], references: [policyVersion], onDelete: Restrict)
+  events BiometricChallengeIntegrityEvent[]
+
+  @@map("biometric_challenge_integrity_gate")
+  @@schema("app_private")
+}
+
+model BiometricChallengeIntegrityEvent {
+  id             BigInt                               @id @default(autoincrement())
+  singletonKey   String                               @map("singleton_key")
+  stateRevision  BigInt                               @map("state_revision")
+  previousState  BiometricChallengeIntegrityState?    @map("previous_state")
+  newState       BiometricChallengeIntegrityState     @map("new_state")
+  reasonCode     String                               @map("reason_code")
+  policyVersion  String?                              @map("policy_version")
+  actorKind      BiometricChallengeIntegrityActorKind @map("actor_kind")
+  actorPrincipal String                               @map("actor_principal")
+  actorUserId    String?                              @map("actor_user_id")
+  auditReference String?                              @map("audit_reference")
+  occurredAt     DateTime                             @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6) @map("occurred_at")
+
+  gate   BiometricChallengeIntegrityGate @relation(fields: [singletonKey], references: [singletonKey], onDelete: Restrict)
+  policy BiometricChallengePolicy?       @relation(fields: [policyVersion], references: [policyVersion], onDelete: Restrict)
+
+  @@unique([singletonKey, stateRevision], map: "biometric_challenge_integrity_event_revision_key")
+  @@index([occurredAt, id], map: "biometric_challenge_integrity_event_time_idx")
+  @@map("biometric_challenge_integrity_event")
+  @@schema("app_private")
 }
 
 model OtpChallenge {
@@ -782,4 +987,5 @@ model OtpChallenge {
   @@index([purpose, destination, createdAt])
   @@index([userId, purpose, expiresAt])
   @@index([expiresAt])
+  @@schema("public")
 }

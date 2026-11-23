@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CinematicIntro } from './components/cinematic/CinematicIntro';
 import { Header } from './components/home/Header';
@@ -16,11 +16,18 @@ import { JoinNCC } from './components/home/JoinNCC';
 import { ContactSection } from './components/home/ContactSection';
 import { Footer } from './components/home/Footer';
 import { MeetOurSeniors } from './components/home/MeetOurSeniors';
-import { LoginModal } from './components/auth/LoginModal';
-import { RegisterModal } from './components/auth/RegisterModal';
-import { RoleShellView } from './components/shells/RoleShellView';
 import { HelpButton } from './components/common/HelpButton';
-import { DigitalIdVerification } from './components/digitalId/DigitalIdView';
+
+const LoginModal = React.lazy(() => import('./components/auth/LoginModal').then((module) => ({ default: module.LoginModal })));
+const RegisterModal = React.lazy(() => import('./components/auth/RegisterModal').then((module) => ({ default: module.RegisterModal })));
+const RoleShellView = React.lazy(() => import('./components/shells/RoleShellView').then((module) => ({ default: module.RoleShellView })));
+const DigitalIdVerification = React.lazy(() => import('./components/digitalId/DigitalIdView').then((module) => ({ default: module.DigitalIdVerification })));
+
+const RouteLoadingFallback: React.FC = () => (
+  <div role="status" aria-live="polite" className="app-route-loading">
+    Loading NCC portal…
+  </div>
+);
 
 const AppContent: React.FC = () => {
   const { user } = useAuth();
@@ -41,7 +48,9 @@ const AppContent: React.FC = () => {
   };
 
   const currentRole = activeShellRole || (user ? user.role : null);
-  if (window.location.pathname.startsWith('/verify-id/')) return <DigitalIdVerification />;
+  if (window.location.pathname.startsWith('/verify-id/')) {
+    return <Suspense fallback={<RouteLoadingFallback />}><DigitalIdVerification /></Suspense>;
+  }
 
   return (
     <div className="app-root">
@@ -53,7 +62,9 @@ const AppContent: React.FC = () => {
 
       {/* If a Role Shell Preview or authenticated session is active, display it */}
       {currentRole ? (
-        <RoleShellView role={currentRole} onBackToHome={handleBackToHome} />
+        <Suspense fallback={<RouteLoadingFallback />}>
+          <RoleShellView role={currentRole} onBackToHome={handleBackToHome} />
+        </Suspense>
       ) : (
         /* Otherwise, display the Institutional Homepage */
         <>
@@ -115,16 +126,21 @@ const AppContent: React.FC = () => {
       )}
 
       {/* Modals */}
-      <LoginModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-        onLoginSuccess={(role) => { setActiveShellRole(role); setLoginModalOpen(false); }}
-      />
+      {loginModalOpen && (
+        <Suspense fallback={null}>
+          <LoginModal
+            isOpen
+            onClose={() => setLoginModalOpen(false)}
+            onLoginSuccess={(role) => { setActiveShellRole(role); setLoginModalOpen(false); }}
+          />
+        </Suspense>
+      )}
 
-      <RegisterModal
-        isOpen={registerModalOpen}
-        onClose={() => setRegisterModalOpen(false)}
-      />
+      {registerModalOpen && (
+        <Suspense fallback={null}>
+          <RegisterModal isOpen onClose={() => setRegisterModalOpen(false)} />
+        </Suspense>
+      )}
 
       <HelpButton />
     </div>

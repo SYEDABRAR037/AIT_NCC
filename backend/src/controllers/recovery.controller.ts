@@ -453,6 +453,24 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
           }),
         },
       });
+
+      // Queue a mandatory account-security notification in the same transaction
+      // as the password change. The existing delivery worker sends it through
+      // the configured mail provider and records delivery status.
+      await tx.notification.create({
+        data: {
+          userId: recoveryUserId,
+          title: 'Your NCC password was changed',
+          message: 'Your NCC account password was reset. If you did not make this change, contact your unit administrator immediately.',
+          type: 'SECURITY',
+          priority: 'HIGH',
+          isUrgent: true,
+          securityMandatory: true,
+          referenceType: 'PASSWORD_RECOVERY',
+          referenceId: resetRecord.id,
+          eventKey: `password-reset:${resetRecord.id}`,
+        },
+      });
     });
 
     res.json({

@@ -7,8 +7,8 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /api/health
-    autoDeploy: true
+    healthCheckPath: /api/health/ready
+    autoDeploy: false
     envVars:
       - key: PORT
         value: 5050

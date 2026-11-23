@@ -253,22 +253,29 @@ export const verifyLoginOtp = async (req: Request, res: Response): Promise<void>
     if (challenge.attemptCount >= 5) { res.status(429).json({ success: false, message: 'Too many incorrect attempts. Sign in again to request a new code.' }); return; }
     const valid = verifyChallengeCode(challenge, String(req.body.otp || ''));
     if (!valid) { await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null }, data: { attemptCount: { increment: 1 } } }); res.status(400).json({ success: false, message: 'The code is incorrect.' }); return; }
-    const consumed = await prisma.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null, otpHash: challenge.otpHash, expiresAt: { gt: new Date() } }, data: { otpHash: null, consumedAt: new Date() } });
-    if (consumed.count !== 1) { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
     const user = challenge.user;
     const sessionDurationMs = challenge.rememberMe ? 30 * 24 * 60 * 60 * 1000 : 12 * 60 * 60 * 1000;
     const expiresAt = new Date(Date.now() + sessionDurationMs);
-    const session = await prisma.authSession.create({ data: { userId: user.id, expiresAt } });
+    const session = await prisma.$transaction(async (tx) => {
+      const consumed = await tx.otpChallenge.updateMany({ where: { id, attemptCount: { lt: 5 }, consumedAt: null, otpHash: challenge.otpHash, expiresAt: { gt: new Date() } }, data: { otpHash: null, consumedAt: new Date() } });
+      if (consumed.count !== 1) throw new Error('LOGIN_OTP_ALREADY_CONSUMED');
+      const created = await tx.authSession.create({ data: { userId: user.id, expiresAt } });
+      await tx.auditLog.create({ data: { actorId: user.id, actorName: user.fullName, action: 'AUTH_LOGIN_SUCCEEDED', targetType: 'AUTH_SESSION', targetId: created.id } });
+      return created;
+    });
     const token = jwt.sign({ userId: user.id, role: user.role, status: user.status, sid: session.id }, jwtSecret, { expiresIn: Math.floor(sessionDurationMs / 1000) });
     const cookieOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' as const };
     res.cookie('ncc_token', token, challenge.rememberMe ? { ...cookieOptions, maxAge: sessionDurationMs } : cookieOptions);
-    await prisma.auditLog.create({ data: { actorId: user.id, actorName: user.fullName, action: 'AUTH_LOGIN_SUCCEEDED', targetType: 'AUTH_SESSION', targetId: session.id } }).catch(() => {});
     res.json({ success: true, message: 'Authentication successful.', token, user: {
       id: user.id, fullName: user.fullName, regimentalNumber: user.regimentalNumber, collegeRollNumber: user.collegeRollNumber,
       email: user.email, phone: user.phone, year: user.year, branch: user.branch, platoonName: user.platoonName,
       role: user.role, status: user.status, profilePhotoUrl: user.profilePhotoUrl,
     } });
-  } catch { res.status(500).json({ success: false, message: 'Unable to verify login code.' }); }
+  } catch (error: any) {
+    if (error?.message === 'LOGIN_OTP_ALREADY_CONSUMED') { res.status(400).json({ success: false, message: 'This login code has expired. Sign in again.' }); return; }
+    console.error('Login OTP session/audit transaction failed:', error);
+    res.status(503).json({ success: false, message: 'Login could not be completed. Please request a new code and try again.' });
+  }
 };
 
 export const startLoginOtp = async (req: Request, user: { id: string; fullName: string; email: string; emailVerified: boolean; phone: string | null; mobileVerified: boolean; role?: string }, res: Response): Promise<void> => {

@@ -14,6 +14,7 @@ import {
   getSessionAbsentList,
   getSessionNotificationsLedger,
   enrollBiometricTemplate,
+  revokeBiometricConsent,
   getBiometricEnrollmentRoster,
   getEligibleBiometrics,
   getSessionLiveStats,
@@ -30,6 +31,9 @@ router.post(
   requireRole(['PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']),
   bulkImportAttendance
 );
+
+// Consent may be revoked by the cadet or by an authorized scoped officer.
+router.delete('/biometrics/:cadetId', requireRole(['CADET', 'PLATOON_SENIOR', 'SENIOR', 'ADMIN_ANO']), revokeBiometricConsent);
 
 // Session creation: Platoon Senior, Senior, and Admin/ANO (Phase 7 Parity)
 router.post(

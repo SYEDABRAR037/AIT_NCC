@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { X, UserPlus, Shield, Camera, AlertCircle, CheckCircle2 } from 'lucide-react';
-import * as faceapi from '@vladmandic/face-api';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 import { OTPVerification } from '../common/OTPVerification';
@@ -28,24 +27,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoStatus, setPhotoStatus] = useState<string | null>(null);
-  const [faceSnapshot, setFaceSnapshot] = useState<string | null>(null);
-  const [faceDescriptor, setFaceDescriptor] = useState<number[] | null>(null);
-  const [pendingFaceDescriptor, setPendingFaceDescriptor] = useState<number[] | null>(null);
-  const [pendingFaceQuality, setPendingFaceQuality] = useState<number | null>(null);
-  const [faceQuality, setFaceQuality] = useState<number | null>(null);
-  const [faceConsent, setFaceConsent] = useState(false);
-  const [faceDetected, setFaceDetected] = useState(false);
-  const [faceModelReady, setFaceModelReady] = useState(false);
-  const [facePersisted, setFacePersisted] = useState(false);
-  const [cameraActive, setCameraActive] = useState(false);
-  const [cameraLoading, setCameraLoading] = useState(false);
-  const [biometricStatus, setBiometricStatus] = useState<string>('Face recognition enrollment uses the configured local face model.');
-  const [faceDetectionStatus, setFaceDetectionStatus] = useState<string>('Position your face inside the frame.');
-  const [detectionTone, setDetectionTone] = useState<'idle' | 'warning' | 'success'>('idle');
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const cameraRequestRef = useRef(0);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -76,23 +58,12 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     });
     setProfilePhoto(null);
     setPhotoStatus(null);
-    setFaceSnapshot(null);
-    setFaceDescriptor(null);
-    setPendingFaceDescriptor(null);
-    setPendingFaceQuality(null);
-    setFaceQuality(null);
-    setFaceConsent(false);
-    setFaceDetected(false);
-    setFaceModelReady(false);
-    setFacePersisted(false);
-    setBiometricStatus('Face recognition enrollment uses the configured local face model.');
     setErrorMsg(null);
     setSuccessMsg(null);
     setEmailProofId(''); setMobileProofId(''); setVerifiedEmail(false); setVerifiedMobile(false); setActiveOtp(null);
   };
 
   const handleCloseModal = () => {
-    stopCamera();
     resetFormState();
     onClose();
   };
@@ -104,215 +75,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       setErrorMsg(null);
       setSuccessMsg(null);
     }
-    return () => {
-      stopCamera();
-    };
   }, [isOpen, onClose]);
 
-  const stopCamera = () => {
-    cameraRequestRef.current += 1;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
-    setFaceDetected(false);
-  };
-
-  const startFaceCamera = async () => {
-    if (!faceConsent) {
-      setErrorMsg('Please confirm consent before using the camera for biometric capture.');
-      return;
-    }
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setErrorMsg('Camera access is not available in this browser.');
-      setBiometricStatus('Camera access is not available in this browser.');
-      return;
-    }
-    const requestId = ++cameraRequestRef.current;
-    setCameraLoading(true);
-    setErrorMsg(null);
-    setDetectionTone('idle');
-    setFaceDetected(false);
-    setFaceModelReady(false);
-    setFaceDetectionStatus('Loading face detection model...');
-
-    try {
-      setBiometricStatus('Loading the configured face recognition model...');
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
-        faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
-      ]);
-      if (requestId !== cameraRequestRef.current) return;
-      setFaceModelReady(true);
-      setFaceDetectionStatus('Requesting camera permission...');
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
-      });
-      if (requestId !== cameraRequestRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      streamRef.current = stream;
-      setCameraActive(true);
-      const video = await new Promise<HTMLVideoElement>((resolve, reject) => {
-        const deadline = Date.now() + 5000;
-        const findVideo = () => {
-          if (requestId !== cameraRequestRef.current) { reject(new Error('CAMERA_CANCELLED')); return; }
-          if (videoRef.current) { resolve(videoRef.current); return; }
-          if (Date.now() >= deadline) { reject(new Error('VIDEO_ELEMENT_UNAVAILABLE')); return; }
-          window.requestAnimationFrame(findVideo);
-        };
-        window.requestAnimationFrame(findVideo);
-      });
-      video.srcObject = stream;
-      if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
-        await new Promise<void>((resolve, reject) => {
-          const timeout = window.setTimeout(() => reject(new Error('VIDEO_METADATA_TIMEOUT')), 8000);
-          video.addEventListener('loadedmetadata', () => { window.clearTimeout(timeout); resolve(); }, { once: true });
-          video.addEventListener('error', () => { window.clearTimeout(timeout); reject(new Error('VIDEO_METADATA_FAILED')); }, { once: true });
-        });
-      }
-      await video.play();
-      const frameDeadline = Date.now() + 5000;
-      while ((video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth || !video.videoHeight) && Date.now() < frameDeadline) {
-        await new Promise((resolve) => window.setTimeout(resolve, 50));
-      }
-      if (!video.videoWidth || !video.videoHeight) throw new Error('VIDEO_FRAME_UNAVAILABLE');
-      if (requestId !== cameraRequestRef.current) return;
-      setBiometricStatus('Camera active. Capture is available after one clear face is detected.');
-      setFaceDetectionStatus('Center your face in the frame with even lighting.');
-    } catch (err: any) {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      setCameraActive(false);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setErrorMsg('Camera access is required for biometric enrollment. Please allow camera access and try again.');
-        setBiometricStatus('Camera access is required for biometric enrollment. Please allow camera access and try again.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setErrorMsg('No camera was found on this device.');
-        setBiometricStatus('No camera was found on this device.');
-      } else {
-        setErrorMsg('Camera or face model could not be initialized. Check camera availability and try again.');
-        setBiometricStatus('Camera or face model could not be initialized. Check camera availability and try again.');
-      }
-    } finally {
-      setCameraLoading(false);
-    }
-  };
-
-  // Detection only enables the explicit capture action; it never captures automatically.
-  React.useEffect(() => {
-    if (!cameraActive) return;
-
-    let animFrame: number;
-    let lastScanTime = 0;
-    let scanning = false;
-    let stopped = false;
-
-    const detectLoop = async (now: number) => {
-      if (stopped) return;
-      const video = videoRef.current;
-      if (now - lastScanTime > 250 && !scanning && video && !video.paused && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        lastScanTime = now;
-        scanning = true;
-        try {
-          const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }));
-          if (detections.length === 0) {
-            setFaceDetected(false);
-            setDetectionTone('idle');
-            setFaceDetectionStatus('No face detected. Center your face and improve lighting.');
-          } else if (detections.length > 1) {
-            setFaceDetected(false);
-            setDetectionTone('warning');
-            setFaceDetectionStatus('Only one person should be visible.');
-          } else {
-            const { box, score } = detections[0];
-            const wellFramed = box.width >= video.videoWidth * 0.18 && box.height >= video.videoHeight * 0.18 && score >= 0.5;
-            setFaceDetected(wellFramed);
-            setDetectionTone(wellFramed ? 'success' : 'warning');
-            setFaceDetectionStatus(wellFramed ? 'One face detected. Capture when ready.' : 'Move closer and use even lighting.');
-          }
-        } catch {
-          setFaceDetected(false);
-          setDetectionTone('warning');
-          setFaceDetectionStatus('Face detection is unavailable. Check the model files and retry.');
-        } finally {
-          scanning = false;
-        }
-      }
-      animFrame = requestAnimationFrame(detectLoop);
-    };
-
-    animFrame = requestAnimationFrame(detectLoop);
-
-    return () => {
-      stopped = true;
-      cancelAnimationFrame(animFrame);
-    };
-  }, [cameraActive]);
-
-  const captureFacePreview = async () => {
-    const video = videoRef.current;
-    if (!video || !faceConsent || !faceDetected || !faceModelReady || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      setErrorMsg('Wait until one clear face is detected before capturing.');
-      return;
-    }
-    setErrorMsg(null);
-    setFaceDetectionStatus('Capturing and validating the current camera frame...');
-    try {
-      const detections = await faceapi
-        .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5 }))
-        .withFaceLandmarks(true)
-        .withFaceDescriptors();
-      if (detections.length !== 1) throw new Error(detections.length === 0 ? 'NO_FACE' : 'MULTIPLE_FACES');
-      const face = detections[0];
-      const descriptor = Array.from(face.descriptor);
-      if (descriptor.length !== 128 || !descriptor.every(Number.isFinite) || descriptor.every((value) => value === 0)) {
-        throw new Error('INVALID_DESCRIPTOR');
-      }
-      const { box } = face.detection;
-      if (box.width < video.videoWidth * 0.18 || box.height < video.videoHeight * 0.18 || face.detection.score < 0.5) {
-        throw new Error('LOW_QUALITY');
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext('2d');
-      if (!context || canvas.width < 160 || canvas.height < 160) throw new Error('INVALID_FRAME');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      setFaceSnapshot(canvas.toDataURL('image/jpeg', 0.88));
-      setPendingFaceDescriptor(descriptor);
-      setPendingFaceQuality(Math.max(0, Math.min(1, face.detection.score)));
-      setFaceDetectionStatus('Preview ready. Retake it or confirm this capture.');
-      setBiometricStatus('Face captured locally; it is not saved until the application is submitted.');
-      stopCamera();
-    } catch (error: any) {
-      const message = error?.message === 'NO_FACE' ? 'No face was found in the captured frame.'
-        : error?.message === 'MULTIPLE_FACES' ? 'Only one face may be in the captured frame.'
-          : error?.message === 'LOW_QUALITY' ? 'Face image quality is too low. Move closer and improve lighting.'
-            : 'The camera frame could not be validated. Try again.';
-      setErrorMsg(message);
-      setFaceDetectionStatus(message);
-      setDetectionTone('warning');
-    }
-  };
-
-  const confirmFacePreview = () => {
-    if (!faceConsent || !pendingFaceDescriptor || pendingFaceDescriptor.length !== 128 || !faceSnapshot) {
-      setErrorMsg('Capture and validate a face before confirming it.');
-      return;
-    }
-    setFaceDescriptor(pendingFaceDescriptor);
-    setFaceQuality(pendingFaceQuality);
-    setPendingFaceDescriptor(null);
-    setFacePersisted(false);
-    setBiometricStatus('Capture confirmed. The template will be saved when you submit the application.');
-    setErrorMsg(null);
-  };
   // DEF-FIX: Moved above early return — Rules of Hooks require all hooks unconditionally.
   React.useEffect(() => {
     if (!activeOtp) return;
@@ -400,10 +164,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       return;
     }
 
-    if (!faceDescriptor) {
-      setErrorMsg('Confirm a valid face capture before submitting your application.');
-      return;
-    }
 
     if (!verifiedMobile || !verifiedEmail || !mobileProofId || !emailProofId) {
       setErrorMsg('Verify your mobile number and email before submitting.');
@@ -418,19 +178,10 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
         emailChallengeId: emailProofId,
         profilePhotoUrl: profilePhoto,
         profilePhoto,
-        photoSnapshot: undefined,
-        faceDescriptor: faceDescriptor || undefined,
-        qualityScore: faceQuality ?? undefined,
       };
       const res = await registerCadet(payload);
       if (res.success) {
-        if (res.biometricEnrolled === true) {
-          setFacePersisted(true);
-          setBiometricStatus('Biometric template saved with your application.');
-          setSuccessMsg(res.message || 'Registration submitted. Your application is under review.');
-        } else {
-          setErrorMsg('The application response did not confirm biometric template persistence. Please contact NCC administration.');
-        }
+        setSuccessMsg(res.message || 'Registration submitted. Your application is under review.');
       } else {
         setErrorMsg(res.message || 'Registration failed. Please check the entered fields.');
       }
@@ -830,171 +581,11 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               </div>
             </div>
 
-            {/* Biometric Section */}
-            <div
-              style={{
-                backgroundColor: faceDescriptor ? 'rgba(22, 128, 60, 0.08)' : 'var(--white-surface)',
-                border: `1px solid ${faceDescriptor ? 'var(--color-success)' : 'var(--white-border)'}`,
-                borderRadius: '6px',
-                padding: '1.25rem',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Camera size={18} style={{ color: faceDescriptor ? 'var(--color-success)' : 'var(--navy-primary)' }} />
-                  <strong style={{ fontSize: '0.9rem', color: 'var(--navy-primary)' }}>
-                    Face Recognition Enrollment (128-value descriptor)
-                  </strong>
-                </div>
-                {faceDescriptor ? (
-                  <span style={{ backgroundColor: 'var(--color-success-soft)', color: 'var(--color-success)', border: '1px solid var(--color-success)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    {facePersisted ? 'FACE REGISTERED' : 'CAPTURE CONFIRMED'}
-                  </span>
-                ) : (
-                  <span style={{ backgroundColor: 'var(--color-warning-soft)', color: 'var(--color-primary)', border: '1px solid var(--color-gold)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    FACE NOT REGISTERED
-                  </span>
-                )}
-              </div>
-
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', marginBottom: '0.85rem', fontSize: '0.8rem', lineHeight: 1.45, color: 'var(--navy-text-muted)' }}>
-                <input
-                  type="checkbox"
-                  checked={faceConsent}
-                  onChange={(event) => {
-                    const consented = event.target.checked;
-                    setFaceConsent(consented);
-                    if (!consented) {
-                      stopCamera();
-                      setFaceSnapshot(null);
-                      setFaceDescriptor(null);
-                      setPendingFaceDescriptor(null);
-                      setPendingFaceQuality(null);
-                      setFaceQuality(null);
-                      setFacePersisted(false);
-                    }
-                  }}
-                  style={{ marginTop: '0.15rem' }}
-                />
-                <span>I consent to camera capture and processing of my face descriptor for this NCC application. The image is previewed in this form; only the descriptor is submitted with the application.</span>
-              </label>
-
-              {cameraActive ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', margin: '0.5rem 0' }}>
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '200px',
-                      height: '200px',
-                      borderRadius: '50%',
-                      overflow: 'hidden',
-                      border: detectionTone === 'success' ? '3px solid var(--color-success)' : detectionTone === 'warning' ? '3px solid var(--color-gold)' : '3px solid var(--color-accent)',
-                      backgroundColor: '#000000',
-                      boxShadow: detectionTone === 'success' ? '0 0 18px rgba(22, 128, 60, 0.5)' : '0 0 15px rgba(21, 94, 239, 0.4)',
-                    }}
-                  >
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      padding: '0.35rem 0.85rem',
-                      borderRadius: '9999px',
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      backgroundColor:
-                        detectionTone === 'success' ? 'var(--color-success-soft)' : detectionTone === 'warning' ? 'var(--color-warning-soft)' : 'var(--color-surface)',
-                      color:
-                        detectionTone === 'success' ? 'var(--color-success)' : detectionTone === 'warning' ? 'var(--color-primary)' : 'var(--navy-primary)',
-                      border: `1px solid ${
-                        detectionTone === 'success' ? 'var(--color-success-border)' : detectionTone === 'warning' ? 'var(--color-gold)' : 'var(--color-border)'
-                      }`,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor:
-                          detectionTone === 'success' ? 'var(--color-success)' : detectionTone === 'warning' ? 'var(--color-gold)' : 'var(--color-accent)',
-                      }}
-                    />
-                    <span role="status" aria-live="polite">{faceDetectionStatus}</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <button type="button" disabled={!faceDetected || !faceModelReady} onClick={captureFacePreview} className="btn-primary btn-sm">
-                      Capture Face
-                    </button>
-                    <button
-                      type="button"
-                      onClick={stopCamera}
-                      className="btn-secondary btn-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : pendingFaceDescriptor && faceSnapshot ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                  <img src={faceSnapshot} alt="Captured face preview" style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--color-success)' }} />
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--navy-text-muted)' }}>Review the capture. The image is not submitted; the validated descriptor is saved only after application submission.</p>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button type="button" className="btn-secondary btn-sm" disabled={!faceConsent || cameraLoading} onClick={() => { setFaceSnapshot(null); setPendingFaceDescriptor(null); setPendingFaceQuality(null); startFaceCamera(); }}>Retake</button>
-                    <button type="button" className="btn-primary btn-sm" onClick={confirmFacePreview}>Confirm Face Capture</button>
-                  </div>
-                </div>
-              ) : faceDescriptor && faceSnapshot ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-                  <img src={faceSnapshot} alt="Confirmed face capture" style={{ width: 180, height: 180, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--color-success)' }} />
-                  <p role="status" aria-live="polite" style={{ margin: 0, fontSize: '0.82rem', color: 'var(--color-success)', fontWeight: 600 }}>{biometricStatus}</p>
-                  {!facePersisted && <button type="button" className="btn-secondary btn-sm" disabled={!faceConsent || cameraLoading} onClick={() => { setFaceDescriptor(null); setFaceQuality(null); setFaceSnapshot(null); startFaceCamera(); }}>Retake Face</button>}
-                </div>
-              ) : (
-                <div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--navy-text-muted)', lineHeight: '1.5', margin: '0 0 0.75rem' }}>
-                    The configured face detection and recognition models run in the browser. One clear face must be detected before capture is enabled. Camera frames and descriptors are not written to logs.
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      disabled={cameraLoading || !faceConsent}
-                      onClick={() => {
-                        setFaceDescriptor(null);
-                        setPendingFaceDescriptor(null);
-                        setPendingFaceQuality(null);
-                        setFaceQuality(null);
-                        setFaceSnapshot(null);
-                        setFacePersisted(false);
-                        startFaceCamera();
-                      }}
-                      className="btn-primary btn-sm"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        backgroundColor: 'var(--navy-primary)',
-                        borderColor: 'var(--navy-primary)',
-                      }}
-                    >
-                      <Camera size={14} />
-                      <span>
-                        {cameraLoading
-                          ? 'Starting Camera...'
-                          : 'START CAMERA'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div role="note" style={{ backgroundColor: 'var(--navy-badge-bg)', border: '1px solid var(--navy-badge-border)', borderRadius: '6px', padding: '1rem', color: 'var(--navy-primary)' }}>
+              <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Biometric enrollment is optional</strong>
+              <span style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>
+                Face capture is not part of registration. After your account is approved, NCC staff may offer a separate enrollment process. Declining biometric enrollment does not affect your application, normal portal access, or manual attendance.
+              </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
@@ -1003,13 +594,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 type="submit"
-                disabled={submitting || !faceDescriptor || !verifiedMobile || !verifiedEmail}
+                disabled={submitting || !verifiedMobile || !verifiedEmail}
                 className="btn-primary"
                 style={{
-                  opacity: !faceDescriptor || !verifiedMobile || !verifiedEmail ? 0.65 : 1,
-                  cursor: !faceDescriptor || !verifiedMobile || !verifiedEmail ? 'not-allowed' : 'pointer',
+                  opacity: !verifiedMobile || !verifiedEmail ? 0.65 : 1,
+                  cursor: !verifiedMobile || !verifiedEmail ? 'not-allowed' : 'pointer',
                 }}
-                title={!faceDescriptor ? 'Biometric face registration is required' : !verifiedMobile || !verifiedEmail ? 'Verify your mobile number and email before submitting' : ''}
+                title={!verifiedMobile || !verifiedEmail ? 'Verify your mobile number and email before submitting' : ''}
               >
                 <UserPlus size={16} />
                 <span>{submitting ? 'VALIDATING WITH DATABASE...' : 'SUBMIT APPLICATION'}</span>

@@ -14,6 +14,7 @@ const user = {
 let identitySequence = 1;
 const challenges = new Map<string, any>();
 const existingSessions: Array<{ id: string; userId: string; revokedAt: Date | null }> = [{ id: 'pre-reset-session', userId: user.id, revokedAt: null }];
+const queuedNotifications: Array<Record<string, any>> = [];
 const dispatchedOtps: string[] = [];
 let mailResult: 'success' | 'failure' | 'throw' = 'success';
 let sequence = 0;
@@ -59,6 +60,7 @@ const fakePrisma: any = {
     },
   },
   auditLog: { create: async () => ({ id: 'synthetic-audit' }) },
+  notification: { create: async ({ data }: any) => { queuedNotifications.push(data); return data; } },
   $transaction: async (arg: any) => typeof arg === 'function' ? arg(fakePrisma) : Promise.all(arg),
 };
 const fakeDispatcher = {
@@ -166,6 +168,7 @@ const run = async () => {
   assert.strictEqual(await bcrypt.compare(newPassword, user.passwordHash), true);
   assert.strictEqual(await bcrypt.compare('OldPassword!123', user.passwordHash), false);
   assert.ok(existingSessions[0].revokedAt instanceof Date, 'password recovery revokes all existing sessions');
+  assert.ok(queuedNotifications.some((notification) => notification.userId === user.id && notification.securityMandatory && notification.type === 'SECURITY'), 'password recovery queues a mandatory security notification');
   const oldLogin: any = response();
   await login(req({ identifier: user.regimentalNumber, password: 'OldPassword!123' }), oldLogin);
   assert.strictEqual(oldLogin.statusCode, 401);

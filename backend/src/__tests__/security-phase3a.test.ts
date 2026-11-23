@@ -328,10 +328,21 @@ async function runTestSuite() {
     }
 
     // ------------------------------------------------------------------------
-    // Group 7: Expired and revoked sessions remain rejected
+    // Group 7: Sessionless legacy, expired and revoked sessions fail closed
     // ------------------------------------------------------------------------
     {
       const secret = process.env.JWT_SECRET!;
+
+      const legacySessionlessToken = jwt.sign(
+        { userId: 'user-jwt-1' },
+        secret,
+        { algorithm: 'HS256', expiresIn: '1h' }
+      );
+      const { req: reqLegacy, res: resLegacy } = createMockContext();
+      reqLegacy.headers['authorization'] = `Bearer ${legacySessionlessToken}`;
+      let nextCalledLegacy = false;
+      await authenticateToken(reqLegacy as AuthRequest, resLegacy, (() => { nextCalledLegacy = true; }) as any);
+      recordResult('7.0 Sessionless legacy token is rejected and requires a new sign-in', !nextCalledLegacy && resLegacy.statusCode === 401);
 
       // 7.1 Expired token
       const expiredToken = jwt.sign(

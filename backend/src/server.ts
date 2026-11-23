@@ -31,12 +31,17 @@ import { validateRuntimeConfig } from './runtimeConfig';
 import { checkReadiness } from './health';
 import { getEmailProviderReadiness } from './services/mail.service';
 import { getOtpSmsProviderReadiness } from './services/attendanceNotification.service';
+import { validateBiometricProviderStartup } from './biometrics/providerStartupPolicy';
+
+// Run before app.listen: invalid provider settings must stop startup. An absent
+// provider configuration preserves the existing disabled biometric behavior.
+validateBiometricProviderStartup(process.env);
 
 const app = express();
 const { port: PORT } = validateRuntimeConfig(process.env);
 
 const emailReadiness = getEmailProviderReadiness();
-console.info(`[OTP DELIVERY] Email provider configuration: ${emailReadiness.ready ? 'configured' : 'missing required settings'} (relay=${emailReadiness.relayConfigured}, smtp=${emailReadiness.smtpConfigured}).`);
+console.info(`[OTP DELIVERY] Email provider configuration: ${emailReadiness.ready ? 'configured' : 'missing required settings'} (brevo=${emailReadiness.brevoConfigured}, relay=${emailReadiness.relayConfigured}, smtp=${emailReadiness.smtpConfigured}).`);
 const smsReadiness = getOtpSmsProviderReadiness();
 console.info(`[OTP DELIVERY] SMS providers configured: ${[
   smsReadiness.fast2smsConfigured ? 'Fast2SMS' : '',
