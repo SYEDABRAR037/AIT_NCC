@@ -20,10 +20,18 @@ const isLocalDevelopment = (): boolean => {
   return process.env.NODE_ENV === 'development';
 };
 
+const isPublicPreview = (): boolean => process.env.NCC_PUBLIC_PREVIEW_MODE === 'true'
+  || ['deploy-preview', 'branch-deploy'].includes((process.env.CONTEXT || '').trim().toLowerCase())
+  || process.env.BRANCH === 'codex/ncc-release-candidate-20261028';
+
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: responseHeaders, body: '' };
   }
+
+  // A preview may inherit production function variables. Never forward recovery
+  // requests from a public preview, even if a backend URL is configured.
+  if (isPublicPreview()) return serviceUnavailable();
 
   const action = event.queryStringParameters?.action || event.path.split('/').pop() || 'request-otp';
   if (!isRecoveryAction(action)) {

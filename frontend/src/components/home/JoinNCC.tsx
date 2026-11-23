@@ -4,9 +4,10 @@ import { UserCheck, ArrowRight, LogIn } from 'lucide-react';
 interface JoinNCCProps {
   onOpenRegister: () => void;
   onOpenLogin: () => void;
+  previewMode?: boolean;
 }
 
-export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin }) => {
+export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin, previewMode = false }) => {
   const steps = [
     {
       step: '01',
@@ -29,6 +30,10 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
       desc: 'Hierarchical review through Senior Cadet, Platoon Senior, and final sanction by Associate NCC Officer (ANO).',
     },
   ];
+  const visibleSteps = previewMode
+    ? steps.filter((item) => item.title !== 'Biometric Face Enrollment')
+      .map((item, index) => ({ ...item, step: String(index + 1).padStart(2, '0') }))
+    : steps;
 
   return (
     <section id="join" className="section-py" style={{ backgroundColor: 'var(--color-surface)' }} aria-label="Join NCC Enrollment Steps">
@@ -48,7 +53,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
         </div>
 
         <div className="grid-4" style={{ marginBottom: '3rem', gap: '1.25rem' }}>
-          {steps.map((item) => (
+          {visibleSteps.map((item) => (
             <div
               key={item.step}
               style={{
@@ -83,7 +88,12 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
           ))}
         </div>
 
-        {/* Primary CTA Card (Matching Reference Section 26) */}
+        {previewMode ? (
+          <div role="note" className="institutional-card" style={{ textAlign: 'center' }}>
+            Registration and account access are disabled in this public preview.
+          </div>
+        ) : (
+        /* Primary CTA Card (Matching Reference Section 26) */
         <div
           style={{
             backgroundColor: 'var(--color-primary)',
@@ -156,6 +166,7 @@ export const JoinNCC: React.FC<JoinNCCProps> = ({ onOpenRegister, onOpenLogin })
             </button>
           </div>
         </div>
+        )}
       </div>
     </section>
   );

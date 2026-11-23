@@ -5,8 +5,20 @@ const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology 
 const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
 const SENDER_EMAIL = process.env.SMTP_FROM_EMAIL || SMTP_USER;
 const RELAY_SECRET = process.env.RECOVERY_RELAY_SECRET;
+const isPublicPreview = (): boolean => process.env.NCC_PUBLIC_PREVIEW_MODE === 'true'
+  || ['deploy-preview', 'branch-deploy'].includes((process.env.CONTEXT || '').trim().toLowerCase())
+  || process.env.BRANCH === 'codex/ncc-release-candidate-20261028';
 
 export const handler: Handler = async (event: HandlerEvent, _context: HandlerContext) => {
+  // Never let a preview inherit SMTP credentials and send real mail.
+  if (isPublicPreview()) {
+    return {
+      statusCode: 503,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ success: false, message: 'Email delivery is disabled in the public preview.' }),
+    };
+  }
+
   // CORS Preflight
   if (event.httpMethod === 'OPTIONS') {
     return {

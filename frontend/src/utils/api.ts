@@ -5,6 +5,8 @@
  */
 import { resolveApiBaseUrl } from './apiBaseUrl.mjs';
 
+export const isPublicPreviewMode = (): boolean => import.meta.env.VITE_PUBLIC_PREVIEW_MODE === 'true';
+
 export const getApiBaseUrl = (): string => {
   // Build-time config must win so a stale browser override cannot pin old API deployments.
   const envUrl = import.meta.env.VITE_API_BASE_URL as string | undefined;
@@ -18,6 +20,7 @@ export const getApiBaseUrl = (): string => {
     savedBase,
     windowBase: typeof window !== 'undefined' ? (window as any).__NCC_API_BASE_URL__ : '',
     hostname: typeof window !== 'undefined' ? window.location.hostname : '',
+    previewMode: isPublicPreviewMode(),
   });
 };
 
@@ -51,6 +54,9 @@ export const safeApiFetch = async <T = any>(
   endpoint: string,
   options: SafeFetchOptions = {}
 ): Promise<{ ok: boolean; status: number; data: T }> => {
+  if (isPublicPreviewMode()) {
+    throw new Error('Backend actions are disabled in the public preview.');
+  }
   const url = resolveApiUrl(endpoint);
   const token = getAuthToken();
 

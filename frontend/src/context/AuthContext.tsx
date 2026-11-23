@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getApiBaseUrl } from '../utils/api';
+import { getApiBaseUrl, isPublicPreviewMode } from '../utils/api';
 
 export interface UserProfile {
   id: string;
@@ -38,6 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Restore authenticated session on mount
   useEffect(() => {
     const initAuth = async () => {
+      if (isPublicPreviewMode()) {
+        localStorage.removeItem('ncc_auth_token');
+        localStorage.removeItem('token');
+        localStorage.removeItem('ncc_current_user');
+        sessionStorage.removeItem('ncc_auth_token');
+        sessionStorage.removeItem('token');
+        setIsLoading(false);
+        return;
+      }
       const storedToken = localStorage.getItem('ncc_auth_token') || localStorage.getItem('token') || sessionStorage.getItem('ncc_auth_token') || sessionStorage.getItem('token');
       if (storedToken) {
         const apiBase = getApiBaseUrl();
@@ -87,6 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async (identifier: string, password: string, rememberMe = false) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Login is disabled in the public preview.' };
     const apiBase = getApiBaseUrl();
     try {
       const res = await fetch(`${apiBase}/api/auth/login`, {
@@ -123,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const verifyLoginOtp = async (challengeId: string, otp: string, rememberMe = false) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Login is disabled in the public preview.' };
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/auth/login/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challengeId, otp }) });
       const data = await res.json();
@@ -133,24 +144,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const requestRegistrationOtp = async (channel: 'email' | 'mobile', destination: string, name: string) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Registration is disabled in the public preview.' };
     const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/request-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, destination, name }) });
     const data = await res.json().catch(() => ({ success: false, message: 'The verification service returned an unreadable response.' }));
     return { ...data, success: res.ok && data.success };
   };
 
   const verifyRegistrationOtp = async (channel: 'email' | 'mobile', challengeId: string, otp: string) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Registration is disabled in the public preview.' };
     const res = await fetch(`${getApiBaseUrl()}/api/auth/registration/verify-otp`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, challengeId, otp }) });
     const data = await res.json().catch(() => ({ success: false, message: 'The verification service returned an unreadable response.' }));
     return { ...data, success: res.ok && data.success };
   };
 
   const resendAuthOtp = async (challengeId: string, name?: string) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Registration is disabled in the public preview.' };
     const res = await fetch(`${getApiBaseUrl()}/api/auth/otp/resend`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challengeId, name }) });
     const data = await res.json();
     return { ...data, success: res.ok && data.success };
   };
 
   const registerCadet = async (formData: any) => {
+    if (isPublicPreviewMode()) return { success: false, message: 'Registration is disabled in the public preview.' };
     const apiBase = getApiBaseUrl();
     try {
       const res = await fetch(`${apiBase}/api/auth/register`, {
@@ -188,6 +203,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    if (isPublicPreviewMode()) {
+      localStorage.removeItem('ncc_auth_token');
+      localStorage.removeItem('token');
+      localStorage.removeItem('ncc_current_user');
+      sessionStorage.removeItem('ncc_auth_token');
+      sessionStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+      return;
+    }
     const apiBase = getApiBaseUrl();
     try {
       await fetch(`${apiBase}/api/auth/logout`, {
