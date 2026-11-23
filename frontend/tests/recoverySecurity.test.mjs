@@ -1,14 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { handler } from './recovery.ts';
-import { handler as emailRelayHandler } from './email-relay.ts';
-import { isRecoveryAction, resolveRecoveryApiTarget } from './recoverySecurity.ts';
-import { isPublicPreview } from './previewContext.mjs';
+import { handler } from '../netlify/functions/recovery.ts';
+import { handler as emailRelayHandler } from '../netlify/functions/email-relay.ts';
+import { isRecoveryAction, resolveRecoveryApiTarget } from '../netlify/lib/recoverySecurity.ts';
+import { isPublicPreview } from '../netlify/lib/previewContext.mjs';
 
 const originalEnv = { ...process.env };
 const originalFetch = globalThis.fetch;
-  const modalSource = readFileSync(fileURLToPath(new URL('../../src/components/auth/ForgotPasswordModal.tsx', import.meta.url)), 'utf8');
+  const modalSource = readFileSync(fileURLToPath(new URL('../src/components/auth/ForgotPasswordModal.tsx', import.meta.url)), 'utf8');
 const event = {
   httpMethod: 'POST',
   path: '/.netlify/functions/recovery',
