@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
 import nodemailer from 'nodemailer';
-import { isPublicPreview } from './previewContext.mjs';
+import { isPublicPreview } from '../lib/previewContext.mjs';
 
 const SENDER_NAME = process.env.SMTP_FROM_NAME || 'Army Institute of Technology NCC';
 const SMTP_USER = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
