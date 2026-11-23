@@ -1,6 +1,6 @@
 import type { Handler, HandlerEvent, HandlerContext } from '@netlify/functions';
-import { isRecoveryAction, resolveRecoveryApiTarget } from './recoverySecurity.ts';
-import { isPublicPreview } from './previewContext.mjs';
+import { isRecoveryAction, resolveRecoveryApiTarget } from '../lib/recoverySecurity.ts';
+import { isPublicPreview } from '../lib/previewContext.mjs';
 
 const responseHeaders = {
   'Content-Type': 'application/json',
