@@ -41,7 +41,9 @@ The system is architected as a high-security, containerized micro-architecture t
 
 ---
 
-## 2. Quickstart: 1-Command Docker Deployment
+## 2. Local-only Docker stack (creates a new empty local database)
+
+This Compose setup is for isolated local development. `docker compose up` creates a new PostgreSQL volume; it does not discover, import, or reuse any existing hosted database. Do not run it as production setup or point it at a database containing cadet records.
 
 ### Prerequisites
 - Docker Engine $\ge$ 24.0
@@ -59,13 +61,15 @@ docker compose up -d --build
 docker compose ps
 ```
 
-### Initial Database Migration & Seed
-Run this once after first container creation:
-```bash
-# Push Prisma schema to PostgreSQL inside the container
-docker compose exec backend npx prisma db push
+### Local development schema setup
 
-# Seed initial institutional accounts (ANO, DI, Platoon Seniors, Cadets)
+Use only against the disposable local Compose database. For an existing production database, first identify its provider and contents, take and verify a backup, inspect Prisma migration history/schema drift, and use an approved migration plan. Do not use `prisma db push` or run the seed against production.
+
+```bash
+# Apply the repository's versioned migrations to the local development database
+docker compose exec backend npx prisma migrate dev
+
+# Seed only if this isolated local database needs environment-provided test accounts
 docker compose exec backend npm run seed
 ```
 
@@ -77,27 +81,30 @@ docker compose exec backend npm run seed
 
 ## 3. Production Environment Variables (`.env.production`)
 
-Create a `.env.production` file at the root:
+Configure production variables in the hosting provider's secret manager. The following is a variable checklist only; do not put a production `.env` file in GitHub. Use the maintained [`backend/.env.example`](backend/.env.example) for placeholders.
 
 ```env
-# Database
-POSTGRES_USER=<SET_A_UNIQUE_DATABASE_USERNAME>
-POSTGRES_PASSWORD=<SET_A_UNIQUE_RANDOM_DATABASE_PASSWORD>
-POSTGRES_DB=ncc_command_db
-DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:5432/<DB_NAME>?schema=public
+# Do not create a new/empty database until the owner confirms no existing
+# cadet records must be retained. Use the verified existing PostgreSQL service.
+DATABASE_URL=<existing-postgresql-runtime-url>
+DIRECT_URL=<existing-postgresql-direct-migration-url>
 
 # Security & Sessions
 JWT_SECRET=<GENERATE_A_UNIQUE_RANDOM_SECRET_AND_STORE_OUTSIDE_GIT>
+OTP_SECRET=<GENERATE_A_DIFFERENT_UNIQUE_RANDOM_SECRET>
 NODE_ENV=production
 PORT=5050
-CORS_ORIGIN=https://ncc.aitpune.edu.in,http://localhost:3000
+CORS_ORIGIN=<exact-netlify-site-origin>
 
 # Email & SMS Notification Gateway
 SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=ncc.command@aitpune.edu.in
-SMTP_PASS=your_app_specific_password_here
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=<verified-sender-login>
+SMTP_PASSWORD=<provider-app-password>
+SMTP_FROM_EMAIL=<verified-sender-address>
+RECOVERY_RELAY_SECRET=<shared-random-secret-set-on-backend-and-netlify>
+PUBLIC_APP_URL=<exact-netlify-site-origin>
 ```
 
 ---
@@ -112,10 +119,13 @@ sudo apt update && sudo apt install -y nodejs npm postgresql postgresql-contrib 
 ```
 
 ### B. Configure PostgreSQL Database
+
+The commands below create a **new empty database** and are only for a fresh isolated installation. Skip them when connecting to an existing database; do not overwrite, reset, or seed a database with existing records.
 ```bash
 sudo -u postgres psql
 CREATE DATABASE ncc_command_db;
-CREATE USER ncc_admin WITH ENCRYPTED PASSWORD 'MilitarySecure2026!';
+CREATE ROLE ncc_admin LOGIN;
+\password ncc_admin
 GRANT ALL PRIVILEGES ON DATABASE ncc_command_db TO ncc_admin;
 \q
 ```
@@ -203,13 +213,6 @@ Add to cron (`crontab -e`):
 
 ---
 
-## 6. Official Institutional Command Credentials (Fresh Launch)
+## 6. Privileged account bootstrap
 
-| Role | Identifier / Email | Default Password | Authority Level |
-| :--- | :--- | :--- | :--- |
-| **Associate NCC Officer (ANO / Admin)** | `ano.admin@aitpune.edu.in` | `AdminCommand@2026` | Institutional Command (Full Access) |
-| **Senior Under Officer (SUO / Platoon Senior)** | `platoon.senior@aitpune.edu.in` | `PlatoonLead@2026` | Unit Leadership & Live Face Attendance |
-| **Senior Cadet** | `senior.cadet@aitpune.edu.in` | `SeniorCadet@2026` | Cadet Mentorship & Live Face Attendance |
-
-> [!NOTE]
-> All test cadet accounts, parade sessions, biometric templates, and test records have been wiped. Cadets will enroll live with real data via the public **Cadet Registration** portal (`#register`) or bulk CSV roster import in the Command Center.
+Never publish default administrator credentials. The seed script requires privileged account details through `NCC_SEED_*` environment variables and is guarded against implicit database targets. Use it only on an explicitly approved database after backup and data review. For an existing populated database, preserve existing users and use the application's audited account-management workflow instead of reseeding.

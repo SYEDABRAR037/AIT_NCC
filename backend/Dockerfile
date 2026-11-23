@@ -21,8 +21,7 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src/
 
-# Generate Prisma Client & compile TypeScript
-RUN npx prisma generate
+# Generate Prisma Client & compile TypeScript (the package build script runs prisma generate).
 RUN npm run build
 
 # Prune development dependencies
@@ -51,6 +50,6 @@ COPY --chown=node:node --from=builder /app/prisma ./prisma
 EXPOSE 5050
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5050/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5050/api/health/ready || exit 1
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/start.js"]

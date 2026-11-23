@@ -12,13 +12,15 @@ let transporter: Transporter | null = null;
 
 export const getEmailProviderReadiness = () => {
   const hasValue = (value?: string) => Boolean(value?.trim() && !/^your_.*$/i.test(value.trim()));
+  const brevoConfigured = hasValue(process.env.BREVO_API_KEY)
+    && hasValue(process.env.BREVO_SENDER_EMAIL);
   const relayConfigured = hasValue(process.env.EMAIL_RELAY_URL || 'https://ncc-aitpune.netlify.app/.netlify/functions/email-relay')
     && hasValue(process.env.RECOVERY_RELAY_SECRET);
   const smtpConfigured = hasValue(process.env.SMTP_HOST)
     && hasValue(process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL)
     && hasValue(process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD || process.env.MAIL_PASSWORD)
     && hasValue(process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER);
-  return { ready: relayConfigured || smtpConfigured, relayConfigured, smtpConfigured };
+  return { ready: brevoConfigured || relayConfigured || smtpConfigured, brevoConfigured, relayConfigured, smtpConfigured };
 };
 
 export const getTransporter = (): Transporter => {
@@ -83,7 +85,7 @@ export const verifyEmailService = async (): Promise<{ connected: boolean; messag
 };
 
 export const resolveMailSender = (): { email: string; name: string } => {
-  const fromEmail = process.env.SMTP_FROM_EMAIL?.trim();
+  const fromEmail = process.env.BREVO_SENDER_EMAIL?.trim() || process.env.SMTP_FROM_EMAIL?.trim();
   const smtpUser = process.env.SMTP_USER?.trim();
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -93,10 +95,10 @@ export const resolveMailSender = (): { email: string; name: string } => {
   } else if (smtpUser && emailRegex.test(smtpUser)) {
     resolvedEmail = smtpUser;
   } else {
-    throw new Error('Valid SMTP sender email (SMTP_FROM_EMAIL or SMTP_USER) must be configured.');
+    throw new Error('Valid sender email (BREVO_SENDER_EMAIL, SMTP_FROM_EMAIL, or SMTP_USER) must be configured.');
   }
 
-  const name = process.env.SMTP_FROM_NAME?.trim() || 'Army Institute of Technology NCC';
+  const name = process.env.BREVO_SENDER_NAME?.trim() || process.env.SMTP_FROM_NAME?.trim() || 'Army Institute of Technology NCC';
   return { email: resolvedEmail, name };
 };
 
@@ -187,6 +189,39 @@ NCC Digital Command & Cadet Management System`;
 </html>
 `;
 
+  // Brevo HTTPS API avoids SMTP port restrictions on some hosting plans.
+  // If configured, do not fall through to another provider on failure: that could
+  // deliver duplicate OTPs after an ambiguous provider timeout.
+  if (process.env.BREVO_API_KEY?.trim()) {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL?.trim();
+    if (!senderEmail) return { success: false, error: 'Brevo sender email is not configured.' };
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          sender: { email: senderEmail, name: process.env.BREVO_SENDER_NAME?.trim() || mailFromName },
+          to: [{ email: recipientEmail }], subject, textContent, htmlContent,
+        }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        console.error(`[MAIL SERVICE] BREVO_API_FAILED: HTTP ${response.status}`);
+        return { success: false, error: 'Email provider could not accept the message.' };
+      }
+      const result = await response.json() as { messageId?: string };
+      console.log('[MAIL SERVICE] EMAIL_SEND_ACCEPTED: Brevo API accepted the message.');
+      return { success: true, messageId: result.messageId };
+    } catch (error: any) {
+      console.error('[MAIL SERVICE] BREVO_API_FAILED:', error?.name || 'provider error');
+      return { success: false, error: 'Email provider could not accept the message.' };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   // Strategy 1: Dispatch via HTTPS over port 443 to the Netlify Relay
   // This bypasses cloud hosting provider SMTP port blocks (e.g. Render free tier blocks ports 25, 465, 587)
   const relayUrl =
@@ -214,7 +249,7 @@ NCC Digital Command & Cadet Management System`;
           subject,
           textContent,
           htmlContent,
-          smtpUser: mailFrom,
+          smtpUser: process.env.SMTP_USER || mailFrom,
           smtpPass,
         }),
         signal: controller.signal,

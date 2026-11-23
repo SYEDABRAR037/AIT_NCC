@@ -1,11 +1,19 @@
 import { Response } from 'express';
-import { randomBytes } from 'crypto';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
 import { attendanceCadetInScope } from '../services/attendanceScope';
 import { assignedDrillPlatoonNames, drillInstructorCanAccessTarget } from '../services/drillInstructorScope';
 import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
+import { VerificationChallengeStore } from '../services/verificationChallengeStore';
+import {
+  buildBiometricPayload,
+  decryptBiometricPayload,
+  encryptBiometricPayload,
+  isBiometricPayloadCompatible,
+  isSyntheticBiometricTemplate,
+  loadBiometricRuntimeConfig,
+} from '../services/biometricCrypto.service';
 import {
   triggerPresentAttendanceNotifications,
   triggerAbsentAttendanceNotifications,
@@ -13,31 +21,18 @@ import {
   maskPhoneNumber,
 } from '../services/attendanceNotification.service';
 
-// ============================================================
-// BIOMETRIC VERIFICATION CHALLENGE STORE (In-memory, ephemeral)
-// Single-use, time-limited, session-bound challenge tokens.
-// Prevents replay attacks, descriptor forgery, and cross-session abuse.
-// Server restart safely invalidates all pending challenges (fail-closed).
-// ============================================================
-interface VerificationChallenge {
-  sessionId: string;
-  userId: string;
-  createdAt: number;
-  expiresAt: number;
-}
-
-const verificationChallenges = new Map<string, VerificationChallenge>();
 const CHALLENGE_TTL_MS = 30_000; // 30 seconds
-const MAX_CHALLENGE_STORE_SIZE = 10_000; // Memory bound to prevent denial of service
+const MAX_CHALLENGE_STORE_SIZE = 10_000; // Process memory bound
+const MAX_CHALLENGES_PER_OPERATOR = 10;
+const verificationChallengeStore = new VerificationChallengeStore(
+  CHALLENGE_TTL_MS,
+  MAX_CHALLENGES_PER_OPERATOR,
+  MAX_CHALLENGE_STORE_SIZE,
+);
 
 // Periodic cleanup of expired challenges (every 60 seconds)
 setInterval(() => {
-  const now = Date.now();
-  for (const [token, challenge] of verificationChallenges) {
-    if (now > challenge.expiresAt) {
-      verificationChallenges.delete(token);
-    }
-  }
+  verificationChallengeStore.pruneExpired();
 }, 60_000);
 
 // ============================================================
@@ -525,10 +520,21 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
         data: { presentCount },
       });
 
+      await tx.auditLog.create({
+        data: {
+          actorId: req.user!.id,
+          actorName: req.user!.fullName,
+          action: status === 'PRESENT' ? 'ATTENDANCE_MARKED_PRESENT' : 'ATTENDANCE_STATUS_UPDATED',
+          targetType: 'TrainingAttendance',
+          targetId: record.id,
+          details: JSON.stringify({ cadetId: eligibleCadet.id, sessionId: session.id, status, method: 'MANUAL_AUDITED' }),
+        },
+      });
+
       return { record, presentCount };
     });
 
-    // 7. Side Effects: Notifications & Immutable Audit Logging
+    // 7. Post-commit notification side effects (audit is part of the transaction).
     const dateFormatted = session.date ? new Date(session.date).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }) : now.toLocaleDateString();
     const timeFormatted = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -547,27 +553,6 @@ export const markAttendance = async (req: AuthRequest, res: Response): Promise<v
         timeStr: timeFormatted,
       }).catch((err) => console.error('[MARK ATTENDANCE NOTIFICATION ERROR]:', err));
 
-      await prisma.auditLog.create({
-        data: {
-          actorId: req.user.id,
-          actorName: req.user.fullName,
-          action: 'ATTENDANCE_MARKED_PRESENT',
-          targetType: 'TrainingAttendance',
-          targetId: record.id,
-          details: `Manual override marked PRESENT for Cadet ${eligibleCadet.fullName} (${eligibleCadet.regimentalNumber}) in Session ${session.id}`,
-        },
-      }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
-    } else {
-      await prisma.auditLog.create({
-        data: {
-          actorId: req.user.id,
-          actorName: req.user.fullName,
-          action: 'ATTENDANCE_STATUS_UPDATED',
-          targetType: 'TrainingAttendance',
-          targetId: record.id,
-          details: `Manual status updated to ${status} for Cadet ${eligibleCadet.fullName} (${eligibleCadet.regimentalNumber}) in Session ${session.id}`,
-        },
-      }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
     }
 
     res.json({
@@ -875,37 +860,30 @@ export const issueVerificationChallenge = async (req: AuthRequest, res: Response
     }
 
     // DoS defense: bound challenge store size
-    if (verificationChallenges.size >= MAX_CHALLENGE_STORE_SIZE) {
-      const pruneNow = Date.now();
-      for (const [t, c] of verificationChallenges) {
-        if (pruneNow > c.expiresAt) verificationChallenges.delete(t);
-      }
-      if (verificationChallenges.size >= MAX_CHALLENGE_STORE_SIZE) {
-        res.status(429).json({
-          success: false,
-          code: 'RATE_LIMIT_EXCEEDED',
-          message: 'Too many concurrent verification challenges. Please retry shortly.',
-        });
-        return;
-      }
+    if (!req.authSessionId) {
+      res.status(401).json({ success: false, message: 'A current session is required. Please sign in again.' });
+      return;
     }
 
-    // Generate cryptographically random challenge token (32 bytes = 64 hex chars)
-    const challengeToken = randomBytes(32).toString('hex');
-    const now = Date.now();
-    const expiresAt = now + CHALLENGE_TTL_MS;
-
-    verificationChallenges.set(challengeToken, {
+    // Tokens are hashed in the process-local store and bound to the durable auth session.
+    const issued = verificationChallengeStore.issue({
       sessionId: session.id,
       userId: req.user.id,
-      createdAt: now,
-      expiresAt,
+      authSessionId: req.authSessionId,
     });
+    if (!issued) {
+      res.status(429).json({
+        success: false,
+        code: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many pending verification challenges. Consume one or retry shortly.',
+      });
+      return;
+    }
 
     res.json({
       success: true,
-      challengeToken,
-      expiresAt: new Date(expiresAt).toISOString(),
+      challengeToken: issued.token,
+      expiresAt: new Date(issued.expiresAt).toISOString(),
       ttlSeconds: CHALLENGE_TTL_MS / 1000,
     });
   } catch (error) {
@@ -964,8 +942,8 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
     }
 
     // ── Challenge Token Validation ──────────────────────────────────────
-    // Prevents: replay attacks, forged descriptors, cross-session abuse.
-    // Tokens are single-use, time-limited (30s), session-bound, and user-bound.
+    // Limits replay and cross-session/operator reuse. This nonce does not establish
+    // descriptor authenticity or liveness; attendance remains disabled by default.
     if (!challengeToken || typeof challengeToken !== 'string') {
       res.status(400).json({
         success: false,
@@ -975,8 +953,8 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const challenge = verificationChallenges.get(challengeToken);
-    if (!challenge) {
+    const consumedChallenge = verificationChallengeStore.consume(challengeToken);
+    if (consumedChallenge.status === 'missing') {
       res.status(400).json({
         success: false,
         code: 'CHALLENGE_INVALID',
@@ -984,11 +962,8 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       });
       return;
     }
-
-    // Immediately invalidate — single-use token
-    verificationChallenges.delete(challengeToken);
-
-    if (Date.now() > challenge.expiresAt) {
+    const challenge = consumedChallenge.challenge;
+    if (consumedChallenge.status === 'expired') {
       res.status(400).json({
         success: false,
         code: 'CHALLENGE_EXPIRED',
@@ -1006,7 +981,7 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    if (challenge.userId !== req.user.id) {
+    if (challenge.userId !== req.user.id || challenge.authSessionId !== req.authSessionId) {
       res.status(400).json({
         success: false,
         code: 'CHALLENGE_USER_MISMATCH',
@@ -1042,8 +1017,28 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    // Load registered biometric templates from database
-    const allTemplates = await prisma.biometricTemplate.findMany({
+    // Resolve the session roster and operator authorization before touching templates.
+    // This prevents even an internal comparison against out-of-scope cadets.
+    const eligibleCadets = await getEligibleCadetsForMuster(
+      req.user.role,
+      req.user.id,
+      session.targetPlatoon || 'Unit Contingent',
+      new Date(session.date),
+    );
+    const eligibleIds = eligibleCadets.map((cadet) => cadet.id);
+    if (eligibleIds.length === 0) {
+      res.status(422).json({ success: false, code: 'FACE_NOT_VERIFIED', message: 'Face not verified. Please try again.' });
+      return;
+    }
+
+    let biometricConfig;
+    try { biometricConfig = loadBiometricRuntimeConfig(); } catch {
+      res.status(503).json({ success: false, code: 'BIOMETRIC_NOT_CONFIGURED', message: 'Biometric verification is unavailable. Use manual attendance.' });
+      return;
+    }
+
+    const eligibleTemplates = await prisma.biometricTemplate.findMany({
+      where: { cadetId: { in: eligibleIds } },
       include: {
         cadet: {
           select: {
@@ -1060,23 +1055,17 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       },
     });
 
-    if (allTemplates.length === 0) {
-      res.status(404).json({
-        success: false,
-        code: 'NO_TEMPLATES_REGISTERED',
-        message: 'No registered biometric templates found in the database. Please enroll cadets first.',
-      });
-      return;
-    }
-
-    // Calculate Euclidean distance against all registered templates:
-    // d = sqrt(sum((v_i - t_i)^2))
-    let bestMatchTemplate: typeof allTemplates[0] | null = null;
+    // Legacy plaintext and known synthetic seed rows are deliberately non-matchable.
+    let bestMatchTemplate: typeof eligibleTemplates[number] | null = null;
     let minDistance = Infinity;
 
-    for (const template of allTemplates) {
+    for (const template of eligibleTemplates) {
       try {
-        const storedVector: number[] = JSON.parse(template.descriptor);
+        if (isSyntheticBiometricTemplate(template)) continue;
+        const stored = decryptBiometricPayload(template.descriptor, template.cadetId, biometricConfig.keyring);
+        const allowIsolatedFixture = process.env.NODE_ENV === 'test' && process.env.PURE_MOCK_TEST === 'true';
+        if (!isBiometricPayloadCompatible(stored, biometricConfig, allowIsolatedFixture)) continue;
+        const storedVector = stored.descriptor;
         let sumSq = 0;
         for (let i = 0; i < 128; i++) {
           const diff = (descriptor[i] || 0) - (storedVector[i] || 0);
@@ -1092,7 +1081,8 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       }
     }
 
-    // Optimal threshold for 128-d MobileNet FaceNet embeddings: 0.58
+    // Kept as a compatibility threshold only. Browser-derived descriptors remain
+    // CLIENT_UNATTESTED, and therefore cannot match until a trusted capture exists.
     const MATCH_THRESHOLD = 0.58;
 
     if (!bestMatchTemplate || minDistance > MATCH_THRESHOLD) {
@@ -1116,21 +1106,6 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
         message: `Cadet account is ${matchedCadet.status}. Verification not authorized.`,
       });
       return;
-    }
-
-    // All approved active cadets in the unit are eligible for live attendance
-
-    {
-      const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
-      if (!attendanceCadetInScope(authorizedIds, matchedCadet.id)) {
-        res.status(403).json({
-          success: false,
-          code: 'NOT_ELIGIBLE',
-          cadet: { fullName: matchedCadet.fullName, regimentalNumber: matchedCadet.regimentalNumber },
-          message: 'Face recognized, but cadet is not assigned to your senior mentor squad.',
-        });
-        return;
-      }
     }
 
     // CHECK 2: APPROVED LEAVE
@@ -1207,33 +1182,42 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
 
     const verifiedBy = `${req.user.fullName} (${req.user.role})`;
 
-    // Atomic attendance write — prevents duplicate records and count drift on concurrent requests
-    const { record, presentCount } = await prisma.$transaction(async (tx) => {
-      const record = await tx.trainingAttendance.upsert({
-        where: {
-          sessionId_cadetId: {
+    // Claim/create exactly once. A competing scan either loses the conditional
+    // update or the existing (sessionId,cadetId) unique key and returns a conflict.
+    const writeResult = await prisma.$transaction(async (tx) => {
+      const existing = await tx.trainingAttendance.findUnique({
+        where: { sessionId_cadetId: { sessionId: session.id, cadetId: matchedCadet.id } },
+        select: { id: true, status: true, createdAt: true },
+      });
+      if (existing?.status === 'PRESENT') return { duplicate: true as const };
+
+      const data = {
+        status: 'PRESENT' as const,
+        verificationMethod: 'LIVE_FACE_VERIFIED' as const,
+        verificationStatus: 'VERIFIED' as const,
+        confidenceScore,
+        verifiedBy,
+      };
+      let record;
+      if (existing) {
+        const claimed = await tx.trainingAttendance.updateMany({
+          where: { id: existing.id, status: existing.status },
+          data,
+        });
+        if (claimed.count !== 1) return { duplicate: true as const };
+        record = await tx.trainingAttendance.findUniqueOrThrow({
+          where: { id: existing.id },
+        });
+      } else {
+        record = await tx.trainingAttendance.create({
+          data: {
             sessionId: session.id,
             cadetId: matchedCadet.id,
+            ...data,
+            createdAt: now,
           },
-        },
-        create: {
-          sessionId: session.id,
-          cadetId: matchedCadet.id,
-          status: 'PRESENT',
-          verificationMethod: 'LIVE_FACE_VERIFIED',
-          verificationStatus: 'VERIFIED',
-          confidenceScore,
-          verifiedBy,
-          createdAt: now,
-        },
-        update: {
-          status: 'PRESENT',
-          verificationMethod: 'LIVE_FACE_VERIFIED',
-          verificationStatus: 'VERIFIED',
-          confidenceScore,
-          verifiedBy,
-        },
-      });
+        });
+      }
 
       // Update real-time session counter inside transaction for consistency
       const presentCount = await tx.trainingAttendance.count({
@@ -1248,8 +1232,31 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
         data: { presentCount },
       });
 
-      return { record, presentCount };
+      // Attendance is security-critical; do not commit the mark if its audit event
+      // cannot be persisted. This avoids success responses with missing audit.
+      await tx.auditLog.create({
+        data: {
+          actorId: req.user!.id,
+          actorName: req.user!.fullName,
+          action: 'ATTENDANCE_MARKED_PRESENT',
+          targetType: 'TrainingAttendance',
+          targetId: record.id,
+          details: JSON.stringify({ cadetId: matchedCadet.id, sessionId: session.id, status: 'PRESENT', method: 'LIVE_FACE_VERIFIED' }),
+        },
+      });
+      return { duplicate: false as const, record, presentCount };
     });
+
+    if (writeResult.duplicate) {
+      res.status(409).json({
+        success: false,
+        code: 'ALREADY_MARKED',
+        duplicate: true,
+        message: `${matchedCadet.fullName} is already marked PRESENT for this session.`,
+      });
+      return;
+    }
+    const { record, presentCount } = writeResult;
 
     const remainingCount = Math.max(0, session.expectedCount - presentCount);
     const dateFormatted = new Date(session.date).toLocaleDateString('en-US', {
@@ -1272,18 +1279,6 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       dateStr: dateFormatted,
       timeStr: formattedTime,
     }).catch((err) => console.error('[PRESENT NOTIFICATION TRIGGER ERROR]:', err));
-
-    // Audit Logging
-    await prisma.auditLog.create({
-      data: {
-        actorId: req.user.id,
-        actorName: req.user.fullName,
-        action: 'ATTENDANCE_MARKED_PRESENT',
-        targetType: 'TrainingAttendance',
-        targetId: record.id,
-        details: `Marked PRESENT via LIVE_FACE_VERIFIED for Cadet ${matchedCadet.fullName} (${matchedCadet.regimentalNumber}) in Session ${session.id}`,
-      },
-    }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
 
     res.json({
       success: true,
@@ -1310,6 +1305,10 @@ export const verifyFaceAttendance = async (req: AuthRequest, res: Response): Pro
       },
     });
   } catch (error) {
+    if ((error as any)?.code === 'P2002') {
+      res.status(409).json({ success: false, code: 'ALREADY_MARKED', duplicate: true, message: 'Attendance was recorded by another request.' });
+      return;
+    }
     console.error('verifyFaceAttendance error:', error);
     res.status(500).json({ success: false, message: 'Face attendance verification failed' });
   }
@@ -1368,6 +1367,8 @@ export const endAttendanceSession = async (req: AuthRequest, res: Response): Pro
     );
 
     const absentCadetsList: any[] = [];
+    const absentNotificationJobs: Array<{ attendanceId: string; cadet: { id: string; fullName: string; phone: string | null; regimentalNumber: string }; activityName: string; dateStr: string; timeStr: string }> = [];
+    const absentCandidates: Array<{ cadet: typeof eligibleCadets[number]; leave: any; status: 'ABSENT' | 'EXCUSED'; method: 'NO_ATTENDANCE' | 'APPROVED_LEAVE'; reason: string }> = [];
     const sessionDateStart = new Date(session.date);
     sessionDateStart.setHours(0, 0, 0, 0);
     const sessionDateEnd = new Date(session.date);
@@ -1404,46 +1405,7 @@ export const endAttendanceSession = async (req: AuthRequest, res: Response): Pro
           unexcusedCount++;
         }
 
-        // Upsert absent record in database
-        const absentRecord = await prisma.trainingAttendance.upsert({
-          where: {
-            sessionId_cadetId: {
-              sessionId: session.id,
-              cadetId: cadet.id,
-            },
-          },
-          create: {
-            sessionId: session.id,
-            cadetId: cadet.id,
-            status,
-            verificationMethod: method,
-            verificationStatus: 'FAILED',
-            verifiedBy: `SESSION_RECONCILER (${req.user.fullName})`,
-          },
-          update: {
-            status,
-            verificationMethod: method,
-            verificationStatus: 'FAILED',
-            verifiedBy: `SESSION_RECONCILER (${req.user.fullName})`,
-          },
-        });
-
-        // Database-First Rule: For unexcused absences, automatically queue ABSENT SMS and WhatsApp notifications
-        if (!leave) {
-          triggerAbsentAttendanceNotifications({
-            attendanceId: absentRecord.id,
-            sessionId: session.id,
-            cadet: {
-              id: cadet.id,
-              fullName: cadet.fullName,
-              phone: cadet.phone,
-              regimentalNumber: cadet.regimentalNumber,
-            },
-            activityName: session.activity || session.title || 'Training Parade',
-            dateStr: sessionDateFormatted,
-            timeStr: endTime,
-          }).catch((err) => console.error('[ABSENT NOTIFICATION TRIGGER ERROR]:', err));
-        }
+        absentCandidates.push({ cadet, leave, status, method, reason });
 
         absentCadetsList.push({
           id: cadet.id,
@@ -1463,27 +1425,68 @@ export const endAttendanceSession = async (req: AuthRequest, res: Response): Pro
     const finalPresentCount = presentCadetIds.size;
     const finalAbsentCount = absentCadetsList.length;
 
-    const updatedSession = await prisma.trainingSession.update({
-      where: { id: session.id },
-      data: {
-        status: 'CLOSED',
-        endTime,
-        presentCount: finalPresentCount,
-        absentCount: finalAbsentCount,
-      },
+    const updatedSession = await prisma.$transaction(async (tx) => {
+      for (const candidate of absentCandidates) {
+        const absentRecord = await tx.trainingAttendance.upsert({
+          where: { sessionId_cadetId: { sessionId: session.id, cadetId: candidate.cadet.id } },
+          create: {
+            sessionId: session.id,
+            cadetId: candidate.cadet.id,
+            status: candidate.status,
+            verificationMethod: candidate.method,
+            verificationStatus: 'FAILED',
+            verifiedBy: `SESSION_RECONCILER (${req.user!.fullName})`,
+          },
+          update: {
+            status: candidate.status,
+            verificationMethod: candidate.method,
+            verificationStatus: 'FAILED',
+            verifiedBy: `SESSION_RECONCILER (${req.user!.fullName})`,
+          },
+        });
+        if (!candidate.leave) {
+          absentNotificationJobs.push({
+            attendanceId: absentRecord.id,
+            cadet: { id: candidate.cadet.id, fullName: candidate.cadet.fullName, phone: candidate.cadet.phone, regimentalNumber: candidate.cadet.regimentalNumber },
+            activityName: session.activity || session.title || 'Training Parade',
+            dateStr: sessionDateFormatted,
+            timeStr: endTime,
+          });
+        }
+      }
+      const updated = await tx.trainingSession.update({
+        where: { id: session.id },
+        data: {
+          status: 'CLOSED',
+          endTime,
+          presentCount: finalPresentCount,
+          absentCount: finalAbsentCount,
+        },
+      });
+      await tx.auditLog.create({
+        data: {
+          actorId: req.user!.id,
+          actorName: req.user!.fullName,
+          action: 'ATTENDANCE_SESSION_FINALIZED',
+          targetType: 'TrainingSession',
+          targetId: session.id,
+          details: `Finalized session ${session.id} (${session.title}). Expected=${eligibleCadets.length}, Present=${finalPresentCount}, Absent=${finalAbsentCount} (${unexcusedCount} unexcused, ${excusedCount} approved leave). Queued ${unexcusedCount} Absent SMS and ${unexcusedCount} Absent WhatsApp notifications.`,
+        },
+      });
+      return updated;
     });
 
-    // Audit Logging
-    await prisma.auditLog.create({
-      data: {
-        actorId: req.user.id,
-        actorName: req.user.fullName,
-        action: 'ATTENDANCE_SESSION_FINALIZED',
-        targetType: 'TrainingSession',
-        targetId: session.id,
-        details: `Finalized session ${session.id} (${session.title}). Expected=${eligibleCadets.length}, Present=${finalPresentCount}, Absent=${finalAbsentCount} (${unexcusedCount} unexcused, ${excusedCount} approved leave). Queued ${unexcusedCount} Absent SMS and ${unexcusedCount} Absent WhatsApp notifications.`,
-      },
-    }).catch((err) => console.error('[AUDIT LOG ERROR]:', err));
+    for (const job of absentNotificationJobs) {
+      triggerAbsentAttendanceNotifications({
+        attendanceId: job.attendanceId,
+        sessionId: session.id,
+        cadet: job.cadet,
+        activityName: job.activityName,
+        dateStr: job.dateStr,
+        timeStr: job.timeStr,
+      })
+        .catch((err) => console.error('[ABSENT NOTIFICATION TRIGGER ERROR]:', err));
+    }
 
     res.json({
       success: true,
@@ -1586,7 +1589,12 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       return;
     }
 
-    const { cadetId, descriptor, qualityScore } = req.body;
+    const { cadetId, descriptor, qualityScore, biometricConsent, replaceExisting } = req.body;
+
+    if (biometricConsent !== true) {
+      res.status(400).json({ success: false, code: 'BIOMETRIC_CONSENT_REQUIRED', message: 'Explicit biometric consent is required.' });
+      return;
+    }
 
     if (!cadetId || !isValidFaceDescriptor(descriptor)) {
       res.status(400).json({
@@ -1617,19 +1625,35 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
     }
 
     const existingTemplate = await prisma.biometricTemplate.findUnique({ where: { cadetId: cadet.id }, select: { id: true } });
-    if (existingTemplate) {
+    if (existingTemplate && replaceExisting !== true) {
       res.status(409).json({ success: false, code: 'BIOMETRIC_ALREADY_ENROLLED', message: 'This cadet already has a biometric template. Ask an administrator to review it.' });
       return;
     }
 
-    const template = await prisma.biometricTemplate.create({
-      data: {
-        cadetId: cadet.id,
-        descriptor: JSON.stringify(descriptor),
-        photoSnapshot: null,
-        qualityScore,
-        registeredBy: `${req.user.fullName} (${req.user.role})`,
-      },
+    let runtimeConfig;
+    try { runtimeConfig = loadBiometricRuntimeConfig(); } catch {
+      res.status(503).json({ success: false, code: 'BIOMETRIC_NOT_CONFIGURED', message: 'Secure biometric enrollment is unavailable. Contact an administrator.' });
+      return;
+    }
+    const payload = buildBiometricPayload(descriptor, cadet.id, { id: req.user.id, role: req.user.role }, runtimeConfig);
+    const encryptedDescriptor = encryptBiometricPayload(payload, cadet.id, runtimeConfig.keyring);
+
+    const template = await prisma.$transaction(async (tx) => {
+      const saved = existingTemplate
+        ? await tx.biometricTemplate.update({ where: { cadetId: cadet.id }, data: { descriptor: encryptedDescriptor, photoSnapshot: null, qualityScore, registeredBy: `${req.user!.fullName} (${req.user!.role})` } })
+        : await tx.biometricTemplate.create({ data: { cadetId: cadet.id, descriptor: encryptedDescriptor, photoSnapshot: null, qualityScore, registeredBy: `${req.user!.fullName} (${req.user!.role})` } });
+      await tx.auditLog.create({ data: {
+        actorId: req.user!.id, actorName: req.user!.fullName,
+        action: 'BIOMETRIC_CONSENT_GIVEN',
+        targetType: 'BIOMETRIC_TEMPLATE', targetId: cadet.id,
+        details: JSON.stringify({ purpose: payload.consent.purpose, policyVersion: payload.consent.policyVersion, consentedAt: payload.consent.consentedAt, captureStatus: payload.captureStatus }),
+      } });
+      if (existingTemplate) await tx.auditLog.create({ data: {
+        actorId: req.user!.id, actorName: req.user!.fullName,
+        action: 'BIOMETRIC_TEMPLATE_REPLACED', targetType: 'BIOMETRIC_TEMPLATE', targetId: cadet.id,
+        details: JSON.stringify({ purpose: payload.consent.purpose, policyVersion: payload.consent.policyVersion }),
+      } });
+      return saved;
     });
 
     res.json({
@@ -1649,6 +1673,39 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
     }
     console.error('enrollBiometricTemplate error:', error);
     res.status(500).json({ success: false, message: 'Failed to enroll biometric template' });
+  }
+};
+
+export const revokeBiometricConsent = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
+    const cadetId = String(req.params.cadetId || '');
+    if (!cadetId) { res.status(400).json({ success: false, message: 'Cadet ID is required.' }); return; }
+    if (req.user.role === 'CADET' && req.user.id !== cadetId) {
+      res.status(403).json({ success: false, message: 'You may revoke only your own biometric consent.' }); return;
+    }
+    if (!['CADET', 'ADMIN_ANO', 'PLATOON_SENIOR', 'SENIOR'].includes(req.user.role)) {
+      res.status(403).json({ success: false, message: 'Unauthorized biometric access.' }); return;
+    }
+    if (req.user.role !== 'CADET') {
+      const authorizedIds = await getAuthorizedCadetIds(req.user.role, req.user.id);
+      if (!attendanceCadetInScope(authorizedIds, cadetId)) {
+        res.status(403).json({ success: false, message: 'Cadet is outside your authorized scope.' }); return;
+      }
+    }
+    const result = await prisma.$transaction(async (tx) => {
+      const deleted = await tx.biometricTemplate.deleteMany({ where: { cadetId } });
+      await tx.auditLog.create({ data: {
+        actorId: req.user!.id, actorName: req.user!.fullName,
+        action: 'BIOMETRIC_CONSENT_REVOKED', targetType: 'BIOMETRIC_TEMPLATE', targetId: cadetId,
+        details: JSON.stringify({ deletedTemplateCount: deleted.count, revokedAt: new Date().toISOString(), purpose: 'ATTENDANCE_IDENTIFICATION' }),
+      } });
+      return deleted;
+    });
+    res.json({ success: true, deleted: result.count === 1, message: 'Biometric consent revocation recorded.' });
+  } catch (error) {
+    console.error('revokeBiometricConsent error:', error);
+    res.status(500).json({ success: false, message: 'Biometric consent could not be revoked.' });
   }
 };
 

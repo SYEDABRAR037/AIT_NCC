@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { validateBiometricProviderStartup } from './biometrics/providerStartupPolicy';
 
 // Load local environment before importing the server graph (which constructs Prisma).
 // Tests and controlled deployments can explicitly prevent dotenv fallback.
@@ -14,5 +15,9 @@ if (!process.env.DIRECT_URL && process.env.DATABASE_URL) {
     process.env.DIRECT_URL = process.env.DATABASE_URL;
   }
 }
+
+// Validate provider policy after dotenv loading and before importing server,
+// Prisma, routes or opening an HTTP listener.
+validateBiometricProviderStartup(process.env);
 
 require('./server');

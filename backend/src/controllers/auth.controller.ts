@@ -7,9 +7,7 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { OtpPurpose } from '@prisma/client';
 import { startLoginOtp } from './otpAuth.controller';
 import { normalizePhoneNumber } from '../services/attendanceNotification.service';
-import { isValidFaceDescriptor } from '../utils/biometricDescriptor';
 import { ProcessLocalRateLimitStore } from '../services/rateLimitStore';
-import { revokePresentedSession } from '../services/sessionPolicy';
 import { validatePassword } from '../services/passwordPolicy';
 
 const failedLoginAttempts = new ProcessLocalRateLimitStore(20_000);
@@ -21,12 +19,20 @@ const dummyLoginHash = bcrypt.hashSync(crypto.randomBytes(32).toString('hex'), 1
 const loginIdentifierKey = (identifier: string): string =>
   `login:identifier:${crypto.createHash('sha256').update(identifier.toLowerCase()).digest('hex')}`;
 
-const recordLoginFailure = async (identifier: string, actorId?: string) => {
-  const digest = crypto.createHash('sha256').update(identifier.toLowerCase()).digest('hex');
-  await prisma.auditLog.create({ data: {
-    actorId: actorId || 'UNKNOWN', actorName: actorId ? 'Account holder' : 'Unknown principal',
-    action: 'AUTH_LOGIN_FAILED', targetType: 'AUTHENTICATION', details: JSON.stringify({ identifierDigest: digest }),
-  } }).catch(() => {});
+export const recordLoginFailure = async (actorId?: string) => {
+  try {
+    await prisma.auditLog.create({ data: {
+      actorId: actorId || 'UNKNOWN', actorName: actorId ? 'Account holder' : 'Unknown principal',
+      action: 'AUTH_LOGIN_FAILED', targetType: 'AUTHENTICATION', targetId: actorId || null,
+      // Do not persist the submitted identifier or a guessable hash of it.
+      details: null,
+    } });
+  } catch {
+    // Keep the audit failure visible without logging the submitted identifier or
+    // provider/database error. The login handler returns a controlled 503.
+    console.error('[SECURITY_AUDIT_FAILURE] Login failure audit could not be persisted.');
+    throw Object.assign(new Error('Login failure audit unavailable'), { code: 'AUTH_AUDIT_UNAVAILABLE' });
+  }
 };
 
 const rejectThrottledLogin = async (res: Response, key: string): Promise<boolean> => {
@@ -55,8 +61,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password,
       profilePhotoUrl,
       profilePhoto,
-      faceDescriptor,
-      qualityScore,
       mobileChallengeId,
       emailChallengeId,
     } = req.body;
@@ -71,20 +75,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     }
     const passwordCheck = validatePassword(password);
     if (!passwordCheck.valid) { res.status(400).json({ success: false, field: 'password', message: passwordCheck.message }); return; }
-
-    // 2. Mandatory Biometric Validation (Phase 13)
-    if (!isValidFaceDescriptor(faceDescriptor)) {
-      res.status(400).json({
-        success: false,
-        field: 'faceDescriptor',
-        message: 'A valid 128-value face descriptor is required to submit your application.',
-      });
-      return;
-    }
-    if (typeof qualityScore !== 'number' || !Number.isFinite(qualityScore) || qualityScore < 0 || qualityScore > 1) {
-      res.status(400).json({ success: false, field: 'qualityScore', message: 'A measured face detection confidence value is required.' });
-      return;
-    }
 
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedRegimental = regimentalNumber.trim().toUpperCase();
@@ -145,7 +135,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const salt = await bcrypt.genSalt(12);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Profile photo & biometric snapshot normalization
+    // Profile photo normalization
     const finalProfilePhoto = profilePhotoUrl || profilePhoto || null;
 
     // 5. Atomic Registration Transaction (Phase 8 & 12)
@@ -174,16 +164,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         },
       });
 
-      await tx.biometricTemplate.create({
-        data: {
-          cadetId: user.id,
-          descriptor: JSON.stringify(faceDescriptor),
-          photoSnapshot: null,
-          qualityScore,
-          registeredBy: 'SELF_ENROLLMENT (Cadet Registration)',
-        },
-      });
-
       return [user];
     });
 
@@ -194,7 +174,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       message: 'Registration submitted successfully. Your application is under institutional review.',
       userId: newUser.id,
       status: newUser.status,
-      biometricEnrolled: true,
+      biometricEnrolled: false,
       profilePhotoSaved: Boolean(newUser.profilePhotoUrl),
     });
   } catch (error: any) {
@@ -277,7 +257,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     if (!user) {
       await bcrypt.compare(password, dummyLoginHash);
-      await recordLoginFailure(cleanIdentifier);
+      await recordLoginFailure();
       res.status(401).json({
         success: false,
         message: 'Invalid institutional credentials.',
@@ -291,7 +271,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Verify Password Hash
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      await recordLoginFailure(cleanIdentifier, user.id);
+      await recordLoginFailure(user.id);
       res.status(401).json({
         success: false,
         message: 'Invalid institutional credentials.',
@@ -368,6 +348,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     await startLoginOtp(req, user, res);
     return;
   } catch (error) {
+    if ((error as { code?: string })?.code === 'AUTH_AUDIT_UNAVAILABLE') {
+      res.status(503).json({
+        success: false,
+        message: 'Authentication is temporarily unavailable. Please try again.',
+      });
+      return;
+    }
     console.error('Login error:', error);
     res.status(500).json({
       success: false,
@@ -400,20 +387,46 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   ].filter((token): token is string => Boolean(token));
   if (process.env.JWT_SECRET) {
     const revoked = new Set<string>();
+    let revocationFailed = false;
     for (const token of tokens) {
+      let decoded: { userId?: string; sid?: string };
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId?: string; sid?: string };
-        if (decoded.sid && decoded.userId && !revoked.has(decoded.sid)) {
-          const didRevoke = await revokePresentedSession(prisma.authSession, decoded);
-          if (didRevoke) await prisma.auditLog.create({ data: { actorId: decoded.userId, actorName: 'Authenticated account', action: 'AUTH_LOGOUT', targetType: 'AUTH_SESSION', targetId: decoded.sid } }).catch(() => {});
-          revoked.add(decoded.sid);
-        }
+        decoded = jwt.verify(token, process.env.JWT_SECRET) as { userId?: string; sid?: string };
       } catch {
         // Logout remains idempotent for expired or malformed tokens; the client still clears local state.
+        continue;
+      }
+      if (!decoded.sid || !decoded.userId || revoked.has(decoded.sid)) continue;
+      try {
+        const didRevoke = await prisma.$transaction(async (tx) => {
+          const changed = await tx.authSession.updateMany({
+            where: { id: decoded.sid!, userId: decoded.userId!, revokedAt: null },
+            data: { revokedAt: new Date() },
+          });
+          if (changed.count === 1) {
+            await tx.auditLog.create({ data: {
+              actorId: decoded.userId!, actorName: 'Authenticated account', action: 'AUTH_LOGOUT',
+              targetType: 'AUTH_SESSION', targetId: decoded.sid!,
+            } });
+          }
+          return changed.count === 1;
+        });
+        if (didRevoke) revoked.add(decoded.sid);
+      } catch (error) {
+        console.error('Logout session revocation/audit failed:', error);
+        revocationFailed = true;
       }
     }
+    res.clearCookie('ncc_token');
+    if (revocationFailed) {
+      res.status(503).json({ success: false, message: 'Logout could not be fully recorded. Please retry and sign in again after confirmation.' });
+      return;
+    }
+  } else {
+    res.clearCookie('ncc_token');
+    res.status(503).json({ success: false, message: 'Logout service is unavailable. Please retry.' });
+    return;
   }
-  res.clearCookie('ncc_token');
   res.json({
     success: true,
     message: 'Institutional session terminated. Logged out successfully.',
@@ -433,9 +446,12 @@ export const listMySessions = async (req: AuthRequest, res: Response): Promise<v
 export const revokeMySession = async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) { res.status(401).json({ success: false, message: 'Authentication required.' }); return; }
   const sessionId = String(req.params.sessionId || '');
-  const changed = await prisma.authSession.updateMany({ where: { id: sessionId, userId: req.user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+  const changed = await prisma.$transaction(async (tx) => {
+    const result = await tx.authSession.updateMany({ where: { id: sessionId, userId: req.user!.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    if (result.count === 1) await tx.auditLog.create({ data: { actorId: req.user!.id, actorName: req.user!.fullName, action: 'AUTH_SESSION_REVOKED', targetType: 'AUTH_SESSION', targetId: sessionId } });
+    return result;
+  });
   if (changed.count !== 1) { res.status(404).json({ success: false, message: 'Active session not found.' }); return; }
-  await prisma.auditLog.create({ data: { actorId: req.user.id, actorName: req.user.fullName, action: 'AUTH_SESSION_REVOKED', targetType: 'AUTH_SESSION', targetId: sessionId } }).catch(() => {});
   res.json({ success: true, message: 'Session revoked.' });
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import {
   Users,
   LogOut,
@@ -30,8 +30,6 @@ import {
   Menu,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { FaceAttendanceModal } from '../attendance/FaceAttendanceModal';
-import { FaceEnrollmentModal } from '../attendance/FaceEnrollmentModal';
 import { CadetProfileView } from './CadetProfileView';
 import { CadetLifecycleDialog, CadetLifecycleSubmission, CadetLifecycleAction } from './CadetLifecycleDialog';
 import { RequestCenterView } from './RequestCenterView';
@@ -46,6 +44,9 @@ import { safeApiFetch } from '../../utils/api';
 import { MediaManagementView } from './MediaManagementView';
 import { DigitalIdView } from '../digitalId/DigitalIdView';
 import { AccountSecurityView } from './AccountSecurityView';
+
+const FaceAttendanceModal = React.lazy(() => import('../attendance/FaceAttendanceModal').then((module) => ({ default: module.FaceAttendanceModal })));
+const FaceEnrollmentModal = React.lazy(() => import('../attendance/FaceEnrollmentModal').then((module) => ({ default: module.FaceEnrollmentModal })));
 
 
 interface RoleShellViewProps {
@@ -5129,30 +5130,34 @@ export const RoleShellView: React.FC<RoleShellViewProps> = ({ role, onBackToHome
 
       {/* PHASE 11: LIVE FACE ATTENDANCE & BIOMETRIC SCANNER MODAL */}
       {biometricCameraActive && selectedAttendanceSession && (
-        <FaceAttendanceModal
-          session={selectedAttendanceSession}
-          token={token || ''}
-          onClose={() => setBiometricCameraActive(false)}
-          onSessionUpdated={() => {
-            fetchAttendanceSessions();
-            if (selectedAttendanceSession?.id) {
-              fetchSessionDetails(selectedAttendanceSession.id);
-            }
-          }}
-        />
+        <Suspense fallback={<div role="status" aria-live="polite">Loading attendance scanner…</div>}>
+          <FaceAttendanceModal
+            session={selectedAttendanceSession}
+            token={token || ''}
+            onClose={() => setBiometricCameraActive(false)}
+            onSessionUpdated={() => {
+              fetchAttendanceSessions();
+              if (selectedAttendanceSession?.id) {
+                fetchSessionDetails(selectedAttendanceSession.id);
+              }
+            }}
+          />
+        </Suspense>
       )}
 
       {/* BIOMETRIC ENROLLMENT MODAL */}
       {enrollCadetTarget && (
-        <FaceEnrollmentModal
-          cadet={enrollCadetTarget}
-          token={token || ''}
-          onClose={() => setEnrollCadetTarget(null)}
-          onEnrolled={() => {
-            fetchAdminUsers();
-            fetchPlatoonCadets();
-          }}
-        />
+        <Suspense fallback={<div role="status" aria-live="polite">Loading enrollment form…</div>}>
+          <FaceEnrollmentModal
+            cadet={enrollCadetTarget}
+            token={token || ''}
+            onClose={() => setEnrollCadetTarget(null)}
+            onEnrolled={() => {
+              fetchAdminUsers();
+              fetchPlatoonCadets();
+            }}
+          />
+        </Suspense>
       )}
 
       {/* PHASE 11: OFFICIAL PRINTABLE MILITARY CERTIFICATE MODAL */}
