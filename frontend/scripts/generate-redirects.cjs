@@ -36,9 +36,9 @@ function resolveBuildConfiguration(env = process.env) {
   return { deployContext, deployBranch, isStagingApiBuild, isPublicPreview, targetUrl };
 }
 
-function generateNetlifyFiles(env = process.env) {
+function generateNetlifyFiles(env = process.env, outputDirectory) {
   const { isStagingApiBuild, isPublicPreview, targetUrl } = resolveBuildConfiguration(env);
-  const distDirectory = path.resolve(__dirname, '../dist');
+  const distDirectory = outputDirectory || path.resolve(__dirname, '../dist');
   const redirectsFile = path.join(distDirectory, '_redirects');
   const headersFile = path.join(distDirectory, '_headers');
   fs.mkdirSync(distDirectory, { recursive: true });
