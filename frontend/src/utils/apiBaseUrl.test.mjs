@@ -32,13 +32,17 @@ assert.equal(stagingConfig.isPublicPreview, false);
 assert.equal(stagingConfig.targetUrl, stagingBackend);
 
 const netlifyConfig = fs.readFileSync(new URL('../../../netlify.toml', import.meta.url), 'utf8');
-const stagingCommand = netlifyConfig.match(/\[context\.ncc-staging\][\s\S]*?command\s*=\s*"([^"]+)"/)?.[1] || '';
-for (const requiredValue of [
-  'NCC_STAGING_API_MODE=true',
-  'VITE_PUBLIC_PREVIEW_MODE=false',
-  'NCC_PUBLIC_PREVIEW_MODE=false',
-  `VITE_API_BASE_URL=${stagingBackend}`,
-]) assert.ok(stagingCommand.includes(requiredValue), `ncc-staging build command must set ${requiredValue}`);
+const frontendNetlifyConfig = fs.readFileSync(new URL('../../../frontend/netlify.toml', import.meta.url), 'utf8');
+for (const [label, config] of [['repository root', netlifyConfig], ['frontend config', frontendNetlifyConfig]]) {
+  const stagingCommand = config.match(/\[context\.ncc-staging\][\s\S]*?command\s*=\s*"([^"]+)"/)?.[1] || '';
+  assert.ok(stagingCommand, `${label} Netlify config must define the ncc-staging command`);
+  for (const requiredValue of [
+    'NCC_STAGING_API_MODE=true',
+    'VITE_PUBLIC_PREVIEW_MODE=false',
+    'NCC_PUBLIC_PREVIEW_MODE=false',
+    `VITE_API_BASE_URL=${stagingBackend}`,
+  ]) assert.ok(stagingCommand.includes(requiredValue), `${label} ncc-staging command must set ${requiredValue}`);
+}
 
 const stagingOutput = fs.mkdtempSync(path.join(os.tmpdir(), 'ncc-staging-build-'));
 const productionOutput = fs.mkdtempSync(path.join(os.tmpdir(), 'ncc-production-build-'));
@@ -47,7 +51,10 @@ try {
   generateNetlifyFiles(validStagingBuild, stagingOutput);
   const stagingRedirects = fs.readFileSync(path.join(stagingOutput, '_redirects'), 'utf8');
   const stagingHeaders = fs.readFileSync(path.join(stagingOutput, '_headers'), 'utf8');
-  assert.ok(stagingRedirects.includes(`/api/*  ${stagingBackend}/api/:splat  200!`));
+  const stagingRules = stagingRedirects.split(/\r?\n/).filter((line) => line.trim() && !line.trim().startsWith('#'));
+  assert.equal(stagingRules[0], `/api/*  ${stagingBackend}/api/:splat  200!`);
+  assert.equal(stagingRules[1], '/*    /index.html   200');
+  assert.ok(stagingRules.indexOf(`/api/*  ${stagingBackend}/api/:splat  200!`) < stagingRules.indexOf('/*    /index.html   200'));
   assert.ok(stagingHeaders.includes(`connect-src 'self' ${stagingBackend}`));
   assert.ok(!stagingHeaders.includes('X-Robots-Tag: noindex'));
 
@@ -81,20 +88,28 @@ try {
 const deniedStagingBuilds = [
   { ...validStagingBuild, BRANCH: 'ncc-staging-typo' },
   { ...validStagingBuild, CONTEXT: 'deploy-preview' },
-  { ...validStagingBuild, NCC_STAGING_API_MODE: 'false' },
-  { ...validStagingBuild, VITE_PUBLIC_PREVIEW_MODE: 'true' },
-  { ...validStagingBuild, NCC_PUBLIC_PREVIEW_MODE: 'true' },
-  { ...validStagingBuild, VITE_API_BASE_URL: 'https://other-backend.example' },
   { ...validStagingBuild, BRANCH: 'codex/ncc-release-candidate-20261028' },
   { ...validStagingBuild, CONTEXT: 'production', BRANCH: 'main' },
   { ...validStagingBuild, CONTEXT: 'production', BRANCH: 'other-production-branch' },
-  { ...validStagingBuild, NCC_STAGING_API_MODE: undefined },
 ];
 for (const env of deniedStagingBuilds) {
   const config = resolveBuildConfiguration(env);
   assert.equal(config.isStagingApiBuild, false);
   assert.equal(config.isPublicPreview, true);
   assert.equal(config.targetUrl, '');
+}
+
+for (const invalidStagingBuild of [
+  { ...validStagingBuild, NCC_STAGING_API_MODE: 'false' },
+  { ...validStagingBuild, VITE_PUBLIC_PREVIEW_MODE: 'true' },
+  { ...validStagingBuild, NCC_PUBLIC_PREVIEW_MODE: 'true' },
+  { ...validStagingBuild, VITE_API_BASE_URL: 'https://other-backend.example' },
+  { ...validStagingBuild, NCC_STAGING_API_MODE: undefined },
+]) {
+  assert.throws(
+    () => resolveBuildConfiguration(invalidStagingBuild),
+    /ncc-staging branch deploy is missing its explicit staging API build configuration/
+  );
 }
 
 console.log('API base URL resolution tests passed.');

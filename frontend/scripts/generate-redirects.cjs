@@ -9,12 +9,20 @@ const previewBranches = new Set(['codex/ncc-release-candidate-20261028']);
 function resolveBuildConfiguration(env = process.env) {
   const deployContext = (env.CONTEXT || '').trim().toLowerCase();
   const deployBranch = (env.BRANCH || '').trim();
-  const isStagingApiBuild = deployContext === 'branch-deploy'
-    && deployBranch === STAGING_BRANCH
-    && env.NCC_STAGING_API_MODE === 'true'
+  const isNccStagingBranchDeploy = deployContext === 'branch-deploy' && deployBranch === STAGING_BRANCH;
+  const hasStagingApiConfiguration = env.NCC_STAGING_API_MODE === 'true'
     && env.VITE_PUBLIC_PREVIEW_MODE === 'false'
     && env.NCC_PUBLIC_PREVIEW_MODE === 'false'
     && env.VITE_API_BASE_URL === STAGING_BACKEND_URL;
+
+  // Never silently publish the ncc-staging branch as a static artifact when
+  // its branch-specific build configuration was not applied. That produced a
+  // successful but broken deploy with only the SPA fallback redirect.
+  if (isNccStagingBranchDeploy && !hasStagingApiConfiguration) {
+    throw new Error('The ncc-staging branch deploy is missing its explicit staging API build configuration.');
+  }
+
+  const isStagingApiBuild = isNccStagingBranchDeploy && hasStagingApiConfiguration;
   const isNetlifyBuild = Boolean(deployContext);
   const isPublicPreview = !isStagingApiBuild && (
     isNetlifyBuild
