@@ -30,6 +30,17 @@ const verificationChallengeStore = new VerificationChallengeStore(
   MAX_CHALLENGE_STORE_SIZE,
 );
 
+const rejectDisabledBiometricOperation = (res: Response): boolean => {
+  if (process.env.ENABLE_BIOMETRIC_ATTENDANCE === 'true') return false;
+
+  res.status(503).json({
+    success: false,
+    code: 'BIOMETRIC_AUTOMATION_DISABLED',
+    message: 'Biometric attendance features are disabled. Please use the authorized manual attendance workflow.',
+  });
+  return true;
+};
+
 // Periodic cleanup of expired challenges (every 60 seconds)
 setInterval(() => {
   verificationChallengeStore.pruneExpired();
@@ -1589,6 +1600,8 @@ export const enrollBiometricTemplate = async (req: AuthRequest, res: Response): 
       return;
     }
 
+    if (rejectDisabledBiometricOperation(res)) return;
+
     const { cadetId, descriptor, qualityScore, biometricConsent, replaceExisting } = req.body;
 
     if (biometricConsent !== true) {
@@ -1712,6 +1725,8 @@ export const revokeBiometricConsent = async (req: AuthRequest, res: Response): P
 // 12. Get Biometric Enrollment Roster Status
 export const getBiometricEnrollmentRoster = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
+    if (rejectDisabledBiometricOperation(res)) return;
+
     const whereClause: any = { role: 'CADET', status: { in: ['APPROVED', 'ACTIVE'] } };
     const authorizedIds = await getAuthorizedCadetIds(req.user!.role, req.user!.id);
     if (authorizedIds !== null) whereClause.id = { in: authorizedIds };
@@ -1767,6 +1782,8 @@ export const getEligibleBiometrics = async (req: AuthRequest, res: Response): Pr
       res.status(401).json({ success: false, message: 'Authentication required' });
       return;
     }
+
+    if (rejectDisabledBiometricOperation(res)) return;
 
     const { sessionId } = req.params;
     const session = await prisma.trainingSession.findUnique({

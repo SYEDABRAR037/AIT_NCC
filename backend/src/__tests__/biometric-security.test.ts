@@ -7,6 +7,8 @@ import * as attendanceNotificationService from '../services/attendanceNotificati
 import {
   issueVerificationChallenge as issueVerificationChallengeHandler,
   verifyFaceAttendance as verifyFaceAttendanceHandler,
+  enrollBiometricTemplate,
+  getBiometricEnrollmentRoster,
   getEligibleBiometrics,
   markAttendance,
   revokeBiometricConsent,
@@ -187,6 +189,68 @@ async function runTestSuite() {
     recordResult('Unit Test 2: issueVerificationChallenge rejects when disabled', true);
   } catch (err: any) {
     recordResult('Unit Test 2: issueVerificationChallenge rejects when disabled', false, err.message);
+  }
+
+  // Biometric enrollment and roster APIs must fail closed under the same feature flag.
+  try {
+    process.env.ENABLE_BIOMETRIC_ATTENDANCE = 'false';
+    const disabledRoutes = [
+      {
+        name: 'enrollBiometricTemplate',
+        handler: enrollBiometricTemplate,
+        req: { user: { id: 'ano-1', role: 'ADMIN_ANO', fullName: 'ANO Test' }, body: {} },
+      },
+      {
+        name: 'getBiometricEnrollmentRoster',
+        handler: getBiometricEnrollmentRoster,
+        req: { user: { id: 'ano-1', role: 'ADMIN_ANO', fullName: 'ANO Test' } },
+      },
+      {
+        name: 'getEligibleBiometrics',
+        handler: getEligibleBiometrics,
+        req: { params: { sessionId: 'session-disabled' }, user: { id: 'ano-1', role: 'ADMIN_ANO', fullName: 'ANO Test' } },
+      },
+    ];
+
+    for (const route of disabledRoutes) {
+      const res = createMockRes();
+      await route.handler(route.req as any, res as any);
+      assert.strictEqual(res.statusCode, 503);
+      assert.strictEqual(res.body.code, 'BIOMETRIC_AUTOMATION_DISABLED');
+      recordResult(`Unit Test: ${route.name} returns 503 while biometric feature flag is false`, true);
+    }
+  } catch (err: any) {
+    recordResult('Unit Test: biometric enrollment and roster routes reject while disabled', false, err.message);
+  }
+
+  // Existing authentication and role checks must run before the disabled flag response.
+  try {
+    process.env.ENABLE_BIOMETRIC_ATTENDANCE = 'false';
+    const unauthenticated = createMockRes();
+    await enrollBiometricTemplate({ body: {} } as any, unauthenticated as any);
+    assert.strictEqual(unauthenticated.statusCode, 401);
+
+    const wrongRole = createMockRes();
+    await enrollBiometricTemplate({ user: { id: 'synthetic-cadet', role: 'CADET' }, body: {} } as any, wrongRole as any);
+    assert.strictEqual(wrongRole.statusCode, 403);
+    recordResult('Unit Test: authentication and enrollment role checks remain ahead of disabled response', true);
+  } catch (err: any) {
+    recordResult('Unit Test: enrollment authentication and role ordering', false, err.message);
+  }
+
+  // A local mocked enabled-path request must still reach enrollment validation, without DB access.
+  try {
+    process.env.ENABLE_BIOMETRIC_ATTENDANCE = 'true';
+    const res = createMockRes();
+    await enrollBiometricTemplate({
+      user: { id: 'synthetic-ano', role: 'ADMIN_ANO', fullName: 'Synthetic ANO' },
+      body: { biometricConsent: false },
+    } as any, res as any);
+    assert.strictEqual(res.statusCode, 400);
+    assert.strictEqual(res.body.code, 'BIOMETRIC_CONSENT_REQUIRED');
+    recordResult('Unit Test: enabled enrollment path retains consent validation before persistence', true);
+  } catch (err: any) {
+    recordResult('Unit Test: enabled enrollment validation', false, err.message);
   }
 
   // --------------------------------------------------------------------------

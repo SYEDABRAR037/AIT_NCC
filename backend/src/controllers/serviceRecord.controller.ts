@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getCadetLifecycleHistory, resolvePlatoonSeniorScope } from '../services/cadetLifecycle.service';
+import { assignedDrillPlatoonNames } from '../services/drillInstructorScope';
 
 export const getCadetServiceRecord = async (req: AuthRequest, res: Response): Promise<void> => {
   if (!req.user) {
@@ -32,6 +33,20 @@ export const getCadetServiceRecord = async (req: AuthRequest, res: Response): Pr
       const authorizedPlatoons = await resolvePlatoonSeniorScope(req.user.id, req.user.platoonName);
       if (!cadetPlatoon || !authorizedPlatoons.includes(cadetPlatoon.platoonName)) {
         res.status(403).json({ success: false, message: 'This cadet is outside your authorized platoon scope' });
+        return;
+      }
+    }
+    if (req.user.role === 'DRILL_INSTRUCTOR') {
+      const [cadetScope, assignments] = await Promise.all([
+        prisma.user.findUnique({ where: { id: cadetId, role: 'CADET' }, select: { platoonName: true } }),
+        prisma.drillInstructorAssignment.findMany({
+          where: { drillInstructorId: req.user.id },
+          select: { platoon: { select: { name: true } } },
+        }),
+      ]);
+      const authorizedPlatoons = assignedDrillPlatoonNames(assignments);
+      if (!cadetScope?.platoonName || !authorizedPlatoons.includes(cadetScope.platoonName)) {
+        res.status(403).json({ success: false, message: 'This cadet is outside your authorized drill instructor scope' });
         return;
       }
     }
