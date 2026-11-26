@@ -53,10 +53,10 @@
 [context.ncc-staging]
   # Set these in the command environment as well as the branch context so Vite
   # receives the staging values before it compiles import.meta.env.
-  command = "NCC_STAGING_API_MODE=true VITE_PUBLIC_PREVIEW_MODE=false NCC_PUBLIC_PREVIEW_MODE=false VITE_API_BASE_URL=https://ait-ncc-backend.onrender.com npm run build"
+  command = "NCC_STAGING_API_MODE=true VITE_PUBLIC_PREVIEW_MODE=false NCC_PUBLIC_PREVIEW_MODE=false VITE_API_BASE_URL=https://ait-ncc-backend-staging.onrender.com npm run build"
 
 [context.ncc-staging.environment]
   NCC_STAGING_API_MODE = "true"
   VITE_PUBLIC_PREVIEW_MODE = "false"
   NCC_PUBLIC_PREVIEW_MODE = "false"
-  VITE_API_BASE_URL = "https://ait-ncc-backend.onrender.com"
+  VITE_API_BASE_URL = "https://ait-ncc-backend-staging.onrender.com"

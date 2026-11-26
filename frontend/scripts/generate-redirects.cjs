@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const STAGING_BRANCH = 'ncc-staging';
-const STAGING_BACKEND_URL = 'https://ait-ncc-backend.onrender.com';
+const STAGING_BACKEND_URL = 'https://ait-ncc-backend-staging.onrender.com';
 const previewContexts = new Set(['deploy-preview', 'branch-deploy']);
 const previewBranches = new Set(['codex/ncc-release-candidate-20261028']);
 

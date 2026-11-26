@@ -7,7 +7,7 @@ import { resolveApiBaseUrl } from './apiBaseUrl.mjs';
 
 const require = createRequire(import.meta.url);
 const { resolveBuildConfiguration, generateNetlifyFiles } = require('../../scripts/generate-redirects.cjs');
-const stagingBackend = 'https://ait-ncc-backend.onrender.com';
+const stagingBackend = 'https://ait-ncc-backend-staging.onrender.com';
 
 assert.equal(resolveApiBaseUrl({ envUrl: 'https://preview.invalid/api///', savedBase: 'https://old.invalid' }), 'https://preview.invalid/api');
 assert.equal(resolveApiBaseUrl({ envUrl: stagingBackend, previewMode: false }), stagingBackend);
