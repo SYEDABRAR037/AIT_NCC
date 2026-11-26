@@ -32,6 +32,7 @@ import { checkReadiness } from './health';
 import { getEmailProviderReadiness } from './services/mail.service';
 import { getOtpSmsProviderReadiness } from './services/attendanceNotification.service';
 import { validateBiometricProviderStartup } from './biometrics/providerStartupPolicy';
+import { mountStagingEmailDiagnosticRoute } from './routes/stagingEmailDiagnostic.routes';
 
 // Run before app.listen: invalid provider settings must stop startup. An absent
 // provider configuration preserves the existing disabled biometric behavior.
@@ -121,6 +122,11 @@ app.use('/api/service-record', serviceRecordRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/ranks', rankRoutes);
 app.use('/api', mediaRoutes);
+
+// Temporary staging-only diagnostic. The route is not mounted unless the
+// Render service ID, branch, URL, environment, feature flag and credentials
+// all match the one authorized staging deployment.
+mountStagingEmailDiagnosticRoute(app);
 
 // 404 JSON Handler for all API routes (Phases 2 & 4: API endpoints must never return HTML)
 app.all('/api/*', (_req: Request, res: Response) => {
