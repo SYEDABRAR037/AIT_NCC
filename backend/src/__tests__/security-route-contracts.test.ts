@@ -10,7 +10,8 @@ const requests = readFileSync('src/controllers/request.controller.ts', 'utf8');
 
 assert.match(auth, /rejectThrottledLogin\(res, identifierKey\)/);
 assert.match(auth, /failedLoginAttempts\.consume\(key, LOGIN_FAILURE_LIMIT, LOGIN_FAILURE_WINDOW_MS\)/);
-assert.match(auth, /revokePresentedSession\(prisma\.authSession, decoded\)/);
+assert.match(auth, /tx\.authSession\.updateMany\([\s\S]*?where: \{ id: decoded\.sid!, userId: decoded\.userId!, revokedAt: null \}/);
+assert.match(auth, /await tx\.auditLog\.create\(\{ data: \{[\s\S]*?action: 'AUTH_LOGOUT'/);
 assert.match(otpAuth, /authSession\.create/);
 assert.match(sessionPolicy, /revokedAt: null/);
 assert.match(review, /reviewerCanAccessCadet\(/);

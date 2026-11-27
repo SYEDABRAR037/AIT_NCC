@@ -1,5 +1,118 @@
+import { X509Certificate } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+
 export interface RuntimeConfig {
   port: number;
+}
+
+export const SUPABASE_CA_URL_PATH = './certs/supabase-root-ca.pem';
+export const SUPABASE_CA_FILE_PATH = path.resolve(__dirname, '../prisma/certs/supabase-root-ca.pem');
+const SUPABASE_CA_SHA256 = '807025ad50d4ed219d2c9c7d299c004f824eb00cf7f65afef607d07b72e6cafa';
+const SUPABASE_TLS_ERROR = 'Supabase DATABASE_URL must use strict TLS with the pinned root CA certificate.';
+
+export interface CertificateFileAccess {
+  lstat(filePath: string): { isFile(): boolean; isSymbolicLink(): boolean; size: number };
+  readUtf8(filePath: string): string;
+}
+
+const localCertificateFileAccess: CertificateFileAccess = {
+  lstat: (filePath) => fs.lstatSync(filePath),
+  readUtf8: (filePath) => fs.readFileSync(filePath, 'utf8'),
+};
+
+/** Validate the exact pinned Supabase CA contents, without exposing file contents. */
+export function validateSupabaseRootCaContents(contents: string, now = Date.now()): void {
+  try {
+    const certificateBlocks = contents.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) || [];
+    if (
+      certificateBlocks.length !== 1 ||
+      contents.replace(certificateBlocks[0] || '', '').trim() !== '' ||
+      /-----BEGIN (?:RSA |EC |ENCRYPTED )?PRIVATE KEY-----/.test(contents)
+    ) {
+      throw new Error(SUPABASE_TLS_ERROR);
+    }
+
+    const certificate = new X509Certificate(contents);
+    const fingerprint = certificate.fingerprint256.replace(/:/g, '').toLowerCase();
+    if (
+      !certificate.ca ||
+      fingerprint !== SUPABASE_CA_SHA256 ||
+      !Number.isFinite(Date.parse(certificate.validFrom)) ||
+      !Number.isFinite(Date.parse(certificate.validTo)) ||
+      now < Date.parse(certificate.validFrom) ||
+      now > Date.parse(certificate.validTo)
+    ) {
+      throw new Error(SUPABASE_TLS_ERROR);
+    }
+  } catch {
+    throw new Error(SUPABASE_TLS_ERROR);
+  }
+}
+
+/** Check file type/readability before validating the pinned certificate. */
+export function validateSupabaseRootCaFile(
+  filePath = SUPABASE_CA_FILE_PATH,
+  fileAccess: CertificateFileAccess = localCertificateFileAccess,
+): string {
+  try {
+    const stat = fileAccess.lstat(filePath);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 256 || stat.size > 16384) {
+      throw new Error(SUPABASE_TLS_ERROR);
+    }
+    const contents = fileAccess.readUtf8(filePath);
+    validateSupabaseRootCaContents(contents);
+    return contents;
+  } catch {
+    throw new Error(SUPABASE_TLS_ERROR);
+  }
+}
+
+function validateStrictSupabaseTls(
+  databaseUrl: URL,
+  fileAccess: CertificateFileAccess = localCertificateFileAccess,
+): string {
+  const tlsParameters = ['sslmode', 'sslaccept', 'sslrootcert'] as const;
+  const values = new Map<string, string>();
+  for (const parameter of tlsParameters) {
+    const entries = databaseUrl.searchParams.getAll(parameter);
+    if (entries.length !== 1) throw new Error(SUPABASE_TLS_ERROR);
+    values.set(parameter, entries[0]);
+  }
+
+  // `ssl` is not a Prisma v6 PostgreSQL URL parameter; reject it rather than
+  // allowing a competing TLS setting to make the effective configuration unclear.
+  if (databaseUrl.searchParams.has('ssl')) throw new Error(SUPABASE_TLS_ERROR);
+  if (
+    values.get('sslmode') !== 'require' ||
+    values.get('sslaccept') !== 'strict' ||
+    values.get('sslrootcert') !== SUPABASE_CA_URL_PATH
+  ) {
+    throw new Error(SUPABASE_TLS_ERROR);
+  }
+
+  return validateSupabaseRootCaFile(SUPABASE_CA_FILE_PATH, fileAccess);
+}
+
+/** Parse a Supabase runtime URL and return the same URL plus the validated pinned CA. */
+export function validateSupabaseDatabaseUrlForPgAdapter(
+  rawUrl: string,
+  fileAccess: CertificateFileAccess = localCertificateFileAccess,
+): { url: URL; caPem: string } {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection URL.');
+  }
+  if (!['postgres:', 'postgresql:'].includes(url.protocol) || !url.hostname || url.pathname.length < 2) {
+    throw new Error('DATABASE_URL must be a valid PostgreSQL connection URL.');
+  }
+  const host = url.hostname.toLowerCase();
+  if (!host.includes('supabase.co') && !host.includes('supabase.com')) {
+    throw new Error('The staging PrismaPg adapter requires a Supabase DATABASE_URL.');
+  }
+  return { url, caPem: validateStrictSupabaseTls(url, fileAccess) };
 }
 
 /** Validate required runtime settings without logging their values. */
@@ -39,16 +152,16 @@ export function validateRuntimeConfig(env: Readonly<Record<string, string | unde
     throw new Error('DATABASE_URL must be a valid PostgreSQL connection URL.');
   }
 
-  const isSupabaseDb = databaseUrl.hostname.toLowerCase().includes('supabase.co') || databaseUrl.hostname.toLowerCase().includes('supabase.com');
+  const databaseHost = databaseUrl.hostname.toLowerCase();
+  const isSupabaseDb = databaseHost.includes('supabase.co')
+    || databaseHost.includes('supabase.com')
+    || databaseHost.endsWith('.supabase.invalid');
   if (isSupabaseDb) {
-    const sslmode = (databaseUrl.searchParams.get('sslmode') || '').toLowerCase();
-    const ssl = (databaseUrl.searchParams.get('ssl') || '').toLowerCase();
-    if (sslmode === 'disable' || (!['require', 'verify-full', 'verify-ca'].includes(sslmode) && ssl !== 'true')) {
-      throw new Error('Supabase DATABASE_URL requires SSL (e.g. sslmode=require or sslmode=verify-full).');
-    }
+    validateStrictSupabaseTls(databaseUrl);
   }
 
-  const isSupabasePooler = databaseUrl.hostname.toLowerCase().endsWith('pooler.supabase.com');
+  const isSupabasePooler = databaseHost.endsWith('pooler.supabase.com')
+    || databaseHost.endsWith('pooler.supabase.invalid');
   if (isSupabasePooler) {
     if (!env.DIRECT_URL) {
       throw new Error('Supabase pooled DATABASE_URL requires a dedicated direct DIRECT_URL for migrations.');
@@ -65,10 +178,13 @@ export function validateRuntimeConfig(env: Readonly<Record<string, string | unde
     if (!['postgres:', 'postgresql:'].includes(directUrl.protocol) || !directUrl.hostname || directUrl.pathname.length < 2) {
       throw new Error('DIRECT_URL must be a valid PostgreSQL connection URL.');
     }
-    if (isSupabasePooler && directUrl.hostname.toLowerCase().endsWith('pooler.supabase.com')) {
+    const directHost = directUrl.hostname.toLowerCase();
+    if (isSupabasePooler && (directHost.endsWith('pooler.supabase.com') || directHost.endsWith('pooler.supabase.invalid'))) {
       throw new Error('DIRECT_URL cannot point to a Supabase pooler host; it must be a direct PostgreSQL endpoint.');
     }
-    const isDirectSupabase = directUrl.hostname.toLowerCase().includes('supabase.co') || directUrl.hostname.toLowerCase().includes('supabase.com');
+    const isDirectSupabase = directHost.includes('supabase.co')
+      || directHost.includes('supabase.com')
+      || directHost.endsWith('.supabase.invalid');
     if (isDirectSupabase) {
       const directSslmode = (directUrl.searchParams.get('sslmode') || '').toLowerCase();
       const directSsl = (directUrl.searchParams.get('ssl') || '').toLowerCase();

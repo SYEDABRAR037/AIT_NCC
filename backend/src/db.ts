@@ -4,9 +4,13 @@ import {
   MOCK_SENTINEL_DATABASE_URL,
   prepareTestDatabaseEnvironment,
 } from './databaseSafety';
+import { createStagingPrismaPgClient, resolvePrismaRuntimeMode } from './prismaPgRuntime';
 
 function initializePrisma(): PrismaClient {
   if (!isTestExecution()) {
+    if (resolvePrismaRuntimeMode(process.env) === 'staging-prisma-pg') {
+      return createStagingPrismaPgClient(process.env);
+    }
     return new PrismaClient({
       log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
     });
