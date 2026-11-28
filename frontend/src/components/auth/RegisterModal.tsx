@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, UserPlus, Shield, Camera, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAccessibleDialog } from '../../hooks/useAccessibleDialog';
 import { OTPVerification } from '../common/OTPVerification';
+import {
+  compressRegistrationPhoto,
+  createRegistrationPayload,
+  isRegistrationPayloadWithinBudget,
+} from '../../utils/registrationPhoto';
 
 interface RegisterModalProps {
   isOpen: boolean;
@@ -27,6 +32,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
 
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [photoStatus, setPhotoStatus] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoSelectionId = useRef(0);
 
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -56,6 +63,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     });
     setProfilePhoto(null);
     setPhotoStatus(null);
+    setPhotoError(null);
+    photoSelectionId.current += 1;
     setErrorMsg(null);
     setSuccessMsg(null);
     setEmailProofId(''); setVerifiedEmail(false); setActiveOtp(null);
@@ -132,16 +141,24 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     finally { setOtpLoading(false); }
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        setProfilePhoto(result);
-        setPhotoStatus('Profile photo saved successfully.');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    const selectionId = ++photoSelectionId.current;
+    setPhotoError(null);
+    setPhotoStatus('Preparing a smaller profile photo…');
+    setProfilePhoto(null);
+    try {
+      const result = await compressRegistrationPhoto(file);
+      if (selectionId !== photoSelectionId.current) return;
+      setProfilePhoto(result);
+      setPhotoStatus('Photo is compressed and ready.');
+    } catch (error) {
+      if (selectionId !== photoSelectionId.current) return;
+      setPhotoStatus(null);
+      setPhotoError(error instanceof Error && error.message === 'PHOTO_INPUT_TOO_LARGE'
+        ? 'This image file is too large to process. Choose an image under 20 MB, or continue without a photo.'
+        : 'This image could not be reduced to the safe upload size. Choose another image, or continue without a photo.');
     }
   };
 
@@ -165,15 +182,24 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
       setErrorMsg('Verify your email before submitting.');
       return;
     }
+    if (photoError) {
+      setErrorMsg(photoError);
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const payload: any = {
-        ...formData,
-        emailChallengeId: emailProofId,
-        profilePhotoUrl: profilePhoto,
-        profilePhoto,
-      };
+      const payload = createRegistrationPayload(formData, emailProofId, profilePhoto);
+      if (!isRegistrationPayloadWithinBudget(payload)) {
+        const message = profilePhoto
+          ? 'Registration details and photo exceed the safe upload size. Choose a smaller photo or continue without one.'
+          : 'Registration details exceed the safe upload size. Shorten the text fields and try again.';
+        setPhotoError(profilePhoto ? message : null);
+        setPhotoStatus(null);
+        setProfilePhoto(null);
+        setErrorMsg(message);
+        return;
+      }
       const res = await registerCadet(payload);
       if (res.success) {
         setSuccessMsg(res.message || 'Registration submitted. Your application is under review.');
@@ -513,8 +539,16 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                   />
                   {photoStatus && (
                     <span role="status" aria-live="polite" style={{ fontSize: '0.78rem', color: 'var(--color-success)', fontWeight: 600 }}>
-                      ✓ {photoStatus}
+                      {photoStatus === 'Preparing a smaller profile photo…' ? photoStatus : `✓ ${photoStatus}`}
                     </span>
+                  )}
+                  {photoError && (
+                    <div role="alert" style={{ color: 'var(--color-error)', fontSize: '0.78rem' }}>
+                      {photoError}
+                      <button type="button" onClick={() => { setPhotoError(null); setPhotoStatus(null); setProfilePhoto(null); }} style={{ display: 'block', marginTop: '0.3rem' }}>
+                        Continue without a photo
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
