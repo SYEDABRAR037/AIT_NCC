@@ -33,10 +33,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [emailProofId, setEmailProofId] = useState('');
-  const [mobileProofId, setMobileProofId] = useState('');
   const [verifiedEmail, setVerifiedEmail] = useState(false);
-  const [verifiedMobile, setVerifiedMobile] = useState(false);
-  const [activeOtp, setActiveOtp] = useState<{ channel: 'email' | 'mobile'; id: string; destination: string; expiresAt: string; serverNow: string } | null>(null);
+  const [activeOtp, setActiveOtp] = useState<{ channel: 'email'; id: string; destination: string; expiresAt: string; serverNow: string } | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
@@ -60,7 +58,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     setPhotoStatus(null);
     setErrorMsg(null);
     setSuccessMsg(null);
-    setEmailProofId(''); setMobileProofId(''); setVerifiedEmail(false); setVerifiedMobile(false); setActiveOtp(null);
+    setEmailProofId(''); setVerifiedEmail(false); setActiveOtp(null);
   };
 
   const handleCloseModal = () => {
@@ -97,15 +95,14 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     const { name, value } = e.target;
     setFormData((old) => ({ ...old, [name]: value }));
     if (name === 'email') { setVerifiedEmail(false); setEmailProofId(''); if (activeOtp?.channel === 'email') setActiveOtp(null); }
-    if (name === 'phone') { setVerifiedMobile(false); setMobileProofId(''); if (activeOtp?.channel === 'mobile') setActiveOtp(null); }
   };
 
-  const requestOtp = async (channel: 'email' | 'mobile') => {
+  const requestOtp = async () => {
     setOtpError(null); setOtpLoading(true);
     try {
-      const result = await requestRegistrationOtp(channel, channel === 'email' ? formData.email : formData.phone, formData.fullName);
+      const result = await requestRegistrationOtp('email', formData.email, formData.fullName);
       if (!result.success) { setOtpError(result.message || 'Unable to send OTP. Please try again.'); return; }
-      setActiveOtp({ channel, id: result.challengeId, destination: result.destination, expiresAt: result.expiresAt, serverNow: result.serverNow });
+      setActiveOtp({ channel: 'email', id: result.challengeId, destination: result.destination, expiresAt: result.expiresAt, serverNow: result.serverNow });
       setOtpCooldown(30);
     } catch { setOtpError('Could not reach the verification service. Check your connection and try again.'); }
     finally { setOtpLoading(false); }
@@ -117,8 +114,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     try {
       const result = await verifyRegistrationOtp(activeOtp.channel, activeOtp.id, otp);
       if (!result.success) { setOtpError(result.message || 'Code verification failed.'); return; }
-      if (activeOtp.channel === 'email') { setEmailProofId(activeOtp.id); setVerifiedEmail(true); }
-      else { setMobileProofId(activeOtp.id); setVerifiedMobile(true); }
+      setEmailProofId(activeOtp.id); setVerifiedEmail(true);
       setActiveOtp(null);
     } catch { setOtpError('Unable to verify code. Please try again.'); }
     finally { setOtpLoading(false); }
@@ -165,8 +161,8 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     }
 
 
-    if (!verifiedMobile || !verifiedEmail || !mobileProofId || !emailProofId) {
-      setErrorMsg('Verify your mobile number and email before submitting.');
+    if (!verifiedEmail || !emailProofId) {
+      setErrorMsg('Verify your email before submitting.');
       return;
     }
 
@@ -174,7 +170,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
     try {
       const payload: any = {
         ...formData,
-        mobileChallengeId: mobileProofId,
         emailChallengeId: emailProofId,
         profilePhotoUrl: profilePhoto,
         profilePhoto,
@@ -390,7 +385,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                   onChange={handleChange}
                   style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
-                <button type="button" disabled={!formData.email || otpLoading || verifiedEmail} onClick={() => requestOtp('email')} className="btn-secondary" style={{ marginTop: '0.45rem' }}>
+                <button type="button" disabled={!formData.email || otpLoading || verifiedEmail} onClick={requestOtp} className="btn-secondary" style={{ marginTop: '0.45rem' }}>
                   {verifiedEmail ? '✓ Email Verified' : 'Verify Email'}
                 </button>
               </div>
@@ -408,9 +403,6 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                   onChange={handleChange}
                   style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '4px', border: '1px solid var(--white-border)' }}
                 />
-                <button type="button" disabled={!formData.phone || otpLoading || verifiedMobile} onClick={() => requestOtp('mobile')} className="btn-secondary" style={{ marginTop: '0.45rem' }}>
-                  {verifiedMobile ? '✓ Mobile Verified' : 'Verify Mobile'}
-                </button>
               </div>
 
               <div>
@@ -432,7 +424,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
                 key={`${activeOtp.id}-${activeOtp.expiresAt}`}
                 destination={activeOtp.destination}
                 embedded
-                heading={`Verify ${activeOtp.channel === 'email' ? 'Email' : 'Mobile'}`}
+                heading="Verify Email"
                 instruction={`Enter the 6-digit code sent to ${activeOtp.destination}.`}
                 expiresInSeconds={otpSeconds}
                 verifyDisabled={otpSeconds <= 0}
@@ -444,8 +436,7 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               />
             )}
             {otpError && !activeOtp && <p role="alert" style={{ color: 'var(--color-error)' }}>{otpError}</p>}
-            <p aria-live="polite" style={{ margin: 0, fontSize: '0.85rem', color: verifiedEmail && verifiedMobile ? 'var(--color-success)' : 'var(--color-muted)' }}>
-              {verifiedMobile ? '✓ Mobile verified' : 'Mobile verification required.'} {' '}
+            <p aria-live="polite" style={{ margin: 0, fontSize: '0.85rem', color: verifiedEmail ? 'var(--color-success)' : 'var(--color-muted)' }}>
               {verifiedEmail ? '✓ Email verified' : 'Email verification required.'}
             </p>
 
@@ -594,13 +585,13 @@ export const RegisterModal: React.FC<RegisterModalProps> = ({ isOpen, onClose })
               </button>
               <button
                 type="submit"
-                disabled={submitting || !verifiedMobile || !verifiedEmail}
+                disabled={submitting || !verifiedEmail}
                 className="btn-primary"
                 style={{
-                  opacity: !verifiedMobile || !verifiedEmail ? 0.65 : 1,
-                  cursor: !verifiedMobile || !verifiedEmail ? 'not-allowed' : 'pointer',
+                  opacity: !verifiedEmail ? 0.65 : 1,
+                  cursor: !verifiedEmail ? 'not-allowed' : 'pointer',
                 }}
-                title={!verifiedMobile || !verifiedEmail ? 'Verify your mobile number and email before submitting' : ''}
+                title={!verifiedEmail ? 'Verify your email before submitting' : ''}
               >
                 <UserPlus size={16} />
                 <span>{submitting ? 'VALIDATING WITH DATABASE...' : 'SUBMIT APPLICATION'}</span>
