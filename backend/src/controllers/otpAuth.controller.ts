@@ -132,12 +132,12 @@ const createChallenge = async (purpose: OtpPurpose, destination: string, channel
 
 export const requestRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
   try {
+    if (await limited(req, res, 'reg-otp-request')) return;
     // Public registration uses email proof only. Login OTP may still use SMS.
     if (req.body.channel === 'mobile') {
       res.status(400).json({ success: false, message: 'Email verification is required for registration.' });
       return;
     }
-    if (await limited(req, res, 'reg-otp-request')) return;
     await prisma.otpChallenge.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60_000) } } });
     if (!getOtpSecret()) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
     const raw = String(req.body.destination || '').trim();
