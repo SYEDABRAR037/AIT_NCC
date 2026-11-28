@@ -61,7 +61,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       password,
       profilePhotoUrl,
       profilePhoto,
-      mobileChallengeId,
       emailChallengeId,
     } = req.body;
 
@@ -80,17 +79,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const trimmedRegimental = regimentalNumber.trim().toUpperCase();
     const trimmedRoll = collegeRollNumber.trim().toUpperCase();
     const normalizedPhone = normalizePhoneNumber(String(phone));
-    if (!normalizedPhone.isValid || !mobileChallengeId || !emailChallengeId) {
-      res.status(400).json({ success: false, message: 'Valid mobile and email verification are required before submitting the application.' });
+    if (!normalizedPhone.isValid || !emailChallengeId) {
+      res.status(400).json({ success: false, message: 'A valid mobile number and verified email are required before submitting the application.' });
       return;
     }
+
     const now = new Date();
-    const [mobileProof, emailProof] = await Promise.all([
-      prisma.otpChallenge.findUnique({ where: { id: String(mobileChallengeId) } }),
-      prisma.otpChallenge.findUnique({ where: { id: String(emailChallengeId) } }),
-    ]);
-    if (!mobileProof || mobileProof.purpose !== OtpPurpose.REGISTRATION_MOBILE || mobileProof.destination !== normalizedPhone.normalized || !mobileProof.verifiedAt || !mobileProof.proofExpiresAt || mobileProof.proofExpiresAt <= now || mobileProof.consumedAt || !emailProof || emailProof.purpose !== OtpPurpose.REGISTRATION_EMAIL || emailProof.destination !== trimmedEmail || !emailProof.verifiedAt || !emailProof.proofExpiresAt || emailProof.proofExpiresAt <= now || emailProof.consumedAt) {
-      res.status(400).json({ success: false, message: 'Mobile and email verification are required before submitting the application.' });
+    const emailProof = await prisma.otpChallenge.findUnique({
+      where: { id: String(emailChallengeId) },
+    });
+
+    if (!emailProof || emailProof.purpose !== OtpPurpose.REGISTRATION_EMAIL || emailProof.destination !== trimmedEmail || !emailProof.verifiedAt || !emailProof.proofExpiresAt || emailProof.proofExpiresAt <= now || emailProof.consumedAt) {
+      res.status(400).json({ success: false, message: 'Email verification is required before submitting the application.' });
       return;
     }
 
@@ -140,9 +140,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // 5. Atomic Registration Transaction (Phase 8 & 12)
     const [newUser] = await prisma.$transaction(async (tx) => {
-      const mobileConsumed = await tx.otpChallenge.updateMany({ where: { id: mobileProof.id, purpose: OtpPurpose.REGISTRATION_MOBILE, verifiedAt: { not: null }, proofExpiresAt: { gt: now }, consumedAt: null }, data: { consumedAt: now } });
-      const emailConsumed = await tx.otpChallenge.updateMany({ where: { id: emailProof.id, purpose: OtpPurpose.REGISTRATION_EMAIL, verifiedAt: { not: null }, proofExpiresAt: { gt: now }, consumedAt: null }, data: { consumedAt: now } });
-      if (mobileConsumed.count !== 1 || emailConsumed.count !== 1) throw new Error('VERIFICATION_PROOF_INVALID');
+      const emailConsumed = await tx.otpChallenge.updateMany({
+        where: { id: emailProof.id, purpose: OtpPurpose.REGISTRATION_EMAIL, verifiedAt: { not: null }, proofExpiresAt: { gt: now }, consumedAt: null },
+        data: { consumedAt: now },
+      });
+      if (emailConsumed.count !== 1) throw new Error('VERIFICATION_PROOF_INVALID');
       const user = await tx.user.create({
         data: {
           fullName: fullName.trim(),
@@ -150,7 +152,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
           collegeRollNumber: trimmedRoll,
           email: trimmedEmail,
           phone: normalizedPhone.normalized,
-          mobileVerified: true,
+          mobileVerified: false,
           emailVerified: true,
           year: year || 'FE (1st Year)',
           branch: branch || 'Computer Engineering',
@@ -179,7 +181,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     if (error?.message === 'VERIFICATION_PROOF_INVALID') {
-      res.status(400).json({ success: false, message: 'Mobile and email verification are required before submitting the application.' });
+      res.status(400).json({ success: false, message: 'Email verification is required before submitting the application.' });
       return;
     }
     console.error('Registration error:', error);

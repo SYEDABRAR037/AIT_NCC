@@ -34,6 +34,8 @@ async function run() {
     transaction: prisma.$transaction,
   };
   let userCreateCalls = 0;
+  let lastCreatedUserData: any = null;
+  const consumedProofIds: string[] = [];
   let templateCreateCalls = 0;
   let duplicateMode = false;
   const now = new Date();
@@ -46,9 +48,13 @@ async function run() {
     (prisma.otpChallenge as any).findUnique = async ({ where }: any) => proofs[where.id];
     (prisma.user as any).findFirst = async () => duplicateMode ? { id: 'synthetic-existing-account' } : null;
     (prisma as any).$transaction = async (callback: any) => callback({
-      otpChallenge: { updateMany: async () => ({ count: 1 }) },
+      otpChallenge: { updateMany: async ({ where }: any) => {
+        consumedProofIds.push(where.id);
+        return { count: 1 };
+      } },
       user: { create: async ({ data }: any) => {
         userCreateCalls++;
+        lastCreatedUserData = data;
         return { id: `synthetic-user-${userCreateCalls}`, fullName: data.fullName, status: data.status, profilePhotoUrl: data.profilePhotoUrl };
       } },
       biometricTemplate: { create: async () => { templateCreateCalls++; throw new Error('Registration must not create a biometric template'); } },
@@ -56,11 +62,14 @@ async function run() {
 
     // No descriptor, quality score, or consent field.
     const absentResponse = createResponse();
-    await register(createRequest() as any, absentResponse as any);
+    await register(createRequest({ mobileChallengeId: undefined }) as any, absentResponse as any);
     assert.strictEqual(absentResponse.statusCode, 201);
     assert.strictEqual(absentResponse.body.success, true);
     assert.strictEqual(absentResponse.body.status, 'UNDER_REVIEW');
     assert.strictEqual(absentResponse.body.biometricEnrolled, false);
+    assert.strictEqual(lastCreatedUserData.mobileVerified, false);
+    assert.strictEqual(lastCreatedUserData.emailVerified, true);
+    assert.deepStrictEqual(consumedProofIds, ['email-proof-fixture']);
 
     // Explicit refusal is also valid. Legacy biometric fields are ignored and never persisted.
     const refusedResponse = createResponse();
@@ -81,13 +90,16 @@ async function run() {
     const missingFieldResponse = createResponse();
     await register(createRequest({ email: '' }) as any, missingFieldResponse as any);
     assert.strictEqual(missingFieldResponse.statusCode, 400);
+    const missingMobileResponse = createResponse();
+    await register(createRequest({ phone: '' }) as any, missingMobileResponse as any);
+    assert.strictEqual(missingMobileResponse.statusCode, 400, 'Mobile number remains mandatory.');
 
     const weakPasswordResponse = createResponse();
     await register(createRequest({ password: 'weak' }) as any, weakPasswordResponse as any);
     assert.strictEqual(weakPasswordResponse.statusCode, 400);
 
     const invalidProofResponse = createResponse();
-    await register(createRequest({ mobileChallengeId: 'missing-mobile-proof' }) as any, invalidProofResponse as any);
+    await register(createRequest({ emailChallengeId: 'missing-email-proof' }) as any, invalidProofResponse as any);
     assert.strictEqual(invalidProofResponse.statusCode, 400);
     assert.strictEqual(userCreateCalls, 2);
 
@@ -99,7 +111,9 @@ async function run() {
 
     console.log('[PASS] Registration succeeds without biometric fields and does not create biometric templates');
     console.log('[PASS] Registration succeeds when biometric consent is false');
-    console.log('[PASS] Existing required-field, password, OTP proof, and duplicate-account validations remain enforced');
+    console.log('[PASS] Registration succeeds without mobile OTP and stores mobileVerified=false');
+    console.log('[PASS] Email OTP remains mandatory and is the only registration proof consumed');
+    console.log('[PASS] Existing required-field, password, and duplicate-account validations remain enforced');
   } finally {
     (prisma.otpChallenge as any).findUnique = originals.findChallenge;
     (prisma.otpChallenge as any).updateMany = originals.updateChallenges;

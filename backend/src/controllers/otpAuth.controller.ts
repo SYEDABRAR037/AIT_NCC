@@ -132,41 +132,31 @@ const createChallenge = async (purpose: OtpPurpose, destination: string, channel
 
 export const requestRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
   try {
+    // Public registration uses email proof only. Login OTP may still use SMS.
+    if (req.body.channel === 'mobile') {
+      res.status(400).json({ success: false, message: 'Email verification is required for registration.' });
+      return;
+    }
     if (await limited(req, res, 'reg-otp-request')) return;
     await prisma.otpChallenge.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 24 * 60 * 60_000) } } });
     if (!getOtpSecret()) { res.status(503).json({ success: false, message: 'Verification is temporarily unavailable.' }); return; }
-    const channel = req.body.channel === 'mobile' ? 'mobile' : 'email';
     const raw = String(req.body.destination || '').trim();
-    let destination: string;
-    if (channel === 'email') {
-      destination = raw.toLowerCase();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) { res.status(400).json({ success: false, message: 'Enter a valid email address.' }); return; }
-      const existing = await prisma.user.findFirst({ where: { email: { equals: destination, mode: 'insensitive' } }, select: { id: true } });
-      if (existing) { res.status(409).json({ success: false, message: 'This email is already registered.' }); return; }
-    } else {
-      const normalized = normalizePhoneNumber(raw);
-      if (!normalized.isValid) { res.status(400).json({ success: false, message: 'Enter a valid mobile number.' }); return; }
-      destination = normalized.normalized;
-      const existing = await prisma.user.findFirst({ where: { phone: destination }, select: { id: true } });
-      if (existing) { res.status(409).json({ success: false, message: 'This mobile number is already registered.' }); return; }
-    }
+    const destination = raw.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destination)) { res.status(400).json({ success: false, message: 'Enter a valid email address.' }); return; }
+    const existing = await prisma.user.findFirst({ where: { email: { equals: destination, mode: 'insensitive' } }, select: { id: true } });
+    if (existing) { res.status(409).json({ success: false, message: 'This email is already registered.' }); return; }
     const count = await prisma.otpChallenge.count({ where: { destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
     if (count >= 5) { res.status(429).json({ success: false, message: 'Too many codes requested. Please try again later.' }); return; }
-    const purpose = channel === 'email' ? OtpPurpose.REGISTRATION_EMAIL : OtpPurpose.REGISTRATION_MOBILE;
+    const purpose = OtpPurpose.REGISTRATION_EMAIL;
     await prisma.otpChallenge.updateMany({ where: { purpose, destination, consumedAt: null }, data: { otpHash: null, consumedAt: new Date() } });
-    const { challenge } = await createChallenge(purpose, destination, channel, undefined, String(req.body.name || 'Cadet'));
+    const { challenge } = await createChallenge(purpose, destination, 'email', undefined, String(req.body.name || 'Cadet'));
     const now = new Date();
-    res.json({ success: true, challengeId: challenge.id, destination: channel === 'email' ? maskEmail(destination) : maskPhone(destination), expiresAt: challenge.expiresAt, serverNow: now });
+    res.json({ success: true, challengeId: challenge.id, destination: maskEmail(destination), expiresAt: challenge.expiresAt, serverNow: now });
   } catch (error: any) {
     const deliveryFailed = error?.message === 'OTP_DELIVERY_FAILED';
-    const channel = req.body.channel === 'mobile' ? 'mobile' : 'email';
-    const message = !deliveryFailed
-      ? 'Unable to start verification.'
-      : channel === 'mobile' && error?.deliveryFailure === 'NOT_CONFIGURED'
-        ? 'SMS delivery is not configured. Please contact NCC administration.'
-        : channel === 'mobile'
-          ? 'We could not deliver the SMS verification code. Please try again later.'
-          : 'We could not deliver the email verification code. Please try again later.';
+    const message = deliveryFailed
+      ? 'We could not deliver the email verification code. Please try again later.'
+      : 'Unable to start verification.';
     res.status(deliveryFailed ? 503 : 500).json({ success: false, message });
   }
 };
@@ -178,6 +168,10 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
     if (!challenge || challenge.consumedAt || ![OtpPurpose.LOGIN, OtpPurpose.REGISTRATION_EMAIL, OtpPurpose.REGISTRATION_MOBILE].includes(challenge.purpose)) {
       res.status(400).json({ success: false, message: 'Verification has expired. Start again.' }); return;
     }
+    if (challenge.purpose === OtpPurpose.REGISTRATION_MOBILE) {
+      res.status(400).json({ success: false, message: 'Email verification is required for registration.' });
+      return;
+    }
     if (Date.now() - challenge.lastSentAt.getTime() < RESEND_WAIT_MS) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
     if (challenge.sendCount >= 5) { res.status(429).json({ success: false, message: 'Too many codes requested. Start verification again later.' }); return; }
     const count = await prisma.otpChallenge.count({ where: { destination: challenge.destination, createdAt: { gte: new Date(Date.now() - 10 * 60_000) } } });
@@ -187,7 +181,7 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
     const code = issueOtp(); const expiresAt = new Date(Date.now() + TTL_MS);
     const reserved = await prisma.otpChallenge.updateMany({ where: { id: challenge.id, lastSentAt: challenge.lastSentAt, sendCount: { lt: 5 }, consumedAt: null }, data: { otpHash: `v2:${hashOtp(challenge.id, code, otpSecret)}`, expiresAt, verifiedAt: null, proofExpiresAt: null, attemptCount: 0, sendCount: { increment: 1 }, lastSentAt: new Date() } });
     if (reserved.count !== 1) { res.status(429).json({ success: false, message: 'Please wait before requesting another code.' }); return; }
-    const channel = challenge.purpose === OtpPurpose.REGISTRATION_MOBILE || (challenge.purpose === OtpPurpose.LOGIN && challenge.destination.startsWith('+')) ? 'mobile' : 'email';
+    const channel = challenge.purpose === OtpPurpose.LOGIN && challenge.destination.startsWith('+') ? 'mobile' : 'email';
     const user = challenge.userId ? await prisma.user.findUnique({ where: { id: challenge.userId }, select: { fullName: true } }) : null;
     const delivery = await dispatch(challenge.destination, channel, code, user?.fullName || String(req.body.name || 'Cadet'), challenge.purpose === OtpPurpose.LOGIN ? 'login' : 'registration');
     if (!delivery.success) {
@@ -207,8 +201,12 @@ export const resendAuthOtp = async (req: Request, res: Response): Promise<void> 
 export const verifyRegistrationOtp = async (req: Request, res: Response): Promise<void> => {
   try {
     if (await limited(req, res, 'auth-otp-verify', 30)) return;
+    if (req.body.channel !== 'email') {
+      res.status(400).json({ success: false, message: 'Email verification is required for registration.' });
+      return;
+    }
     const challenge = await prisma.otpChallenge.findUnique({ where: { id: String(req.body.challengeId || '') } });
-    const expectedPurpose = req.body.channel === 'mobile' ? OtpPurpose.REGISTRATION_MOBILE : OtpPurpose.REGISTRATION_EMAIL;
+    const expectedPurpose = OtpPurpose.REGISTRATION_EMAIL;
     if (!challenge || challenge.purpose !== expectedPurpose || challenge.consumedAt || !challenge.otpHash || challenge.expiresAt.getTime() <= Date.now()) { res.status(400).json({ success: false, message: 'This code has expired. Request a new one.' }); return; }
     if (challenge.attemptCount >= 5) { res.status(429).json({ success: false, message: 'Too many incorrect attempts. Request a new code.' }); return; }
     const valid = verifyChallengeCode(challenge, String(req.body.otp || ''));

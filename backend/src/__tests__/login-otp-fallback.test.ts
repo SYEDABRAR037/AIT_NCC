@@ -56,7 +56,7 @@ Module._load = function (request: string, parent: any, isMain: boolean) {
   }
   return originalLoad.call(this, request, parent, isMain);
 };
-const { startLoginOtp, requestRegistrationOtp, verifyRegistrationOtp } = require('../controllers/otpAuth.controller') as typeof import('../controllers/otpAuth.controller');
+const { startLoginOtp, requestRegistrationOtp, resendAuthOtp, verifyRegistrationOtp } = require('../controllers/otpAuth.controller') as typeof import('../controllers/otpAuth.controller');
 Module._load = originalLoad;
 
 const response = () => ({ statusCode: 200, body: undefined as any, status(code: number) { this.statusCode = code; return this; }, json(body: unknown) { this.body = body; } });
@@ -109,17 +109,30 @@ const run = async () => {
   assert.deepStrictEqual(deliveryCalls, ['mobile'], 'An unverified cadet email must not be used for fallback.');
   assert.strictEqual(challenges.size, 0);
 
-  // Registration channels are exercised independently and never use cross-channel fallback.
+  // Registration is email-only. Login's mobile-to-email fallback above remains intact.
   deliveryCalls.length = 0;
   challenges.clear();
-  smsFailure = 'NOT_CONFIGURED';
   const mobileFailureRes: any = response();
   await requestRegistrationOtp({ ip: 'registration-mobile-unconfigured', body: { channel: 'mobile', destination: '+919876543210' } } as any, mobileFailureRes);
-  assert.strictEqual(mobileFailureRes.statusCode, 503);
-  assert.match(mobileFailureRes.body.message, /SMS delivery is not configured/i);
-  assert.deepStrictEqual(deliveryCalls, ['mobile']);
-  assert.strictEqual(challenges.size, 0, 'An undeliverable registration challenge is removed.');
-  assert.ok(!JSON.stringify(mobileFailureRes.body).match(/secret|provider|password|\d{6}/i));
+  assert.strictEqual(mobileFailureRes.statusCode, 400);
+  assert.match(mobileFailureRes.body.message, /email verification is required/i);
+  assert.doesNotMatch(mobileFailureRes.body.message, /SMS delivery is not configured/i);
+  assert.deepStrictEqual(deliveryCalls, [], 'Registration never dispatches an SMS.');
+  assert.strictEqual(challenges.size, 0, 'A mobile registration challenge is not created.');
+
+  challenges.set('legacy-mobile-registration', {
+    id: 'legacy-mobile-registration', purpose: 'REGISTRATION_MOBILE', destination: '+919876543210',
+    consumedAt: null, otpHash: 'synthetic-hash', expiresAt: new Date(Date.now() + 60_000),
+    lastSentAt: new Date(0), sendCount: 1, attemptCount: 0, createdAt: new Date(),
+  });
+  const mobileVerifyRes: any = response();
+  await verifyRegistrationOtp({ ip: 'registration-mobile-verify', body: { channel: 'mobile', challengeId: 'legacy-mobile-registration', otp: '123456' } } as any, mobileVerifyRes);
+  assert.strictEqual(mobileVerifyRes.statusCode, 400);
+  const mobileResendRes: any = response();
+  await resendAuthOtp({ ip: 'registration-mobile-resend', body: { challengeId: 'legacy-mobile-registration' } } as any, mobileResendRes);
+  assert.strictEqual(mobileResendRes.statusCode, 400);
+  assert.deepStrictEqual(deliveryCalls, [], 'Legacy mobile registration challenges cannot be verified or resent.');
+  challenges.clear();
 
   deliveryCalls.length = 0;
   emailResult = false;
@@ -158,7 +171,7 @@ const run = async () => {
   console.log('[PASS] Unavailable SMS and email return controlled 503 and remove undeliverable challenges.');
   console.log('[PASS] Rate-limited login preserves the prior active challenge; unverified email is not used as fallback.');
   console.log('[PASS] Repeated successful login leaves only one active OTP challenge.');
-  console.log('[PASS] Registration email delivery, proof verification, channel-specific SMS readiness error, and failed-challenge cleanup.');
+  console.log('[PASS] Registration is email-only, mobile registration OTP is rejected, and login SMS fallback remains available.');
 };
 
 run().catch((error) => { console.error(error); process.exitCode = 1; });
